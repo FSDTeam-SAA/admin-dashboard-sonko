@@ -8,6 +8,7 @@ import { Eye, ThumbsUp, Trash2, Plus } from "lucide-react"
 import { CustomPagination } from "@/components/custom-pagination"
 import { DeleteModal } from "@/components/delete-modal"
 import { Badge } from "@/components/ui/badge"
+import { ViewModal } from "@/components/view-modal"
 import { toast } from "sonner"
 
 const agentsData = [
@@ -78,6 +79,7 @@ export default function Agents() {
   const [deleteModal, setDeleteModal] = useState({ open: false, id: null as string | null })
   const [searchStatus, setSearchStatus] = useState("")
   const [searchLocation, setSearchLocation] = useState("")
+  const [viewAgent, setViewAgent] = useState<(typeof agentsData)[number] | null>(null)
 
   const itemsPerPage = 6
   const totalPages = Math.ceil(agentsData.length / itemsPerPage)
@@ -232,7 +234,10 @@ export default function Agents() {
                     </Badge>
                   </td>
                   <td className="px-6 py-3 flex gap-2">
-                    <Eye className="h-4 w-4 text-blue-500 cursor-pointer hover:text-blue-700" />
+                    <Eye
+                      className="h-4 w-4 text-blue-500 cursor-pointer hover:text-blue-700"
+                      onClick={() => setViewAgent(item)}
+                    />
                     <ThumbsUp className="h-4 w-4 text-green-500 cursor-pointer hover:text-green-700" />
                     <Trash2
                       className="h-4 w-4 text-red-500 cursor-pointer hover:text-red-700"
@@ -258,6 +263,23 @@ export default function Agents() {
         description="Are you sure you want to delete this agent? This action cannot be undone."
         onConfirm={confirmDelete}
         onCancel={() => setDeleteModal({ open: false, id: null })}
+      />
+
+      <ViewModal
+        open={!!viewAgent}
+        title="Agent Details"
+        description={viewAgent ? `Agent ${viewAgent.id}` : undefined}
+        onClose={() => setViewAgent(null)}
+        fields={[
+          { label: "Agent ID", value: viewAgent?.id ?? "-" },
+          { label: "Name", value: viewAgent?.name ?? "-" },
+          { label: "Email", value: viewAgent?.email ?? "-" },
+          { label: "Location", value: viewAgent?.location ?? "-" },
+          { label: "Status", value: viewAgent?.status ?? "-" },
+          { label: "Transactions", value: viewAgent?.transactions?.toLocaleString?.() ?? "-" },
+          { label: "Total Payouts", value: viewAgent?.payouts ?? "-" },
+          { label: "Join Date", value: viewAgent?.joinDate ?? "-" },
+        ]}
       />
     </div>
   )

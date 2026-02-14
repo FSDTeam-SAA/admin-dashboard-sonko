@@ -9,6 +9,7 @@ import { Eye } from "lucide-react";
 import { CustomPagination } from "@/components/custom-pagination";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ViewModal } from "@/components/view-modal";
 import { getTransactions, type Transaction } from "@/lib/api";
 
 const getStatusColor = (status?: string) => {
@@ -41,6 +42,9 @@ export default function Transactions() {
   const [searchId, setSearchId] = useState("");
   const [searchName, setSearchName] = useState("");
   const [searchDate, setSearchDate] = useState("");
+  const [viewTransaction, setViewTransaction] = useState<Transaction | null>(
+    null,
+  );
 
   const { data, isLoading } = useQuery({
     queryKey: ["transactions"],
@@ -263,7 +267,10 @@ export default function Transactions() {
                       </Badge>
                     </td>
                     <td className="px-6 py-3">
-                      <Eye className="h-4 w-4 text-blue-500 cursor-pointer hover:text-blue-700" />
+                      <Eye
+                        className="h-4 w-4 text-blue-500 cursor-pointer hover:text-blue-700"
+                        onClick={() => setViewTransaction(item)}
+                      />
                     </td>
                   </tr>
                 ))
@@ -277,6 +284,39 @@ export default function Transactions() {
         currentPage={currentPage}
         totalPages={totalPages}
         onPageChange={setCurrentPage}
+      />
+
+      <ViewModal
+        open={!!viewTransaction}
+        title="Transaction Details"
+        description={
+          viewTransaction ? `Transaction ${viewTransaction._id}` : undefined
+        }
+        onClose={() => setViewTransaction(null)}
+        fields={[
+          { label: "Transaction ID", value: viewTransaction?._id ?? "-" },
+          {
+            label: "Customer",
+            value: viewTransaction ? resolveCustomer(viewTransaction) : "-",
+          },
+          {
+            label: "Date & Time",
+            value: viewTransaction?.createdAt
+              ? new Date(viewTransaction.createdAt).toLocaleString()
+              : "-",
+          },
+          { label: "Type", value: viewTransaction?.type ?? "-" },
+          {
+            label: "Amount",
+            value: viewTransaction
+              ? `GMD ${Number(viewTransaction.amount ?? 0).toLocaleString()}`
+              : "-",
+          },
+          { label: "Status", value: viewTransaction?.status ?? "-" },
+          { label: "From", value: viewTransaction?.from ?? "-" },
+          { label: "To", value: viewTransaction?.to ?? "-" },
+          { label: "Flag", value: viewTransaction?.flag ?? "-" },
+        ]}
       />
     </div>
   );

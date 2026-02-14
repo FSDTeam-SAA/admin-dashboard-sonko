@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Eye, X } from "lucide-react"
 import { CustomPagination } from "@/components/custom-pagination"
 import { Badge } from "@/components/ui/badge"
+import { ViewModal } from "@/components/view-modal"
 
 const ticketsData = [
   {
@@ -75,6 +76,7 @@ export default function Tickets() {
   const [priorityFilter, setPriorityFilter] = useState("All Priorities")
   const [statusFilter, setStatusFilter] = useState("All Status")
   const [typeFilter, setTypeFilter] = useState("All Types")
+  const [viewTicket, setViewTicket] = useState<(typeof ticketsData)[number] | null>(null)
 
   const itemsPerPage = 6
   const totalPages = Math.ceil(ticketsData.length / itemsPerPage)
@@ -244,7 +246,10 @@ export default function Tickets() {
                     <Badge className={getStatusColor(item.status)}>{item.status}</Badge>
                   </td>
                   <td className="px-6 py-3 flex gap-2">
-                    <Eye className="h-4 w-4 text-blue-500 cursor-pointer hover:text-blue-700" />
+                    <Eye
+                      className="h-4 w-4 text-blue-500 cursor-pointer hover:text-blue-700"
+                      onClick={() => setViewTicket(item)}
+                    />
                     <X className="h-4 w-4 text-red-500 cursor-pointer hover:text-red-700" />
                   </td>
                 </tr>
@@ -258,6 +263,23 @@ export default function Tickets() {
         currentPage={currentPage}
         totalPages={Math.ceil(filteredData.length / itemsPerPage)}
         onPageChange={setCurrentPage}
+      />
+
+      <ViewModal
+        open={!!viewTicket}
+        title="Ticket Details"
+        description={viewTicket ? `Ticket ${viewTicket.id}` : undefined}
+        onClose={() => setViewTicket(null)}
+        fields={[
+          { label: "Ticket ID", value: viewTicket?.id ?? "-" },
+          { label: "Priority", value: viewTicket?.priority ?? "-" },
+          { label: "Issue Type", value: viewTicket?.type ?? "-" },
+          { label: "Customer", value: viewTicket?.customer ?? "-" },
+          { label: "Date", value: viewTicket?.date ?? "-" },
+          { label: "Time", value: viewTicket?.time ?? "-" },
+          { label: "Status", value: viewTicket?.status ?? "-" },
+          { label: "Description", value: viewTicket?.description ?? "-" },
+        ]}
       />
     </div>
   )

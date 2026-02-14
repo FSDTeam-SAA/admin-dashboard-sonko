@@ -10,7 +10,13 @@ import { CustomPagination } from "@/components/custom-pagination";
 import { DeleteModal } from "@/components/delete-modal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { createService, deleteService, getServices } from "@/lib/api";
+import {
+  createService,
+  deleteService,
+  getServices,
+  updateService,
+  type Service,
+} from "@/lib/api";
 
 export default function Services() {
   const queryClient = useQueryClient();
@@ -23,7 +29,18 @@ export default function Services() {
     id: null,
   });
   const [showForm, setShowForm] = useState(false);
+  const [editModal, setEditModal] = useState<{
+    open: boolean;
+    item: Service | null;
+  }>({
+    open: false,
+    item: null,
+  });
   const [formData, setFormData] = useState({
+    title: "",
+    image: null as File | null,
+  });
+  const [editFormData, setEditFormData] = useState({
     title: "",
     image: null as File | null,
   });
@@ -66,6 +83,20 @@ export default function Services() {
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: FormData }) =>
+      updateService(id, payload),
+    onSuccess: () => {
+      toast.success("Service updated successfully");
+      queryClient.invalidateQueries({ queryKey: ["services"] });
+      setEditModal({ open: false, item: null });
+      setEditFormData({ title: "", image: null });
+    },
+    onError: () => {
+      toast.error("Failed to update service");
+    },
+  });
+
   const handleDelete = (id: string) => {
     setDeleteModal({ open: true, id });
   };
@@ -73,6 +104,11 @@ export default function Services() {
   const confirmDelete = () => {
     if (!deleteModal.id) return;
     deleteMutation.mutate(deleteModal.id);
+  };
+
+  const openEditModal = (item: Service) => {
+    setEditModal({ open: true, item });
+    setEditFormData({ title: item.title ?? "", image: null });
   };
 
   const handleAddService = () => {
@@ -86,6 +122,20 @@ export default function Services() {
       payload.append("image", formData.image);
     }
     createMutation.mutate(payload);
+  };
+
+  const handleUpdateService = () => {
+    if (!editModal.item?._id) return;
+    if (!editFormData.title) {
+      toast.error("Service title is required");
+      return;
+    }
+    const payload = new FormData();
+    payload.append("title", editFormData.title);
+    if (editFormData.image) {
+      payload.append("image", editFormData.image);
+    }
+    updateMutation.mutate({ id: editModal.item._id, payload });
   };
 
   return (
@@ -178,7 +228,10 @@ export default function Services() {
                     </td>
                     <td className="px-6 py-4 text-sm">
                       <div className="flex gap-3">
-                        <Edit2 className="h-4 w-4 text-yellow-500 cursor-pointer hover:text-yellow-700" />
+                        <Edit2
+                          className="h-4 w-4 text-yellow-500 cursor-pointer hover:text-yellow-700"
+                          onClick={() => openEditModal(item)}
+                        />
                         <Trash2
                           className="h-4 w-4 text-red-500 cursor-pointer hover:text-red-700"
                           onClick={() => handleDelete(item._id)}
@@ -245,6 +298,65 @@ export default function Services() {
                   disabled={createMutation.isPending}
                 >
                   {createMutation.isPending ? "Adding..." : "Add Service"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {editModal.open && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <CardTitle>Update Service</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-gray-700">
+                  Service Name
+                </label>
+                <Input
+                  value={editFormData.title}
+                  onChange={(e) =>
+                    setEditFormData({
+                      ...editFormData,
+                      title: e.target.value,
+                    })
+                  }
+                  placeholder="e.g., Money Transfer"
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700">
+                  Icon
+                </label>
+                <Input
+                  type="file"
+                  accept="image/*"
+                  className="mt-1"
+                  onChange={(e) =>
+                    setEditFormData({
+                      ...editFormData,
+                      image: e.target.files?.[0] ?? null,
+                    })
+                  }
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setEditModal({ open: false, item: null })}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleUpdateService}
+                  className="bg-blue-500 text-white hover:bg-blue-600"
+                  disabled={updateMutation.isPending}
+                >
+                  {updateMutation.isPending ? "Updating..." : "Update Service"}
                 </Button>
               </div>
             </CardContent>

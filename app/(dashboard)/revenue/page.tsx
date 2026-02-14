@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Download, Eye } from "lucide-react"
 import { CustomPagination } from "@/components/custom-pagination"
+import { ViewModal } from "@/components/view-modal"
 
 const revenueData = [
   {
@@ -68,6 +69,7 @@ export default function Revenue() {
   const [currentPage, setCurrentPage] = useState(1)
   const [searchId, setSearchId] = useState("")
   const [dateFilter, setDateFilter] = useState("")
+  const [viewRevenue, setViewRevenue] = useState<(typeof revenueData)[number] | null>(null)
 
   const itemsPerPage = 6
   const totalPages = Math.ceil(revenueData.length / itemsPerPage)
@@ -178,7 +180,10 @@ export default function Revenue() {
                   <td className="px-6 py-3 text-gray-900">{item.commissions}</td>
                   <td className="px-6 py-3 font-semibold text-green-600">{item.revenue}</td>
                   <td className="px-6 py-3">
-                    <Eye className="h-4 w-4 text-blue-500 cursor-pointer hover:text-blue-700" />
+                    <Eye
+                      className="h-4 w-4 text-blue-500 cursor-pointer hover:text-blue-700"
+                      onClick={() => setViewRevenue(item)}
+                    />
                   </td>
                 </tr>
               ))}
@@ -188,6 +193,22 @@ export default function Revenue() {
       </Card>
 
       <CustomPagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
+
+      <ViewModal
+        open={!!viewRevenue}
+        title="Revenue Details"
+        description={viewRevenue ? `Transaction ${viewRevenue.id}` : undefined}
+        onClose={() => setViewRevenue(null)}
+        fields={[
+          { label: "Transaction ID", value: viewRevenue?.id ?? "-" },
+          { label: "Date", value: viewRevenue?.date ?? "-" },
+          { label: "Send", value: viewRevenue?.send ?? "-" },
+          { label: "Receive", value: viewRevenue?.receive ?? "-" },
+          { label: "Rate", value: viewRevenue?.rate ?? "-" },
+          { label: "Commission", value: viewRevenue?.commissions ?? "-" },
+          { label: "Revenue", value: viewRevenue?.revenue ?? "-" },
+        ]}
+      />
     </div>
   )
 }

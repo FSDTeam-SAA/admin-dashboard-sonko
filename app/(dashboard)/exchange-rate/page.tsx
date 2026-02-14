@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Plus, Trash2, Eye } from "lucide-react"
 import { CustomPagination } from "@/components/custom-pagination"
 import { DeleteModal } from "@/components/delete-modal"
+import { ViewModal } from "@/components/view-modal"
 import { toast } from "sonner"
 
 const exchangeRateData = [
@@ -77,6 +78,7 @@ export default function ExchangeRate() {
   const [deleteModal, setDeleteModal] = useState({ open: false, id: null as number | null })
   const [showForm, setShowForm] = useState(false)
   const [formData, setFormData] = useState({ date: "", pair: "", rate: "", commissions: "" })
+  const [viewRate, setViewRate] = useState<(typeof exchangeRateData)[number] | null>(null)
 
   const itemsPerPage = 6
   const totalPages = Math.ceil(exchangeRateData.length / itemsPerPage)
@@ -168,7 +170,10 @@ export default function ExchangeRate() {
                   </td>
                   <td className="px-6 py-3 text-sm">
                     <div className="flex gap-3">
-                      <Eye className="h-4 w-4 text-blue-500 cursor-pointer hover:text-blue-700" />
+                      <Eye
+                        className="h-4 w-4 text-blue-500 cursor-pointer hover:text-blue-700"
+                        onClick={() => setViewRate(item)}
+                      />
                       <Trash2
                         className="h-4 w-4 text-red-500 cursor-pointer hover:text-red-700"
                         onClick={() => handleDelete(item.id)}
@@ -250,6 +255,32 @@ export default function ExchangeRate() {
         description="Are you sure you want to delete this exchange rate? This action cannot be undone."
         onConfirm={confirmDelete}
         onCancel={() => setDeleteModal({ open: false, id: null })}
+      />
+
+      <ViewModal
+        open={!!viewRate}
+        title="Exchange Rate Details"
+        description={viewRate ? `Rate ${viewRate.pair}` : undefined}
+        onClose={() => setViewRate(null)}
+        fields={[
+          { label: "Date", value: viewRate?.date ?? "-" },
+          { label: "Currency Pair", value: viewRate?.pair ?? "-" },
+          { label: "Rate", value: viewRate?.rate?.toLocaleString?.() ?? "-" },
+          { label: "Previous Rate", value: viewRate?.previousRate?.toLocaleString?.() ?? "-" },
+          {
+            label: "Change",
+            value:
+              viewRate && typeof viewRate.rate === "number" && typeof viewRate.previousRate === "number"
+                ? (viewRate.rate - viewRate.previousRate).toFixed(2)
+                : "-",
+          },
+          { label: "Commission", value: viewRate?.commissions ?? "-" },
+          { label: "Revenue", value: viewRate?.revenue ?? "-" },
+          {
+            label: "Status",
+            value: viewRate?.status ? viewRate.status.charAt(0).toUpperCase() + viewRate.status.slice(1) : "-",
+          },
+        ]}
       />
     </div>
   )

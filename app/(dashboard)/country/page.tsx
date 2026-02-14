@@ -10,7 +10,7 @@ import { Edit2, Plus, Trash2 } from "lucide-react";
 import { CustomPagination } from "@/components/custom-pagination";
 import { DeleteModal } from "@/components/delete-modal";
 import { toast } from "sonner";
-import { createCountry, deleteCountry, getCountries } from "@/lib/api";
+import { createCountry, deleteCountry, getCountries, updateCountry, type Country } from "@/lib/api";
 
 export default function Country() {
   const queryClient = useQueryClient();
@@ -23,7 +23,17 @@ export default function Country() {
     id: null,
   });
   const [showForm, setShowForm] = useState(false);
+  const [editModal, setEditModal] = useState<{ open: boolean; item: Country | null }>({
+    open: false,
+    item: null,
+  });
   const [formData, setFormData] = useState({
+    title: "",
+    alphaChar: "",
+    countryCode: "",
+    image: null as File | null,
+  });
+  const [editFormData, setEditFormData] = useState({
     title: "",
     alphaChar: "",
     countryCode: "",
@@ -69,6 +79,19 @@ export default function Country() {
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: FormData }) => updateCountry(id, payload),
+    onSuccess: () => {
+      toast.success("Country updated successfully");
+      queryClient.invalidateQueries({ queryKey: ["countries"] });
+      setEditModal({ open: false, item: null });
+      setEditFormData({ title: "", alphaChar: "", countryCode: "", image: null });
+    },
+    onError: () => {
+      toast.error("Failed to update country");
+    },
+  });
+
   const handleAddCountry = () => {
     if (!formData.title || !formData.alphaChar || !formData.countryCode) {
       toast.error("All fields are required");
@@ -89,6 +112,32 @@ export default function Country() {
   const confirmDelete = () => {
     if (!deleteModal.id) return;
     deleteMutation.mutate(deleteModal.id);
+  };
+
+  const openEditModal = (item: Country) => {
+    setEditModal({ open: true, item });
+    setEditFormData({
+      title: item.title ?? "",
+      alphaChar: item.alphaChar ?? "",
+      countryCode: item.countryCode ?? "",
+      image: null,
+    });
+  };
+
+  const handleUpdateCountry = () => {
+    if (!editModal.item?._id) return;
+    if (!editFormData.title || !editFormData.alphaChar || !editFormData.countryCode) {
+      toast.error("All fields are required");
+      return;
+    }
+    const payload = new FormData();
+    payload.append("title", editFormData.title);
+    payload.append("alphaChar", editFormData.alphaChar);
+    payload.append("countryCode", editFormData.countryCode);
+    if (editFormData.image) {
+      payload.append("image", editFormData.image);
+    }
+    updateMutation.mutate({ id: editModal.item._id, payload });
   };
 
   return (
@@ -171,12 +220,10 @@ export default function Country() {
                             className="h-8 w-8 rounded-full"
                           />
                         ) : (
-                          <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center text-sm">
-                            {(
-                              item.alphaChar ??
-                              item.title?.slice(0, 2) ??
-                              ""
-                            ).toUpperCase()}
+                          <div className="h-8 w-8 rounded-full bg-gray-300 flex items-center justify-center">
+                            <span className="text-gray-600 text-xs">
+                              {item.title.charAt(0).toUpperCase()}
+                            </span>
                           </div>
                         )}
                         <span className="text-gray-900 font-medium">
@@ -193,7 +240,10 @@ export default function Country() {
                         : "-"}
                     </td>
                     <td className="px-6 py-4 flex gap-2">
-                      <Edit2 className="h-4 w-4 text-blue-500 cursor-pointer" />
+                      <Edit2
+                        className="h-4 w-4 text-blue-500 cursor-pointer"
+                        onClick={() => openEditModal(item)}
+                      />
                       <Trash2
                         className="h-4 w-4 text-red-500 cursor-pointer"
                         onClick={() =>
@@ -281,6 +331,88 @@ export default function Country() {
                   disabled={createMutation.isPending}
                 >
                   {createMutation.isPending ? "Adding..." : "Add"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {editModal.open && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <Card className="w-96">
+            <CardHeader>
+              <CardTitle>Update Country</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <label className="text-sm font-medium">Country Name</label>
+                <Input
+                  placeholder="Country name"
+                  className="mt-1"
+                  value={editFormData.title}
+                  onChange={(e) =>
+                    setEditFormData({ ...editFormData, title: e.target.value })
+                  }
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Country Alpha</label>
+                <Input
+                  placeholder="e.g., GM"
+                  className="mt-1"
+                  value={editFormData.alphaChar}
+                  onChange={(e) =>
+                    setEditFormData({
+                      ...editFormData,
+                      alphaChar: e.target.value,
+                    })
+                  }
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">
+                  Country Phone Code
+                </label>
+                <Input
+                  placeholder="Type phone code"
+                  className="mt-1"
+                  value={editFormData.countryCode}
+                  onChange={(e) =>
+                    setEditFormData({
+                      ...editFormData,
+                      countryCode: e.target.value,
+                    })
+                  }
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Flag</label>
+                <Input
+                  type="file"
+                  accept="image/*"
+                  className="mt-1"
+                  onChange={(e) =>
+                    setEditFormData({
+                      ...editFormData,
+                      image: e.target.files?.[0] ?? null,
+                    })
+                  }
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setEditModal({ open: false, item: null })}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleUpdateCountry}
+                  className="bg-blue-500 text-white"
+                  disabled={updateMutation.isPending}
+                >
+                  {updateMutation.isPending ? "Updating..." : "Update"}
                 </Button>
               </div>
             </CardContent>

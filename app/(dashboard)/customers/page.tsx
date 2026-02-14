@@ -7,6 +7,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Eye, Mail } from "lucide-react"
 import { CustomPagination } from "@/components/custom-pagination"
 import { Badge } from "@/components/ui/badge"
+import { ViewModal } from "@/components/view-modal"
 
 const customersData = [
   {
@@ -87,6 +88,7 @@ export default function Customers() {
   const [currentPage, setCurrentPage] = useState(1)
   const [searchName, setSearchName] = useState("")
   const [searchPhone, setSearchPhone] = useState("")
+  const [viewCustomer, setViewCustomer] = useState<(typeof customersData)[number] | null>(null)
 
   const itemsPerPage = 6
   const totalPages = Math.ceil(customersData.length / itemsPerPage)
@@ -221,7 +223,10 @@ export default function Customers() {
                     <Badge className={getStatusColor(item.status)}>{item.status}</Badge>
                   </td>
                   <td className="px-6 py-3">
-                    <Eye className="h-4 w-4 text-blue-500 cursor-pointer hover:text-blue-700" />
+                    <Eye
+                      className="h-4 w-4 text-blue-500 cursor-pointer hover:text-blue-700"
+                      onClick={() => setViewCustomer(item)}
+                    />
                   </td>
                 </tr>
               ))}
@@ -234,6 +239,24 @@ export default function Customers() {
         currentPage={currentPage}
         totalPages={Math.ceil(filteredData.length / itemsPerPage)}
         onPageChange={setCurrentPage}
+      />
+
+      <ViewModal
+        open={!!viewCustomer}
+        title="Customer Details"
+        description={viewCustomer ? `Customer ${viewCustomer.id}` : undefined}
+        onClose={() => setViewCustomer(null)}
+        fields={[
+          { label: "Customer ID", value: viewCustomer?.id ?? "-" },
+          { label: "Name", value: viewCustomer?.name ?? "-" },
+          { label: "Email", value: viewCustomer?.email ?? "-" },
+          { label: "Phone", value: viewCustomer?.phone ?? "-" },
+          { label: "Verification", value: viewCustomer?.verification ?? "-" },
+          { label: "Status", value: viewCustomer?.status ?? "-" },
+          { label: "Last Login", value: viewCustomer?.lastLogin ?? "-" },
+          { label: "Total Transfers", value: viewCustomer?.transfers ?? "-" },
+          { label: "Join Date", value: viewCustomer?.joinDate ?? "-" },
+        ]}
       />
     </div>
   )
