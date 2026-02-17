@@ -1,6 +1,6 @@
 "use client"
+
 import { ChevronLeft, ChevronRight } from "lucide-react"
-import { Button } from "@/components/ui/button"
 
 interface PaginationProps {
   currentPage: number
@@ -9,45 +9,38 @@ interface PaginationProps {
 }
 
 export function CustomPagination({ currentPage, totalPages, onPageChange }: PaginationProps) {
+  const pages = [1, 2].filter((page) => page <= totalPages)
+
   return (
     <div className="flex items-center justify-end gap-2 mt-6">
-      <Button variant="outline" size="icon" onClick={() => onPageChange(currentPage - 1)} disabled={currentPage === 1}>
+      <button
+        type="button"
+        className="h-9 w-9 rounded-md border border-[#9f9f9f] text-[#2c2c2c] flex items-center justify-center"
+        onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+      >
         <ChevronLeft className="h-4 w-4" />
-      </Button>
+      </button>
 
-      {Array.from({ length: Math.min(3, totalPages) }, (_, i) => {
-        let pageNum
-        if (totalPages <= 3) {
-          pageNum = i + 1
-        } else if (currentPage <= 2) {
-          pageNum = i + 1
-        } else if (currentPage >= totalPages - 1) {
-          pageNum = totalPages - 2 + i
-        } else {
-          pageNum = currentPage - 1 + i
-        }
+      {pages.map((page) => (
+        <button
+          key={page}
+          type="button"
+          className={`h-9 w-9 rounded-md border text-sm font-medium ${
+            currentPage === page ? "border-[#2c2c2c] text-[#2c2c2c]" : "border-[#9f9f9f] text-[#2c2c2c]"
+          }`}
+          onClick={() => onPageChange(page)}
+        >
+          {page}
+        </button>
+      ))}
 
-        return (
-          <Button
-            key={pageNum}
-            variant={currentPage === pageNum ? "default" : "outline"}
-            size="sm"
-            onClick={() => onPageChange(pageNum)}
-            className={currentPage === pageNum ? "bg-blue-500 text-white" : ""}
-          >
-            {pageNum}
-          </Button>
-        )
-      })}
-
-      <Button
-        variant="outline"
-        size="icon"
-        onClick={() => onPageChange(currentPage + 1)}
-        disabled={currentPage === totalPages}
+      <button
+        type="button"
+        className="h-9 w-9 rounded-md bg-[#4da3ff] text-white flex items-center justify-center"
+        onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
       >
         <ChevronRight className="h-4 w-4" />
-      </Button>
+      </button>
     </div>
   )
 }
