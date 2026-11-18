@@ -24,6 +24,8 @@ vitest 4's optional peers without it. It affects test tools only.
 - The server ends staff sessions after 8 hours (15-minute access tokens).
 - Only accounts with the `admin` role get in; others are turned away and
   their tokens dropped.
+- Two-step login: PIN, then a code from an authenticator app. The QR code
+  is made in the browser, so the secret goes nowhere else.
 - Every page is shown only with its permission, from `GET /admin/me`. The
   server checks the permission again on every call.
 - Money, hold and settings actions send an `Idempotency-Key` and ask for the

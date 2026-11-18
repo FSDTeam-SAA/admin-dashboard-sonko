@@ -1,11 +1,13 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { onSessionEnd, isIdle, IDLE_LIMIT_MS, type EndReason } from "../api/session";
-import { login as apiLogin, logout as apiLogout, type Staff } from "../api/staff";
+import { logout as apiLogout, type Staff } from "../api/staff";
 
 type AuthState = {
   staff: Staff | null;
   endedBecause: EndReason | null;
-  login: (phone: string, pin: string) => Promise<void>;
+  /** A note to show once on Home, e.g. few recovery codes left. */
+  notice: string | null;
+  enter: (staff: Staff, notice?: string) => void;
   logout: () => Promise<void>;
 };
 
@@ -16,12 +18,14 @@ const ACTIVITY = ["pointerdown", "keydown", "wheel", "touchstart"] as const;
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [staff, setStaff] = useState<Staff | null>(null);
   const [endedBecause, setEndedBecause] = useState<EndReason | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const lastActivity = useRef(Date.now());
 
   useEffect(
     () =>
       onSessionEnd((reason) => {
         setStaff(null);
+        setNotice(null);
         setEndedBecause(reason);
       }),
     [],
@@ -44,18 +48,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [staff]);
 
-  const login = useCallback(async (phone: string, pin: string) => {
-    const me = await apiLogin(phone, pin);
+  const enter = useCallback((me: Staff, note?: string) => {
     setEndedBecause(null);
+    setNotice(note ?? null);
     setStaff(me);
   }, []);
 
   const logout = useCallback(async () => {
     await apiLogout("logout");
     setStaff(null);
+    setNotice(null);
   }, []);
 
-  const value = useMemo(() => ({ staff, endedBecause, login, logout }), [staff, endedBecause, login, logout]);
+  const value = useMemo(
+    () => ({ staff, endedBecause, notice, enter, logout }),
+    [staff, endedBecause, notice, enter, logout],
+  );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

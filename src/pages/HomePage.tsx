@@ -3,7 +3,7 @@ import { useAuth } from "../auth/AuthContext";
 import { visibleNav } from "../lib/nav";
 
 export function HomePage() {
-  const { staff } = useAuth();
+  const { staff, notice } = useAuth();
   const pages = visibleNav(staff?.permissions ?? []).filter((item) => item.path !== "/");
   return (
     <section>
@@ -13,6 +13,7 @@ export function HomePage() {
           ? "You have full admin access."
           : `You have ${staff?.permissions.length ?? 0} permissions.`}
       </p>
+      {notice && <p className="notice home-notice">{notice}</p>}
       <div className="grid">
         {pages.map((item) => (
           <Link key={item.path} to={item.path} className="card tile">

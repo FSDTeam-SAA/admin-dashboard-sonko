@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { api, ApiError } from "../src/api/client";
 import { clearTokens, getTokens, onSessionEnd, setTokens } from "../src/api/session";
-import { login, NOT_STAFF } from "../src/api/staff";
+import { finishLogin, NOT_STAFF, startLogin } from "../src/api/staff";
 
 type Call = { url: string; init: RequestInit };
 
@@ -78,26 +78,52 @@ describe("api client", () => {
 describe("login", () => {
   it("turns away an account that is not staff and keeps no tokens", async () => {
     answers.push(() => reply(200, { success: true, data: { accessToken: "A", refreshToken: "R", role: "user" } }));
-    await expect(login("+2207000000", "123456")).rejects.toThrow(NOT_STAFF);
+    await expect(startLogin("+2207000000", "123456")).rejects.toThrow(NOT_STAFF);
     expect(getTokens()).toBeNull();
     expect(calls).toHaveLength(1);
   });
 
-  it("logs staff in and loads what they may do", async () => {
-    answers.push(() => reply(200, { success: true, data: { accessToken: "A", refreshToken: "R", role: "admin" } }));
+  it("the PIN gives staff only a ticket for the code step", async () => {
+    answers.push(() => reply(200, { success: true, data: { role: "admin", needsCode: true, enrolled: true, loginTicket: "T1" } }));
+    const next = await startLogin("+220 700 0000", "123456");
+    expect(next).toEqual({ ticket: "T1", enrolled: true });
+    expect(getTokens()).toBeNull();
+    expect(JSON.parse(calls[0]!.init.body as string)).toEqual({ phone: "+2207000000", password: "123456" });
+  });
+
+  it("refuses a staff login that skips the code step (out-of-date server)", async () => {
+    answers.push(() => reply(200, { success: true, data: { role: "admin", accessToken: "A", refreshToken: "R" } }));
+    await expect(startLogin("+2207000000", "123456")).rejects.toThrow("not available yet");
+    expect(getTokens()).toBeNull();
+  });
+
+  it("the code logs staff in and loads what they may do", async () => {
+    answers.push(() =>
+      reply(200, { success: true, data: { accessToken: "A", refreshToken: "R", role: "admin", recoveryCodes: ["AAAAA-BBBBB"] } }),
+    );
     answers.push(() =>
       reply(200, { success: true, data: { _id: "1", name: "S", phone: "+220", role: "admin", permissions: ["view_holds"], fullAdmin: false } }),
     );
-    const staff = await login("+220 700 0000", "123456");
-    expect(staff.permissions).toEqual(["view_holds"]);
-    expect(JSON.parse(calls[0]!.init.body as string)).toEqual({ phone: "+2207000000", password: "123456" });
+    const result = await finishLogin("T1", { code: "123456" });
+    expect(result.staff.permissions).toEqual(["view_holds"]);
+    expect(result.recoveryCodes).toEqual(["AAAAA-BBBBB"]);
+    expect(calls[0]!.url).toContain("/auth/staff/2fa/verify");
+    expect(JSON.parse(calls[0]!.init.body as string)).toEqual({ loginTicket: "T1", code: "123456" });
+    expect(headers(calls[0]!).Authorization).toBeUndefined();
     expect(headers(calls[1]!).Authorization).toBe("Bearer A");
+  });
+
+  it("a wrong code shows the server's message and keeps no tokens", async () => {
+    answers.push(() => reply(401, { success: false, message: "That code is wrong. Please check the time on your phone and try again." }));
+    await expect(finishLogin("T1", { code: "000000" })).rejects.toThrow("That code is wrong");
+    expect(getTokens()).toBeNull();
+    expect(calls).toHaveLength(1);
   });
 
   it("drops the tokens if loading the staff member fails", async () => {
     answers.push(() => reply(200, { success: true, data: { accessToken: "A", refreshToken: "R", role: "admin" } }));
     answers.push(() => reply(403, { success: false, message: "Access denied. You are not an admin." }));
-    await expect(login("+2207000000", "123456")).rejects.toThrow("Access denied");
+    await expect(finishLogin("T1", { recoveryCode: "AAAAA-BBBBB" })).rejects.toThrow("Access denied");
     expect(getTokens()).toBeNull();
   });
 });

@@ -11,30 +11,64 @@ export type Staff = {
 };
 
 export const NOT_STAFF = "This account is not a Sunu Pay staff account.";
+const OLD_SERVER = "Staff sign-in is not available yet. Please contact the Sunu Pay owner.";
 
-type LoginData = { accessToken: string; refreshToken: string; role: string };
+/** After the PIN: the code step, with a 5-minute ticket that links the two. */
+export type CodeStep = { ticket: string; enrolled: boolean };
+
+type PinData = { role?: string; needsCode?: boolean; enrolled?: boolean; loginTicket?: string; accessToken?: string };
 
 /**
- * Logs a staff member in with their phone number and PIN, then loads what
- * they may do. A customer or agent account is turned away and its tokens
- * are dropped without logging it out of its phone.
+ * Step 1: phone number and PIN. Staff get a ticket for the code step, never
+ * a login. A customer or agent account is turned away; if the server sent
+ * it tokens they are dropped without logging it out of its phone.
  */
-export async function login(phone: string, pin: string): Promise<Staff> {
+export async function startLogin(phone: string, pin: string): Promise<CodeStep> {
   clearTokens();
-  const data = await api<LoginData>("/auth/login", {
+  const data = await api<PinData>("/auth/login", {
     method: "POST",
     body: { phone: phone.replace(/\s+/g, ""), password: pin },
     noAuth: true,
   });
-  if (data?.role !== "admin" || !data.accessToken || !data.refreshToken) {
-    clearTokens();
-    throw new Error(NOT_STAFF);
-  }
+  if (data?.role !== "admin") throw new Error(NOT_STAFF);
+  // A staff login without the code step means the server is out of date.
+  if (!data.needsCode || typeof data.loginTicket !== "string" || !data.loginTicket) throw new Error(OLD_SERVER);
+  return { ticket: data.loginTicket, enrolled: Boolean(data.enrolled) };
+}
+
+/** First login only: a new secret for the authenticator app. */
+export function startSetup(ticket: string): Promise<{ secret: string; otpauthUrl: string }> {
+  return api("/auth/staff/2fa/setup", { method: "POST", body: { loginTicket: ticket }, noAuth: true });
+}
+
+export type LoggedIn = { staff: Staff; recoveryCodes?: string[]; recoveryCodesLeft?: number };
+
+type CodeData = {
+  accessToken: string;
+  refreshToken: string;
+  role: string;
+  recoveryCodes?: string[];
+  recoveryCodesLeft?: number;
+};
+
+/** Step 2: the 6-digit code from the app, or a one-off recovery code. */
+export async function finishLogin(ticket: string, answer: { code: string } | { recoveryCode: string }): Promise<LoggedIn> {
+  clearTokens();
+  const data = await api<CodeData>("/auth/staff/2fa/verify", {
+    method: "POST",
+    body: { loginTicket: ticket, ...answer },
+    noAuth: true,
+  });
+  if (data?.role !== "admin" || !data.accessToken || !data.refreshToken) throw new Error(NOT_STAFF);
   setTokens({ access: data.accessToken, refresh: data.refreshToken });
   try {
-    const me = await loadMe();
-    if (me.role !== "admin") throw new Error(NOT_STAFF);
-    return me;
+    const staff = await loadMe();
+    if (staff.role !== "admin") throw new Error(NOT_STAFF);
+    return {
+      staff,
+      recoveryCodes: Array.isArray(data.recoveryCodes) ? data.recoveryCodes : undefined,
+      recoveryCodesLeft: typeof data.recoveryCodesLeft === "number" ? data.recoveryCodesLeft : undefined,
+    };
   } catch (error) {
     clearTokens();
     throw error;

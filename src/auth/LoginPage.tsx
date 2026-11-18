@@ -1,18 +1,88 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import QRCode from "qrcode";
 import { useAuth } from "./AuthContext";
+import { ApiError } from "../api/client";
+import { finishLogin, startLogin, startSetup, type LoggedIn, type Staff } from "../api/staff";
 
 const ENDED: Record<string, string> = {
   idle: "You were logged out after 15 minutes without activity.",
   expired: "Your session has ended. Please log in again.",
 };
 
+const TICKET_EXPIRED = "This sign-in has expired. Please enter your PIN again.";
+const FEW_CODES_LEFT = 3;
+
+type Step =
+  | { name: "pin" }
+  | { name: "setup"; ticket: string }
+  | { name: "code"; ticket: string }
+  | { name: "recovery"; staff: Staff; codes: string[] };
+
+const messageOf = (caught: unknown) =>
+  caught instanceof Error && caught.message ? caught.message : "Could not log in. Please try again.";
+
+const isTicketExpired = (caught: unknown) => caught instanceof ApiError && caught.message === TICKET_EXPIRED;
+
 export function LoginPage() {
-  const { login, endedBecause } = useAuth();
+  const { enter, endedBecause } = useAuth();
+  const [step, setStep] = useState<Step>({ name: "pin" });
+  const [error, setError] = useState<string | null>(null);
+
+  const backToPin = (message: string) => {
+    setStep({ name: "pin" });
+    setError(message);
+  };
+
+  const loggedIn = (result: LoggedIn) => {
+    if (result.recoveryCodes?.length) {
+      setError(null);
+      setStep({ name: "recovery", staff: result.staff, codes: result.recoveryCodes });
+      return;
+    }
+    const left = result.recoveryCodesLeft;
+    const note =
+      left !== undefined && left <= FEW_CODES_LEFT
+        ? `You have ${left} recovery code${left === 1 ? "" : "s"} left. Ask another staff member to reset your authenticator app to get new ones.`
+        : undefined;
+    enter(result.staff, note);
+  };
+
+  return (
+    <main className="login">
+      <div className="card login-card">
+        <img className="login-mark" src="/sp-mark.png" alt="" width={64} height={32} />
+        <h1>Sunu Pay Admin</h1>
+        {step.name === "pin" && endedBecause && ENDED[endedBecause] && !error && <p className="notice">{ENDED[endedBecause]}</p>}
+        {error && (
+          <p className="error" role="alert">
+            {error}
+          </p>
+        )}
+        {step.name === "pin" && (
+          <PinStep
+            onError={setError}
+            onDone={(next) => {
+              setError(null);
+              setStep(next.enrolled ? { name: "code", ticket: next.ticket } : { name: "setup", ticket: next.ticket });
+            }}
+          />
+        )}
+        {step.name === "setup" && (
+          <SetupStep ticket={step.ticket} onError={setError} onExpired={backToPin} onDone={loggedIn} />
+        )}
+        {step.name === "code" && (
+          <CodeStep ticket={step.ticket} onError={setError} onExpired={backToPin} onDone={loggedIn} />
+        )}
+        {step.name === "recovery" && <RecoveryCodes codes={step.codes} onDone={() => enter(step.staff)} />}
+      </div>
+    </main>
+  );
+}
+
+function PinStep({ onDone, onError }: { onDone: (next: { ticket: string; enrolled: boolean }) => void; onError: (m: string) => void }) {
   const [phone, setPhone] = useState("");
   const [pin, setPin] = useState("");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
   const pinOk = /^\d{4,8}$/.test(pin);
   const phoneOk = /^\+?\d{7,15}$/.test(phone.replace(/\s+/g, ""));
 
@@ -20,11 +90,10 @@ export function LoginPage() {
     event.preventDefault();
     if (!phoneOk || !pinOk || busy) return;
     setBusy(true);
-    setError(null);
     try {
-      await login(phone, pin);
+      onDone(await startLogin(phone, pin));
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not log in. Please try again.");
+      onError(messageOf(caught));
     } finally {
       // The PIN is never kept on screen after a try.
       setPin("");
@@ -33,46 +102,205 @@ export function LoginPage() {
   }
 
   return (
-    <main className="login">
-      <form className="card login-card" onSubmit={submit} noValidate>
-        <img className="login-mark" src="/sp-mark.png" alt="" width={64} height={32} />
-        <h1>Sunu Pay Admin</h1>
-        <p className="muted">For Sunu Pay staff only.</p>
-        {endedBecause && ENDED[endedBecause] && !error && <p className="notice">{ENDED[endedBecause]}</p>}
-        {error && (
-          <p className="error" role="alert">
-            {error}
-          </p>
-        )}
-        <label>
-          Phone number
-          <input
-            type="tel"
-            inputMode="tel"
-            autoComplete="username"
-            placeholder="+220 …"
-            value={phone}
-            onChange={(event) => setPhone(event.target.value)}
-            required
-          />
-        </label>
-        <span className="hint">Include the country code, for example +220 or +44.</span>
-        <label>
-          PIN
-          <input
-            type="password"
-            inputMode="numeric"
-            autoComplete="current-password"
-            maxLength={8}
-            value={pin}
-            onChange={(event) => setPin(event.target.value.replace(/\D/g, ""))}
-            required
-          />
-        </label>
-        <button className="primary" type="submit" disabled={!phoneOk || !pinOk || busy}>
-          {busy ? "Logging in…" : "Log in"}
-        </button>
-      </form>
-    </main>
+    <form className="stack" onSubmit={submit} noValidate>
+      <p className="muted">For Sunu Pay staff only.</p>
+      <label>
+        Phone number
+        <input type="tel" inputMode="tel" autoComplete="username" placeholder="+220 …" value={phone} onChange={(e) => setPhone(e.target.value)} />
+      </label>
+      <span className="hint">Include the country code, for example +220 or +44.</span>
+      <label>
+        PIN
+        <input
+          type="password"
+          inputMode="numeric"
+          autoComplete="current-password"
+          maxLength={8}
+          value={pin}
+          onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
+        />
+      </label>
+      <button className="primary" type="submit" disabled={!phoneOk || !pinOk || busy}>
+        {busy ? "Checking…" : "Next"}
+      </button>
+    </form>
+  );
+}
+
+type CodeProps = {
+  ticket: string;
+  onDone: (result: LoggedIn) => void;
+  onError: (message: string) => void;
+  onExpired: (message: string) => void;
+};
+
+function useCodeSubmit({ ticket, onDone, onError, onExpired }: CodeProps) {
+  const [busy, setBusy] = useState(false);
+  async function send(answer: { code: string } | { recoveryCode: string }, clear: () => void) {
+    if (busy) return;
+    setBusy(true);
+    try {
+      onDone(await finishLogin(ticket, answer));
+    } catch (caught) {
+      if (isTicketExpired(caught)) onExpired(TICKET_EXPIRED);
+      else onError(messageOf(caught));
+    } finally {
+      clear();
+      setBusy(false);
+    }
+  }
+  return { busy, send };
+}
+
+function CodeInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <label>
+      6-digit code
+      <input
+        type="text"
+        inputMode="numeric"
+        autoComplete="one-time-code"
+        maxLength={6}
+        value={value}
+        onChange={(e) => onChange(e.target.value.replace(/\D/g, ""))}
+        autoFocus
+      />
+    </label>
+  );
+}
+
+function SetupStep(props: CodeProps) {
+  const { ticket, onError, onExpired } = props;
+  const [setup, setSetup] = useState<{ secret: string; qr: string } | null>(null);
+  const [code, setCode] = useState("");
+  const { busy, send } = useCodeSubmit(props);
+
+  useEffect(() => {
+    let live = true;
+    startSetup(ticket)
+      .then(async ({ secret, otpauthUrl }) => {
+        // Made here in the browser, so the secret is never sent to anyone else.
+        const qr = await QRCode.toDataURL(otpauthUrl, { margin: 1, width: 200, errorCorrectionLevel: "M" });
+        if (live) setSetup({ secret, qr });
+      })
+      .catch((caught) => {
+        if (!live) return;
+        if (isTicketExpired(caught)) onExpired(TICKET_EXPIRED);
+        else onError(messageOf(caught));
+      });
+    return () => {
+      live = false;
+    };
+  }, [ticket]);
+
+  if (!setup) return <p className="muted">Getting your set-up code…</p>;
+  return (
+    <form
+      className="stack"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (/^\d{6}$/.test(code)) void send({ code }, () => setCode(""));
+      }}
+    >
+      <h2>Set up your authenticator app</h2>
+      <ol className="steps">
+        <li>Install Google Authenticator or Microsoft Authenticator on your phone.</li>
+        <li>In the app, add an account and scan this code.</li>
+        <li>Type the 6-digit code the app shows.</li>
+      </ol>
+      <img className="qr" src={setup.qr} alt="QR code for your authenticator app" width={200} height={200} />
+      <details>
+        <summary>Can't scan? Type this key instead</summary>
+        <code className="key">{setup.secret.match(/.{1,4}/g)?.join(" ")}</code>
+      </details>
+      <CodeInput value={code} onChange={setCode} />
+      <button className="primary" type="submit" disabled={busy || !/^\d{6}$/.test(code)}>
+        {busy ? "Checking…" : "Finish setting up"}
+      </button>
+    </form>
+  );
+}
+
+function CodeStep(props: CodeProps) {
+  const [useRecovery, setUseRecovery] = useState(false);
+  const [code, setCode] = useState("");
+  const [recovery, setRecovery] = useState("");
+  const { busy, send } = useCodeSubmit(props);
+  const recoveryOk = recovery.replace(/[^A-Za-z0-9]/g, "").length === 10;
+
+  return (
+    <form
+      className="stack"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (useRecovery ? recoveryOk : /^\d{6}$/.test(code)) {
+          void send(useRecovery ? { recoveryCode: recovery } : { code }, () => {
+            setCode("");
+            setRecovery("");
+          });
+        }
+      }}
+    >
+      {useRecovery ? (
+        <>
+          <p className="muted">Type one of the recovery codes you saved. Each one works once.</p>
+          <label>
+            Recovery code
+            <input type="text" autoComplete="off" maxLength={11} value={recovery} onChange={(e) => setRecovery(e.target.value.toUpperCase())} autoFocus />
+          </label>
+        </>
+      ) : (
+        <>
+          <p className="muted">Open your authenticator app and type the code for Sunu Pay Admin.</p>
+          <CodeInput value={code} onChange={setCode} />
+        </>
+      )}
+      <button className="primary" type="submit" disabled={busy || (useRecovery ? !recoveryOk : !/^\d{6}$/.test(code))}>
+        {busy ? "Checking…" : "Log in"}
+      </button>
+      <button type="button" className="link" onClick={() => setUseRecovery(!useRecovery)}>
+        {useRecovery ? "Use the code from my app" : "Lost your phone? Use a recovery code"}
+      </button>
+    </form>
+  );
+}
+
+function RecoveryCodes({ codes, onDone }: { codes: string[]; onDone: () => void }) {
+  const [saved, setSaved] = useState(false);
+  const [copied, setCopied] = useState<ReactNode>(null);
+  return (
+    <div className="stack">
+      <h2>Save your recovery codes</h2>
+      <p className="muted">
+        If you lose your phone, each of these codes lets you log in once. Write them down or keep them in a password
+        manager. You will not see them again.
+      </p>
+      <ul className="codes">
+        {codes.map((code) => (
+          <li key={code}>
+            <code>{code}</code>
+          </li>
+        ))}
+      </ul>
+      <button
+        type="button"
+        onClick={() => {
+          navigator.clipboard
+            ?.writeText(codes.join("\n"))
+            .then(() => setCopied("Copied."))
+            .catch(() => setCopied("Could not copy. Please write them down."));
+        }}
+      >
+        Copy codes
+      </button>
+      {copied && <span className="hint">{copied}</span>}
+      <label className="check">
+        <input type="checkbox" checked={saved} onChange={(e) => setSaved(e.target.checked)} />
+        I have saved these codes somewhere safe
+      </label>
+      <button className="primary" type="button" disabled={!saved} onClick={onDone}>
+        Continue
+      </button>
+    </div>
   );
 }
