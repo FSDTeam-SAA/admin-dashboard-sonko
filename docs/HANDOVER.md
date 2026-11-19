@@ -30,9 +30,14 @@ server.
   approve several clean payouts at once, hold and release with a reason,
   retry a payment that failed. Payouts with fraud flags can't be batch
   approved and show what was flagged in plain words.
-- Rates and fees page: what is in force, the waiting change with before
-  and after, approve (a different person), cancel, propose a change, and
-  the history. Money is typed in whole units and sent in the smallest unit.
+- Rates and fees page (senior staff only, `manage_rates`), two parts:
+  - Exchange rates and the wallet transfer fee: shown as staff think of
+    them ("1 GBP = 83.33 GMD", "1 GMD = 23.5 NGN"); propose with a worked
+    example ("100 GBP becomes 8,000 GMD"); approve (a different person);
+    cancel; history. The euro follows the CFA franc peg and is not set.
+  - Agent cash out: what is in force, the waiting change with before and
+    after, approve, cancel, propose, history. Money is typed in whole units
+    and sent in the smallest unit.
 - Staff page: staff list, who has the authenticator set up, make someone
   staff, remove someone, change permissions, reset a lost authenticator.
   Every change except the reset needs two people; nobody changes their own.
@@ -66,6 +71,14 @@ On server branch `agent-cash-out` (and merged into `notification-feed`):
   with `view_dashboard` only, never as full admins. Names (`people`) on
   payouts and settings changes. Database test:
   `test/staffPermissionsChange.test.js` (not run here).
+- Exchange rates and the wallet transfer fee are settings now
+  (`/admin/settings/rates`, model `RateSettings`), two people to change, at
+  most 25% per change. The money sums read an in-memory copy refreshed on
+  approval and every minute; until loaded at start, money actions answer
+  "Rates are loading". `WALLET_TRANSFER_FEE_PERCENT` is only the starting
+  fee. One permission, `manage_rates`, now covers every rate and fee page
+  (it replaced `view_settings`, `propose_settings`, `approve_settings`).
+  Database test: `test/rateSettingsFlow.test.js` (not run here).
 
 ## Before it goes live
 
@@ -106,6 +119,10 @@ On server branch `agent-cash-out` (and merged into `notification-feed`):
   (contract 7.6) are built.
 - With only one staff account, nothing that needs two people can be done,
   including adding the second staff member. The developer must make the
-  second staff account directly in the database (role `admin`,
-  `permissions` set to what they need, never left empty unless they are
-  meant to be a full admin). After that, everything goes through the panel.
+  second staff account directly in the database. The owner has decided
+  this is Khady (co-founder): role `admin` on her own Sunu Pay account,
+  with `manage_rates` and `manage_staff` plus whatever else she needs
+  (never an empty list, which would mean everything). She then logs in and
+  sets up her authenticator. After that, everything goes through the panel.
+  Rates and fees changes need two people holding `manage_rates`: the owner
+  and Khady. Give it to a COO or other partner later from the Staff page.

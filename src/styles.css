@@ -190,3 +190,4 @@ td.changed { color: var(--primary); font-weight: 600; }
 ul.flat { margin: 6px 0 0; padding-left: 18px; }
 td input[type="checkbox"] { width: 18px; height: 18px; }
 table.mini td { white-space: nowrap; }
+.subpage { margin-top: 8px; } .subpage h1 { font-size: 19px; }

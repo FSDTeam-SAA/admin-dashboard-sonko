@@ -62,8 +62,10 @@ export const NAV: NavItem[] = [
   {
     path: "/settings",
     label: "Rates and fees",
-    permission: "view_settings",
+    permission: "manage_rates",
     routes: [
+      "GET /admin/settings/rates",
+      "POST /admin/settings/rates/changes",
       "GET /admin/settings/cash-out/:country",
       "POST /admin/settings/cash-out/:country/changes",
       "GET /admin/settings/changes",

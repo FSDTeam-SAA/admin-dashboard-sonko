@@ -37,9 +37,7 @@ export const PERMISSION_GROUPS: { title: string; items: [string, string][] }[] =
   {
     title: "Settings",
     items: [
-      ["view_settings", "See rates and fees"],
-      ["propose_settings", "Propose a rate or fee change"],
-      ["approve_settings", "Approve a rate or fee change"],
+      ["manage_rates", "Exchange rates, fees, agent pay and limits (senior only)"],
       ["manage_countries", "Change countries, services and logos"],
       ["view_gateways", "See payment providers"],
       ["manage_gateways", "Change payment providers"],

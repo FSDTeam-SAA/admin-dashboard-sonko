@@ -75,7 +75,7 @@ function TierTable({ tiers, currency }: { tiers: Tier[]; currency: string }) {
   );
 }
 
-export function SettingsPage() {
+export function CashOutSettingsSection() {
   const { staff } = useAuth();
   const [country, setCountry] = useState<Country>("GM");
   const [view, setView] = useState<"now" | "history">("now");
@@ -96,8 +96,8 @@ export function SettingsPage() {
   return (
     <section>
       <PageHeader
-        title="Rates and fees"
-        intro="Agent Cash Out fees, agent pay and limits. Every change needs two different staff members and starts only when the second approves."
+        title="Agent cash out"
+        intro="Cash out fees, agent daily pay and limits, by country."
         actions={
           <select aria-label="Country" value={country} onChange={(e) => setCountry(e.target.value as Country)}>
             {COUNTRIES.map(([code, label]) => (
@@ -135,8 +135,8 @@ export function SettingsPage() {
                 Proposed by {mine ? "you" : personLabel(people[pending.requestedBy ?? ""])} on {when(pending.createdAt)}
               </p>
               <div className="row-end">
-                {can(staff, "propose_settings") && <button onClick={() => setOpen("cancel")}>Cancel change</button>}
-                {can(staff, "approve_settings") && !mine && (
+                {can(staff, "manage_rates") && <button onClick={() => setOpen("cancel")}>Cancel change</button>}
+                {can(staff, "manage_rates") && !mine && (
                   <button className="primary" onClick={() => setOpen("approve")}>
                     Approve change
                   </button>
@@ -149,7 +149,7 @@ export function SettingsPage() {
             <div className="card panel">
               <div className="panel-head">
                 <h2>In force (version {settings.version})</h2>
-                {can(staff, "propose_settings") && !pending && (
+                {can(staff, "manage_rates") && !pending && (
                   <button className="primary" onClick={() => setOpen("propose")}>
                     Propose a change
                   </button>

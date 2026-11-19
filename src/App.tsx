@@ -10,7 +10,7 @@ import { ReportsPage } from "./pages/ReportsPage";
 import { HoldsPage } from "./pages/HoldsPage";
 import { ReversalsPage } from "./pages/ReversalsPage";
 import { PayoutsPage } from "./pages/PayoutsPage";
-import { SettingsPage } from "./pages/SettingsPage";
+import { RatesAndFeesPage } from "./pages/RatesAndFeesPage";
 import { StaffPage } from "./pages/StaffPage";
 import type { ComponentType } from "react";
 
@@ -20,7 +20,7 @@ const PAGES: Record<string, ComponentType> = {
   "/holds": HoldsPage,
   "/reversals": ReversalsPage,
   "/payouts": PayoutsPage,
-  "/settings": SettingsPage,
+  "/settings": RatesAndFeesPage,
   "/staff": StaffPage,
 };
 

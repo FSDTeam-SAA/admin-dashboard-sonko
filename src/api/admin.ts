@@ -305,3 +305,46 @@ export function cancelPermissionsChange(userId: string) {
 export function resetTwoStep(userId: string, pin: string) {
   return api(`/admin/users/${id(userId)}/2fa/reset`, { method: "POST", body: { pin } });
 }
+
+// ---- Exchange rates and the wallet transfer fee (two-person changes) ----
+
+export const RATE_CURRENCIES = ["GBP", "GHS", "XOF", "NGN"] as const;
+export type RateCurrency = (typeof RATE_CURRENCIES)[number];
+
+export type RateSettings = {
+  version: number;
+  /** Units of each currency for 1 GMD. */
+  ratesFromGmd: Record<RateCurrency, number>;
+  sekPerEur: number;
+  walletTransferFeeBps: number;
+};
+
+export type RateChangeBody = Partial<{ ratesFromGmd: Partial<Record<RateCurrency, number>>; sekPerEur: number; walletTransferFeeBps: number }>;
+
+export type RateChange = Omit<SettingsChange, "country" | "changedFields" | "before" | "after"> & {
+  changedFields: string[];
+  before: RateSettings;
+  after: RateSettings;
+};
+
+export function rateSettings() {
+  return api<{ settings: RateSettings; pendingChange: RateChange | null; people: Record<string, Person> }>(`/admin/settings/rates`);
+}
+
+export function rateHistory(page: number) {
+  return api<{ changes: RateChange[]; total: number; page: number; limit: number; people: Record<string, Person> }>(
+    `/admin/settings/rates/changes?page=${page}&limit=25`,
+  );
+}
+
+export function proposeRates(body: { version: number; change: RateChangeBody; reason: string; pin: string }, key: string) {
+  return api<RateChange>(`/admin/settings/rates/changes`, { method: "POST", body, idempotencyKey: key });
+}
+
+export function approveRates(changeId: string, pin: string, key: string) {
+  return api<RateChange>(`/admin/settings/rates/changes/${id(changeId)}/approve`, { method: "POST", body: { pin }, idempotencyKey: key });
+}
+
+export function cancelRates(changeId: string, reason: string) {
+  return api<RateChange>(`/admin/settings/rates/changes/${id(changeId)}/cancel`, { method: "POST", body: { reason } });
+}
