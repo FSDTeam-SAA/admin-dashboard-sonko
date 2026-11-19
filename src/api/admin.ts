@@ -348,3 +348,59 @@ export function approveRates(changeId: string, pin: string, key: string) {
 export function cancelRates(changeId: string, reason: string) {
   return api<RateChange>(`/admin/settings/rates/changes/${id(changeId)}/cancel`, { method: "POST", body: { reason } });
 }
+
+// ---- Agents ----
+
+export type AgentStatus = "pending" | "approved" | "rejected" | "suspended";
+
+export type AgentRow = {
+  id: string;
+  name: string;
+  phone: string;
+  role: string;
+  status: AgentStatus;
+  businessName: string;
+  city: string;
+  country: string;
+  idChecked: boolean;
+  onHold: boolean;
+  holdScope: HoldScope | null;
+  appliedAt: string;
+  reviewedAt: string | null;
+};
+
+type Mini = { id: string; name: string; phone: string } | null;
+
+export type AgentDetail = {
+  agent: AgentRow & {
+    email: string;
+    fullName: string;
+    businessAddress: string;
+    nationalId: string;
+    rejectionReason: string;
+    reviewedBy: string | null;
+    hold: { scope: HoldScope; reason: string; placedAt: string | null } | null;
+  };
+  wallets: { currency: string; balanceMinor: number; amount: number }[];
+  lastSevenDays: { currency: string; count: number; amountMinor: number }[];
+  cashOuts: { id: string; txRef: string; status: string; customer: Mini; currency: string; amountMinor: number; feeMinor: number; at: string }[];
+  cashIns: { id: string; txRef: string; status: string; customer: Mini; currency: string; amountMinor: number; at: string }[];
+  commissionDays: { day: string; countedVolumeMinor: number; amountMinor: number; clawbackMinor: number; agentApproved: boolean; currency: string }[];
+  payouts: { id: string; periodStart: string; periodEnd: string; status: string; currency: string; netMinor: number }[];
+  today: string;
+};
+
+export function agents(status: AgentStatus | "all", search: string, page: number) {
+  const query = new URLSearchParams({ page: String(page), limit: "25" });
+  if (status !== "all") query.set("status", status);
+  if (search.trim()) query.set("search", search.trim());
+  return api<{ agents: AgentRow[]; pagination: Pagination }>(`/admin/agents?${query.toString()}`);
+}
+
+export function agent(agentId: string) {
+  return api<AgentDetail>(`/admin/agents/${id(agentId)}`);
+}
+
+export function decideApplication(userId: string, body: { status: "approved" } | { status: "rejected"; rejectionReason: string }) {
+  return api(`/admin/agent-applications/${id(userId)}`, { method: "PATCH", body });
+}

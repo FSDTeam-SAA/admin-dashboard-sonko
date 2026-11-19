@@ -11,6 +11,13 @@ export const PERMISSION_GROUPS: { title: string; items: [string, string][] }[] =
     ],
   },
   {
+    title: "Agents",
+    items: [
+      ["view_agents", "See agents, their activity and balances"],
+      ["review_agents", "Approve or turn down agent applications"],
+    ],
+  },
+  {
     title: "Reports and holds",
     items: [
       ["view_reports", "See reported requests"],
@@ -49,7 +56,6 @@ export const PERMISSION_GROUPS: { title: string; items: [string, string][] }[] =
     title: "Staff",
     items: [
       ["manage_staff", "Manage staff (roles, permissions, lost phones)"],
-      ["review_agents", "Approve or turn down agent applications"],
     ],
   },
 ];

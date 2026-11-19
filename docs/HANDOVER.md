@@ -41,6 +41,11 @@ server.
 - Staff page: staff list, who has the authenticator set up, make someone
   staff, remove someone, change permissions, reset a lost authenticator.
   Every change except the reset needs two people; nobody changes their own.
+- Agents page: applications and working agents (filter, search), and one
+  agent's details: ID number masked, ID check, hold, balance, last 7 days,
+  recent cash outs and cash ins with a Reverse button, daily pay and weekly
+  payouts. Approve or turn down an application (the reason is shown to the
+  applicant). Put an agent on hold.
 - Every money and hold action asks for the staff member's own PIN and sends
   one idempotency key per dialog.
 
@@ -79,6 +84,10 @@ On server branch `agent-cash-out` (and merged into `notification-feed`):
   fee. One permission, `manage_rates`, now covers every rate and fee page
   (it replaced `view_settings`, `propose_settings`, `approve_settings`).
   Database test: `test/rateSettingsFlow.test.js` (not run here).
+- `GET /admin/agents` and `GET /admin/agents/:id` (new permission
+  `view_agents`). Agent applications can only be decided while waiting, and
+  turning one down needs a reason. Database test: `test/agentAdmin.test.js`
+  (not run here).
 
 ## Before it goes live
 
@@ -97,8 +106,7 @@ On server branch `agent-cash-out` (and merged into `notification-feed`):
 
 ## Next steps, in order
 
-1. Agents page with cash out and cash in records, linking to "Reverse".
-2. The rest of the agreed panel: customers, tickets, analytics, and so on.
+1. The rest of the agreed panel: customers, tickets, analytics, and so on.
 
 ## Known gaps
 
@@ -113,8 +121,9 @@ On server branch `agent-cash-out` (and merged into `notification-feed`):
 - With only one staff account there is nobody to reset a lost app. Keep
   the recovery codes safe; failing that, the developer has to clear
   `staffTotp` on that account in the database.
-- The reverse form takes a record ID typed by hand until the Agents page
-  links to it. The server checks the record, the amount and the people.
+- Reversals are best started from an agent's page (the Reverse button).
+  The form on the Refunds page still takes a typed record ID for older
+  records; the server checks the record, the amount and the people.
 - The hold reason and refund note are the only evidence until file uploads
   (contract 7.6) are built.
 - With only one staff account, nothing that needs two people can be done,

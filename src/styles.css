@@ -191,3 +191,11 @@ ul.flat { margin: 6px 0 0; padding-left: 18px; }
 td input[type="checkbox"] { width: 18px; height: 18px; }
 table.mini td { white-space: nowrap; }
 .subpage { margin-top: 8px; } .subpage h1 { font-size: 19px; }
+
+/* Agents */
+.search { margin-bottom: 14px; max-width: 520px; }
+tr.clickable { cursor: pointer; }
+tr.clickable:hover td { background: var(--bg); }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.two-col .panel { margin-bottom: 16px; }
+@media (max-width: 900px) { .two-col { grid-template-columns: 1fr; } }

@@ -82,6 +82,13 @@ export const NAV: NavItem[] = [
     ready: true,
   },
   {
+    path: "/agents",
+    label: "Agents",
+    permission: "view_agents",
+    routes: ["GET /admin/agents", "GET /admin/agents/:id", "PATCH /admin/agent-applications/:userId"],
+    ready: true,
+  },
+  {
     path: "/customers",
     label: "Customers",
     permission: "view_customers",
