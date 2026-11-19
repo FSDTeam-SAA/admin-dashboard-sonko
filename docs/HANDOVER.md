@@ -19,6 +19,15 @@ server.
 - PIN re-entry dialog for two-person and money actions
   (`src/components/ConfirmWithPin.tsx`). Not used by a page yet.
 - Light, dark and System themes.
+- Reported requests page: put the requester on hold, ask for a refund to
+  the payer.
+- Account holds page: list of held accounts, place a hold (search by phone
+  or name), ask to lift, approve a lift (a different person), keep the hold,
+  widen to a full hold.
+- Refunds and reversals page: approve (not your own request), cancel with
+  a reason, and ask to reverse a cash out or cash in by its record ID.
+- Every money and hold action asks for the staff member's own PIN and sends
+  one idempotency key per dialog.
 
 ## Server changes this needs
 
@@ -38,6 +47,9 @@ On server branch `agent-cash-out` (and merged into `notification-feed`):
   nobody loses access.
 - Staff access tokens last 15 minutes; a staff session ends 8 hours after
   the PIN was typed, however often it is refreshed.
+- `GET /admin/holds` (with `?lift=asked`), names and phones on
+  `GET /admin/reversals` (`people`), and `approve_old_reversal` in the
+  permissions list. Database test: `test/holdList.test.js` (not run here).
 
 ## Before it goes live
 
@@ -54,13 +66,11 @@ On server branch `agent-cash-out` (and merged into `notification-feed`):
 
 ## Next steps, in order
 
-1. Reported requests page, with refund (`POST /admin/payment-requests/:id/refund`).
-2. Account holds page: place, ask to lift, approve lift (two people).
-3. Refunds and reversals page: request, approve (two people), cancel.
-4. Agent payouts page.
-5. Rates and fees page: propose, approve (two people).
-6. Staff page: role changes (two people), and resetting a lost authenticator app.
-7. The rest of the agreed panel: customers, tickets, analytics, and so on.
+1. Agent payouts page.
+2. Rates and fees page: propose, approve (two people).
+3. Staff page: role changes (two people), and resetting a lost authenticator app.
+4. Agents page with cash out and cash in records, linking to "Reverse".
+5. The rest of the agreed panel: customers, tickets, analytics, and so on.
 
 ## Known gaps
 
@@ -75,3 +85,7 @@ On server branch `agent-cash-out` (and merged into `notification-feed`):
 - With only one staff account there is nobody to reset a lost app. Keep
   the recovery codes safe; failing that, the developer has to clear
   `staffTotp` on that account in the database.
+- The reverse form takes a record ID typed by hand until the Agents page
+  links to it. The server checks the record, the amount and the people.
+- The hold reason and refund note are the only evidence until file uploads
+  (contract 7.6) are built.

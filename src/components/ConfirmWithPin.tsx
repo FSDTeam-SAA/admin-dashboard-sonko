@@ -2,10 +2,15 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "rea
 
 type Props = {
   title: string;
-  /** What will happen, in plain words, e.g. "Refund D 500 to +220 ••• 1234". */
+  /** What will happen, in plain words, plus any fields the action needs. */
   children: ReactNode;
   confirmLabel: string;
-  /** Sends the action with this PIN. Throw to show the server's message. */
+  /** False while the fields above are not filled in properly. */
+  canConfirm?: boolean;
+  /** Most actions need the PIN; cancelling a request does not. */
+  needsPin?: boolean;
+  danger?: boolean;
+  /** Sends the action. Throw to show the server's message. */
   onConfirm: (pin: string) => Promise<void>;
   onClose: () => void;
 };
@@ -15,14 +20,14 @@ type Props = {
  * asks the staff member to type their own PIN again, so an unlocked
  * computer can't be used by someone else. The PIN is sent once and cleared.
  */
-export function ConfirmWithPin({ title, children, confirmLabel, onConfirm, onClose }: Props) {
+export function ConfirmWithPin({ title, children, confirmLabel, canConfirm = true, needsPin = true, danger, onConfirm, onClose }: Props) {
   const [pin, setPin] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const input = useRef<HTMLInputElement>(null);
+  const first = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    input.current?.focus();
+    first.current?.querySelector<HTMLElement>("input, textarea, select")?.focus();
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape" && !busy) onClose();
     };
@@ -30,9 +35,12 @@ export function ConfirmWithPin({ title, children, confirmLabel, onConfirm, onClo
     return () => window.removeEventListener("keydown", onKey);
   }, [busy, onClose]);
 
+  const pinOk = !needsPin || /^\d{4,8}$/.test(pin);
+  const ready = canConfirm && pinOk && !busy;
+
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (!/^\d{4,8}$/.test(pin) || busy) return;
+    if (!ready) return;
     setBusy(true);
     setError(null);
     try {
@@ -49,29 +57,32 @@ export function ConfirmWithPin({ title, children, confirmLabel, onConfirm, onClo
     <div className="overlay" role="presentation">
       <form className="card dialog" role="dialog" aria-modal="true" aria-labelledby="confirm-title" onSubmit={submit}>
         <h2 id="confirm-title">{title}</h2>
-        <div className="dialog-body">{children}</div>
+        <div className="dialog-body stack" ref={first}>
+          {children}
+        </div>
         {error && (
           <p className="error" role="alert">
             {error}
           </p>
         )}
-        <label>
-          Your PIN
-          <input
-            ref={input}
-            type="password"
-            inputMode="numeric"
-            autoComplete="off"
-            maxLength={8}
-            value={pin}
-            onChange={(event) => setPin(event.target.value.replace(/\D/g, ""))}
-          />
-        </label>
+        {needsPin && (
+          <label>
+            Your PIN
+            <input
+              type="password"
+              inputMode="numeric"
+              autoComplete="off"
+              maxLength={8}
+              value={pin}
+              onChange={(event) => setPin(event.target.value.replace(/\D/g, ""))}
+            />
+          </label>
+        )}
         <div className="row-end">
           <button type="button" onClick={onClose} disabled={busy}>
             Cancel
           </button>
-          <button className="primary" type="submit" disabled={busy || !/^\d{4,8}$/.test(pin)}>
+          <button className={danger ? "danger" : "primary"} type="submit" disabled={!ready}>
             {busy ? "Working…" : confirmLabel}
           </button>
         </div>

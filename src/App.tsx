@@ -6,6 +6,17 @@ import { HomePage } from "./pages/HomePage";
 import { ComingSoonPage } from "./pages/ComingSoonPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { visibleNav } from "./lib/nav";
+import { ReportsPage } from "./pages/ReportsPage";
+import { HoldsPage } from "./pages/HoldsPage";
+import { ReversalsPage } from "./pages/ReversalsPage";
+import type { ComponentType } from "react";
+
+// Pages that are built. The rest show "being built" until they are.
+const PAGES: Record<string, ComponentType> = {
+  "/reports": ReportsPage,
+  "/holds": HoldsPage,
+  "/reversals": ReversalsPage,
+};
 
 function Panel() {
   const { staff } = useAuth();
@@ -16,9 +27,10 @@ function Panel() {
     <Routes>
       <Route element={<Shell />}>
         <Route index element={<HomePage />} />
-        {pages.map((item) => (
-          <Route key={item.path} path={item.path.slice(1)} element={<ComingSoonPage item={item} />} />
-        ))}
+        {pages.map((item) => {
+          const Page = PAGES[item.path];
+          return <Route key={item.path} path={item.path.slice(1)} element={Page ? <Page /> : <ComingSoonPage item={item} />} />;
+        })}
         <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>

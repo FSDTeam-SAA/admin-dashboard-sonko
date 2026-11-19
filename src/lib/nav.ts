@@ -17,7 +17,7 @@ export const NAV: NavItem[] = [
     label: "Reported requests",
     permission: "view_reports",
     routes: ["GET /admin/reported-requests", "POST /admin/payment-requests/:id/refund"],
-    ready: false,
+    ready: true,
   },
   {
     path: "/holds",
@@ -30,7 +30,7 @@ export const NAV: NavItem[] = [
       "POST /admin/users/:id/hold/lift/approve",
       "POST /admin/users/:id/hold/lift/cancel",
     ],
-    ready: false,
+    ready: true,
   },
   {
     path: "/reversals",
@@ -43,7 +43,7 @@ export const NAV: NavItem[] = [
       "POST /admin/reversals/:id/approve",
       "POST /admin/reversals/:id/cancel",
     ],
-    ready: false,
+    ready: true,
   },
   {
     path: "/payouts",
