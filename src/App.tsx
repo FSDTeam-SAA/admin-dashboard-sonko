@@ -21,6 +21,7 @@ import { AnalyticsPage } from "./pages/AnalyticsPage";
 import { BillsPage } from "./pages/BillsPage";
 import { AnnouncementsPage } from "./pages/AnnouncementsPage";
 import { BlocklistPage } from "./pages/BlocklistPage";
+import { CasesPage } from "./pages/CasesPage";
 import type { ComponentType } from "react";
 
 // Pages that are built. The rest show "being built" until they are.
@@ -40,6 +41,7 @@ const PAGES: Record<string, ComponentType> = {
   "/bills": BillsPage,
   "/announcements": AnnouncementsPage,
   "/blocklist": BlocklistPage,
+  "/cases": CasesPage,
 };
 
 function Panel() {

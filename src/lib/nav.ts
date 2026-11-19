@@ -20,6 +20,13 @@ export const NAV: NavItem[] = [
     ready: true,
   },
   {
+    path: "/cases",
+    label: "Debt and alert cases",
+    permission: "view_cases",
+    routes: ["GET /admin/compliance-cases", "POST /admin/compliance-cases/:id/close"],
+    ready: true,
+  },
+  {
     path: "/holds",
     label: "Account holds",
     permission: "view_holds",

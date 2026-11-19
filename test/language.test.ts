@@ -36,6 +36,7 @@ const TRANSLATED = [
   "src/pages/RatesAndFeesPage.tsx",
   "src/i18n/patterns.ts",
   "src/components/RefundLimits.tsx",
+  "src/pages/CasesPage.tsx",
 ];
 
 describe("panel language", () => {

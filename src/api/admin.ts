@@ -536,6 +536,33 @@ export type TicketFile = {
   canRemove: boolean;
 };
 
+export type CaseType = "agent_debt" | "customer_debt" | "reversal_alert";
+export type ComplianceCaseRow = {
+  id: string;
+  type: CaseType | "blocklist_match";
+  status: "open" | "closed";
+  agent: Mini;
+  customer: Mini;
+  reversal: string | null;
+  currency: string | null;
+  amountMinor: number | null;
+  note: string;
+  createdAt: string;
+  closedBy: Mini;
+  closedAt: string | null;
+  closeNote: string;
+};
+
+export function complianceCases(type: CaseType | "all", status: "open" | "closed", page: number) {
+  const query = new URLSearchParams({ status, page: String(page), limit: "25" });
+  if (type !== "all") query.set("type", type);
+  return api<{ cases: ComplianceCaseRow[]; pagination: Pagination }>(`/admin/compliance-cases?${query.toString()}`);
+}
+
+export function closeComplianceCase(caseId: string, note: string) {
+  return api(`/admin/compliance-cases/${id(caseId)}/close`, { method: "POST", body: { note } });
+}
+
 export type TicketKeep = {
   until: string;
   reason: string;
