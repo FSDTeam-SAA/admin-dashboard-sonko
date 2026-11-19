@@ -127,6 +127,13 @@ export const NAV: NavItem[] = [
     ready: true,
   },
   {
+    path: "/bills",
+    label: "Bills and top-ups",
+    permission: "review_purchases",
+    routes: ["GET /admin/needs-checking", "PATCH /admin/needs-checking/:transactionId"],
+    ready: true,
+  },
+  {
     path: "/services",
     label: "Services and countries",
     // Staff who can see the dashboard can see what is switched on; changing needs manage_countries.

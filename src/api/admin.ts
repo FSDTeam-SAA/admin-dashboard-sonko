@@ -700,3 +700,32 @@ export function askCallerQuestions(customerId: string) {
 export function checkCallerAnswers(customerId: string, checkId: string, answers: Record<string, string>) {
   return api<{ passed: boolean }>(`/admin/customers/${id(customerId)}/caller-check/questions/${id(checkId)}`, { method: "POST", body: { answers } });
 }
+
+// ---- Bills and top-ups: purchases that need checking ----
+
+export type StuckPurchase = {
+  id: string;
+  type: "airtime" | "bill";
+  amount: number;
+  currency: string;
+  fee: number;
+  txRef: string;
+  providerReference: string;
+  providerTransactionId: string;
+  biller: string;
+  /** The phone, meter or account number it was for. */
+  target: string;
+  reviewReason: string;
+  country: string;
+  createdAt: string;
+  customer: { id: string; name: string; phone: string } | null;
+};
+
+export function stuckPurchases(page: number) {
+  return api<{ transactions: StuckPurchase[]; totalText: string; pagination: Pagination }>(`/admin/needs-checking?page=${page}&limit=25`);
+}
+
+/** "successful": no refund. "failed": the customer is refunded once. */
+export function decidePurchase(transactionId: string, body: { outcome: "successful" | "failed"; reason: string; pin: string }, key: string) {
+  return api<{ id: string; status: string } | null>(`/admin/needs-checking/${id(transactionId)}`, { method: "PATCH", body, idempotencyKey: key });
+}
