@@ -13,6 +13,7 @@ import { ConfirmWithPin } from "../components/ConfirmWithPin";
 import { moneyMajor, when } from "../lib/format";
 import { newIdempotencyKey } from "../lib/idempotency";
 import { useLoad } from "../lib/useLoad";
+import { useT } from "../i18n/language";
 
 export const REASON_MIN = 10;
 export const REASON_MAX = 300;
@@ -31,6 +32,7 @@ export function hoursWaiting(createdAt: string, now = Date.now()): number {
  * it went through (no refund), or it failed (the customer gets it back once).
  */
 export function BillsPage() {
+  const t = useT();
   const { staff } = useAuth();
   const mayDecide = can(staff, "review_purchases");
   const [page, setPage] = useState(1);
@@ -52,7 +54,7 @@ export function BillsPage() {
         title="Bills and top-ups"
         intro="Airtime and bill purchases with no answer from the provider after 24 hours. The customer has paid. Check each one with the provider using the references below, then decide."
       />
-      {done && <p className="notice">{done}</p>}
+      {done && <p className="notice">{t(done)}</p>}
       <LoadState
         loading={loading && !data}
         error={error}
@@ -65,12 +67,12 @@ export function BillsPage() {
             <table>
               <thead>
                 <tr>
-                  <th>Waiting</th>
-                  <th>Customer</th>
-                  <th>What</th>
-                  <th>Amount</th>
-                  <th>References</th>
-                  <th>Why it stopped</th>
+                  <th>{t("Waiting")}</th>
+                  <th>{t("Customer")}</th>
+                  <th>{t("What")}</th>
+                  <th>{t("Amount")}</th>
+                  <th>{t("References")}</th>
+                  <th>{t("Why it stopped")}</th>
                   {mayDecide && <th />}
                 </tr>
               </thead>
@@ -92,10 +94,10 @@ export function BillsPage() {
                       <div className="muted small">{row.customer?.phone}</div>
                     </td>
                     <td>
-                      {row.type === "airtime" ? "Airtime" : "Bill"} ·{" "}
+                      {row.type === "airtime" ? t("Airtime") : t("Bill")} ·{" "}
                       {row.biller || "—"}
                       <div className="muted small">
-                        For {row.target || "—"}
+                        {t("For {target}", { target: row.target || "—" })}
                         {row.country ? ` · ${row.country}` : ""}
                       </div>
                     </td>
@@ -103,17 +105,14 @@ export function BillsPage() {
                       {moneyMajor(row.amount, row.currency)}
                       {row.fee ? (
                         <div className="muted small">
-                          Fee {moneyMajor(row.fee, row.currency)}
+                          {t("Fee {amount}", { amount: moneyMajor(row.fee, row.currency) })}
                         </div>
                       ) : null}
                     </td>
                     <td className="small">
-                      <div>Our ref: {row.txRef || "—"}</div>
+                      <div>{t("Our ref: {ref}", { ref: row.txRef || "—" })}</div>
                       <div>
-                        Provider ref:{" "}
-                        {row.providerReference ||
-                          row.providerTransactionId ||
-                          "—"}
+                        {t("Provider ref: {ref}", { ref: row.providerReference || row.providerTransactionId || "—" })}
                       </div>
                     </td>
                     <td className="small">{row.reviewReason || "—"}</td>
@@ -122,8 +121,8 @@ export function BillsPage() {
                         {row.refundAsk && (
                           <p className="notice small">
                             {row.refundAsk.requestedBy === staff?._id
-                              ? "You asked for this refund. A different staff member must approve it."
-                              : `Refund asked ${when(row.refundAsk.requestedAt)}: "${row.refundAsk.reason}". Check it with the provider, then press Approve refund.`}{" "}
+                              ? t("You asked for this refund. A different staff member must approve it.")
+                              : t("Refund asked {when}: \"{reason}\". Check it with the provider, then press Approve refund.", { when: when(row.refundAsk.requestedAt), reason: row.refundAsk.reason })}{" "}
                             <button
                               className="link"
                               onClick={async () => {
@@ -132,7 +131,7 @@ export function BillsPage() {
                                 setReload((n) => n + 1);
                               }}
                             >
-                              Cancel request
+                              {t("Cancel request")}
                             </button>
                           </p>
                         )}
@@ -141,7 +140,7 @@ export function BillsPage() {
                             setOpen({ row, outcome: "successful" })
                           }
                         >
-                          It went through
+                          {t("It went through")}
                         </button>{" "}
                         <button
                           className="danger"
@@ -150,8 +149,8 @@ export function BillsPage() {
                         >
                           {row.refundAsk &&
                           row.refundAsk.requestedBy !== staff?._id
-                            ? "Approve refund"
-                            : "It failed: refund"}
+                            ? t("Approve refund")
+                            : t("It failed: refund")}
                         </button>
                       </td>
                     )}
@@ -191,6 +190,7 @@ function DecideDialog({
   onClose: () => void;
   onDone: (m: string) => void;
 }) {
+  const t = useT();
   const [reason, setReason] = useState("");
   const key = useMemo(newIdempotencyKey, []);
   const amount = moneyMajor(row.amount + (row.fee || 0), row.currency);
@@ -204,7 +204,7 @@ function DecideDialog({
           : "Mark as failed and refund"
       }
       confirmLabel={
-        outcome === "successful" ? "Mark as went through" : `Refund ${amount}`
+        outcome === "successful" ? "Mark as went through" : t("Refund {amount}", { amount })
       }
       danger={outcome === "failed"}
       canConfirm={ok}
@@ -224,26 +224,26 @@ function DecideDialog({
         onDone(
           outcome === "successful"
             ? "Marked as went through. No refund."
-            : `Refunded ${amount} to ${row.customer?.name || "the customer"}.`,
+            : t("Refunded {amount} to {name}.", { amount, name: row.customer?.name || t("the customer") }),
         );
       }}
     >
       <p>
         {outcome === "successful"
-          ? "Only choose this if the provider confirms the customer received it. The customer gets no refund."
-          : `Only choose this if the provider confirms it failed. ${amount} goes back to the customer's wallet, once. If the customer did receive it, this pays them twice.`}
+          ? t("Only choose this if the provider confirms the customer received it. The customer gets no refund.")
+          : t("Only choose this if the provider confirms it failed. {amount} goes back to the customer's wallet, once. If the customer did receive it, this pays them twice.", { amount })}
       </p>
       <label>
-        What the provider said
+        {t("What the provider said")}
         <textarea
           value={reason}
           maxLength={REASON_MAX}
-          placeholder="For example: Flutterwave status FAILED, ref FLW-12345, checked 19 Nov"
+          placeholder={t("For example: Flutterwave status FAILED, ref FLW-12345, checked 19 Nov")}
           onChange={(e) => setReason(e.target.value)}
         />
       </label>
       <p className="hint">
-        {REASON_MIN} to {REASON_MAX} characters. Kept with the decision.
+        {t("{min} to {max} characters. Kept with the decision.", { min: REASON_MIN, max: REASON_MAX })}
       </p>
     </ConfirmWithPin>
   );

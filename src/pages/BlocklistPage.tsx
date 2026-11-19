@@ -19,6 +19,7 @@ import { ConfirmWithPin } from "../components/ConfirmWithPin";
 import { when } from "../lib/format";
 import { newIdempotencyKey } from "../lib/idempotency";
 import { useLoad } from "../lib/useLoad";
+import { useT } from "../i18n/language";
 
 export const TYPE_LABEL: Record<BlockType, string> = {
   phone: "Phone number",
@@ -62,6 +63,7 @@ export function hoursLeft(until: string | null, now = Date.now()) {
  * member must confirm to keep it. Removing needs two people.
  */
 export function BlocklistPage() {
+  const t = useT();
   const { staff } = useAuth();
   const can = (permission: string) => (staff?.permissions ?? []).includes(permission);
   const [reload, setReload] = useState(0);
@@ -92,19 +94,19 @@ export function BlocklistPage() {
         actions={
           canAdd && (
             <button className="primary" onClick={() => setAdding(true)}>
-              Add to blocklist
+              {t("Add to blocklist")}
             </button>
           )
         }
       />
-      {done && <p className="notice">{done}</p>}
+      {done && <p className="notice">{t(done)}</p>}
 
       <LookUp />
 
       {(matches.data?.length ?? 0) > 0 && (
         <article className="card" style={{ padding: 16, marginBottom: 16 }}>
-          <h3>Recent matches</h3>
-          <p className="muted small">Someone on the list tried to use SunuPay. Look into each one, then close it.</p>
+          <h3>{t("Recent matches")}</h3>
+          <p className="muted small">{t("Someone on the list tried to use SunuPay. Look into each one, then close it.")}</p>
           {matches.data!.map((m) => (
             <MatchRow key={m.id} m={m} canClose={canManage} onDone={finish} />
           ))}
@@ -126,31 +128,31 @@ export function BlocklistPage() {
       {rows.map((e) => (
         <article key={e.id} className="card" style={{ padding: 16, marginBottom: 12 }}>
           <p>
-            <Badge tone={STATE_LABEL[e.state].tone}>{STATE_LABEL[e.state].label}</Badge>{" "}
-            <strong>{e.masked}</strong> <span className="muted small">{TYPE_LABEL[e.type]}</span>
+            <Badge tone={STATE_LABEL[e.state].tone}>{t(STATE_LABEL[e.state].label)}</Badge>{" "}
+            <strong>{e.masked}</strong> <span className="muted small">{t(TYPE_LABEL[e.type])}</span>
           </p>
           <p>
-            {REASON_LABEL[e.reason]}: {e.note}
+            {t(REASON_LABEL[e.reason])}: {e.note}
           </p>
           <p className="muted small">
-            Added by {e.addedByName || "—"}, {when(e.addedAt)}
-            {e.confirmedAt ? ` · Confirmed by ${e.confirmedByName || "—"}, ${when(e.confirmedAt)}` : ""}
-            {e.removedAt ? ` · Removed by ${e.removedByName || "—"}, ${when(e.removedAt)}: ${e.removeReason}` : ""}
-            {e.matches ? ` · ${e.matches} match${e.matches === 1 ? "" : "es"}, last ${when(e.lastMatchAt)} at ${PLACE_LABEL[e.lastMatchPlace] ?? e.lastMatchPlace}` : ""}
+            {t("Added by {name}, {when}", { name: e.addedByName || "—", when: when(e.addedAt) })}
+            {e.confirmedAt ? ` · ${t("Confirmed by {name}, {when}", { name: e.confirmedByName || "—", when: when(e.confirmedAt) })}` : ""}
+            {e.removedAt ? ` · ${t("Removed by {name}, {when}: {reason}", { name: e.removedByName || "—", when: when(e.removedAt), reason: e.removeReason ?? "" })}` : ""}
+            {e.matches ? ` · ${t(e.matches === 1 ? "{n} match, last {when} at {place}" : "{n} matches, last {when} at {place}", { n: e.matches, when: when(e.lastMatchAt), place: t(PLACE_LABEL[e.lastMatchPlace] ?? e.lastMatchPlace) })}` : ""}
           </p>
           {e.state === "unconfirmed" && (
             <p className="muted small">
-              Stops by itself in {hoursLeft(e.unconfirmedUntil)} hours unless a different staff member confirms it.
+              {t("Stops by itself in {n} hours unless a different staff member confirms it.", { n: hoursLeft(e.unconfirmedUntil) })}
             </p>
           )}
           {e.removeAsk && (
             <p className="notice">
-              {e.removeAsk.requestedByName || "A staff member"} asked to remove this, {when(e.removeAsk.requestedAt)}: {e.removeAsk.reason}
+              {t("{name} asked to remove this, {when}: {reason}", { name: e.removeAsk.requestedByName || t("A staff member"), when: when(e.removeAsk.requestedAt), reason: e.removeAsk.reason })}
             </p>
           )}
           <div className="row-start">
             {e.state === "unconfirmed" && canManage && e.addedBy !== staff?._id && (
-              <button onClick={() => setConfirming(e)}>Review and confirm</button>
+              <button onClick={() => setConfirming(e)}>{t("Review and confirm")}</button>
             )}
             {(e.state === "unconfirmed" || e.state === "blocked") && (canManage || (e.state === "unconfirmed" && e.addedBy === staff?._id)) && (
               <RemoveButton e={e} me={staff?._id} onOpen={() => setRemoving(e)} />
@@ -166,7 +168,7 @@ export function BlocklistPage() {
                   }
                 }}
               >
-                Withdraw request to remove
+                {t("Withdraw request to remove")}
               </button>
             )}
           </div>
@@ -189,8 +191,9 @@ export function removeAction(e: BlockEntry, me: string | undefined): "take_back"
 }
 
 function RemoveButton({ e, me, onOpen }: { e: BlockEntry; me?: string; onOpen: () => void }) {
+  const t = useT();
   const action = removeAction(e, me);
-  if (action === "mine") return <span className="hint">You asked to remove this. A different staff member must approve.</span>;
+  if (action === "mine") return <span className="hint">{t("You asked to remove this. A different staff member must approve.")}</span>;
   const label = action === "take_back" ? "Take back (you added it)" : action === "approve" ? "Approve removing" : "Ask to remove";
   return (
     <button className="danger" onClick={onOpen}>
@@ -200,13 +203,14 @@ function RemoveButton({ e, me, onOpen }: { e: BlockEntry; me?: string; onOpen: (
 }
 
 function LookUp() {
+  const t = useT();
   const [type, setType] = useState<BlockType>("phone");
   const [value, setValue] = useState("");
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   return (
     <article className="card" style={{ padding: 16, marginBottom: 16 }}>
-      <h3>Look up</h3>
+      <h3>{t("Look up")}</h3>
       <form
         className="row-start"
         onSubmit={async (ev) => {
@@ -218,10 +222,10 @@ function LookUp() {
             const live = found.entries.filter((x) => x.state === "blocked" || x.state === "unconfirmed");
             setResult(
               live.length
-                ? `${found.masked} is on the blocklist (${STATE_LABEL[live[0]!.state].label.toLowerCase()}).`
+                ? t("{masked} is on the blocklist ({state}).", { masked: found.masked, state: t(STATE_LABEL[live[0]!.state].label).toLowerCase() })
                 : found.entries.length
-                  ? `${found.masked} is not blocked now. It was on the list before.`
-                  : `${found.masked} is not on the blocklist.`,
+                  ? t("{masked} is not blocked now. It was on the list before.", { masked: found.masked })
+                  : t("{masked} is not on the blocklist.", { masked: found.masked }),
             );
             setValue("");
           } catch (err) {
@@ -231,33 +235,33 @@ function LookUp() {
           }
         }}
       >
-        <select aria-label="Type" value={type} onChange={(ev) => setType(ev.target.value as BlockType)}>
+        <select aria-label={t("Type")} value={type} onChange={(ev) => setType(ev.target.value as BlockType)}>
           {Object.entries(TYPE_LABEL).map(([k, label]) => (
             <option key={k} value={k}>
               {label}
             </option>
           ))}
         </select>
-        <input aria-label="Value to look up" value={value} maxLength={200} autoComplete="off" onChange={(ev) => setValue(ev.target.value)} />
+        <input aria-label={t("Value to look up")} value={value} maxLength={200} autoComplete="off" onChange={(ev) => setValue(ev.target.value)} />
         <button type="submit" disabled={busy || value.trim().length < 4}>
-          Look up
+          {t("Look up")}
         </button>
       </form>
-      {result && <p className="notice">{result}</p>}
+      {result && <p className="notice">{t(result)}</p>}
     </article>
   );
 }
 
 function MatchRow({ m, canClose, onDone }: { m: import("../api/admin").BlockMatch; canClose: boolean; onDone: (s: string) => void }) {
+  const t = useT();
   const [closing, setClosing] = useState(false);
   const [note, setNote] = useState("");
   return (
     <div style={{ borderTop: "1px solid var(--line)", paddingTop: 8, marginTop: 8 }}>
       <p>
-        <strong>{m.masked}</strong> <span className="muted small">{m.type ? TYPE_LABEL[m.type] : ""}</span> · {m.matches} tr{m.matches === 1 ? "y" : "ies"} at{" "}
-        {m.places.map((p) => PLACE_LABEL[p] ?? p).join(", ")} · last {when(m.lastAt)}
+        <strong>{m.masked}</strong> <span className="muted small">{m.type ? t(TYPE_LABEL[m.type]) : ""}</span> · {t(m.matches === 1 ? "{n} try at {places}" : "{n} tries at {places}", { n: m.matches, places: m.places.map((p) => t(PLACE_LABEL[p] ?? p)).join(", ") })} · {t("last {when}", { when: when(m.lastAt) })}
       </p>
-      {canClose && !closing && <button onClick={() => setClosing(true)}>Close</button>}
+      {canClose && !closing && <button onClick={() => setClosing(true)}>{t("Close")}</button>}
       {closing && (
         <ConfirmWithPin
           title="Close this match"
@@ -278,6 +282,7 @@ function MatchRow({ m, canClose, onDone }: { m: import("../api/admin").BlockMatc
 }
 
 function AddDialog({ onClose, onDone }: { onClose: () => void; onDone: (m: string) => void }) {
+  const t = useT();
   const [type, setType] = useState<BlockType>("phone");
   const [value, setValue] = useState("");
   const [reason, setReason] = useState<BlockReason>("CONFIRMED_FRAUD");
@@ -295,28 +300,28 @@ function AddDialog({ onClose, onDone }: { onClose: () => void; onDone: (m: strin
         onDone("Added. It blocks now for 72 hours. A different staff member must confirm it to keep it.");
       }}
     >
-      <p>This blocks straight away. Unless a different staff member confirms within 72 hours, it stops by itself.</p>
+      <p>{t("This blocks straight away. Unless a different staff member confirms within 72 hours, it stops by itself.")}</p>
       <label>
-        What to block
+        {t("What to block")}
         <select value={type} onChange={(e) => setType(e.target.value as BlockType)}>
           {Object.entries(TYPE_LABEL).map(([k, label]) => (
             <option key={k} value={k}>
-              {label}
+              {t(label)}
             </option>
           ))}
         </select>
       </label>
       <label>
-        {TYPE_LABEL[type]}
+        {t(TYPE_LABEL[type])}
         <input value={value} maxLength={200} autoComplete="off" onChange={(e) => setValue(e.target.value)} />
-        <span className="hint">Stored scrambled. Nobody can read it back, so check it now.</span>
+        <span className="hint">{t("Stored scrambled. Nobody can read it back, so check it now.")}</span>
       </label>
       <label>
-        Reason
+        {t("Reason")}
         <select value={reason} onChange={(e) => setReason(e.target.value as BlockReason)}>
           {Object.entries(REASON_LABEL).map(([k, label]) => (
             <option key={k} value={k}>
-              {label}
+              {t(label)}
             </option>
           ))}
         </select>
@@ -327,6 +332,7 @@ function AddDialog({ onClose, onDone }: { onClose: () => void; onDone: (m: strin
 }
 
 function ConfirmDialog({ e, onClose, onDone }: { e: BlockEntry; onClose: () => void; onDone: (m: string) => void }) {
+  const t = useT();
   const key = useMemo(newIdempotencyKey, []);
   return (
     <ConfirmWithPin
@@ -339,12 +345,12 @@ function ConfirmDialog({ e, onClose, onDone }: { e: BlockEntry; onClose: () => v
       }}
     >
       <p>
-        <strong>{e.masked}</strong> ({TYPE_LABEL[e.type]}), added by {e.addedByName || "—"}.
+        {t("{masked} ({type}), added by {name}.", { masked: e.masked, type: t(TYPE_LABEL[e.type]), name: e.addedByName || "—" })}
       </p>
       <p>
-        {REASON_LABEL[e.reason]}: {e.note}
+        {t(REASON_LABEL[e.reason])}: {e.note}
       </p>
-      <p>You are the second check. Only confirm if you have seen the evidence.</p>
+      <p>{t("You are the second check. Only confirm if you have seen the evidence.")}</p>
     </ConfirmWithPin>
   );
 }

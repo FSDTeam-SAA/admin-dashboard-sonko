@@ -8,6 +8,7 @@ import { HOLD_REASON_MAX, HOLD_REASON_MIN, PlaceHoldDialog, SCOPE_LABEL } from "
 import { newIdempotencyKey } from "../lib/idempotency";
 import { personLabel, when } from "../lib/format";
 import { useLoad } from "../lib/useLoad";
+import { useT } from "../i18n/language";
 
 type View = "all" | "asked";
 type Open =
@@ -17,6 +18,7 @@ type Open =
   | null;
 
 export function HoldsPage() {
+  const t = useT();
   const { staff } = useAuth();
   const [view, setView] = useState<View>("all");
   const [page, setPage] = useState(1);
@@ -40,7 +42,7 @@ export function HoldsPage() {
         actions={
           can(staff, "place_hold") && can(staff, "view_customers") ? (
             <button className="primary" onClick={() => setOpen({ action: "find" })}>
-              Place a hold
+              {t("Place a hold")}
             </button>
           ) : undefined
         }
@@ -56,19 +58,19 @@ export function HoldsPage() {
           setPage(1);
         }}
       />
-      {done && <p className="notice">{done}</p>}
+      {done && <p className="notice">{t(done)}</p>}
       <LoadState loading={loading && !data} error={error} empty={!rows.length} />
       {rows.length > 0 && (
         <div className="table-wrap card">
           <table>
             <thead>
               <tr>
-                <th>Customer</th>
-                <th>Hold</th>
-                <th>Reason</th>
-                <th>Placed</th>
-                <th>Lifting</th>
-                <th aria-label="Actions" />
+                <th>{t("Customer")}</th>
+                <th>{t("Hold")}</th>
+                <th>{t("Reason")}</th>
+                <th>{t("Placed")}</th>
+                <th>{t("Lifting")}</th>
+                <th aria-label={t("Actions")} />
               </tr>
             </thead>
             <tbody>
@@ -84,12 +86,12 @@ export function HoldsPage() {
                     <td className="wrap">{row.reason}</td>
                     <td>
                       {when(row.placedAt)}
-                      <div className="muted small">by {row.placedByName || "staff"}</div>
+                      <div className="muted small">{t("by {name}", { name: row.placedByName || t("staff") })}</div>
                     </td>
                     <td className="wrap">
                       {asked ? (
                         <>
-                          <Badge tone="warn">Asked by {askedByMe ? "you" : row.liftRequestedByName || "staff"}</Badge>
+                          <Badge tone="warn">{t("Asked by {name}", { name: askedByMe ? t("you") : row.liftRequestedByName || t("staff") })}</Badge>
                           <div className="small">{row.liftReason}</div>
                         </>
                       ) : (
@@ -97,15 +99,15 @@ export function HoldsPage() {
                       )}
                     </td>
                     <td className="actions">
-                      {can(staff, "lift_hold") && !asked && <button onClick={() => setOpen({ action: "ask", row })}>Ask to lift</button>}
+                      {can(staff, "lift_hold") && !asked && <button onClick={() => setOpen({ action: "ask", row })}>{t("Ask to lift")}</button>}
                       {can(staff, "lift_hold") && asked && !askedByMe && (
                         <button className="primary" onClick={() => setOpen({ action: "approve", row })}>
-                          Approve lift
+                          {t("Approve lift")}
                         </button>
                       )}
-                      {can(staff, "lift_hold") && asked && <button onClick={() => setOpen({ action: "cancel", row })}>Keep hold</button>}
+                      {can(staff, "lift_hold") && asked && <button onClick={() => setOpen({ action: "cancel", row })}>{t("Keep hold")}</button>}
                       {can(staff, "place_hold") && row.scope === "requests" && (
-                        <button onClick={() => setOpen({ action: "widen", row })}>Make full hold</button>
+                        <button onClick={() => setOpen({ action: "widen", row })}>{t("Make full hold")}</button>
                       )}
                     </td>
                   </tr>
@@ -148,7 +150,7 @@ export function HoldsPage() {
           }}
         >
           <p>
-            Cancel the request to lift the hold on <strong>{personLabel(open.row.user)}</strong>. The hold stays as it is.
+            {t("Cancel the request to lift the hold on {name}. The hold stays as it is.", { name: personLabel(open.row.user) })}
           </p>
         </ConfirmWithPin>
       )}
@@ -157,6 +159,7 @@ export function HoldsPage() {
 }
 
 function AskLift({ row, onDone, onClose }: { row: HoldRow; onDone: () => void; onClose: () => void }) {
+  const t = useT();
   const [reason, setReason] = useState("");
   const key = useMemo(newIdempotencyKey, []);
   return (
@@ -173,13 +176,14 @@ function AskLift({ row, onDone, onClose }: { row: HoldRow; onDone: () => void; o
       <p>
         <strong>{personLabel(row.user)}</strong> — {SCOPE_LABEL[row.scope]}
       </p>
-      <p className="hint">The hold stays until a different staff member approves.</p>
+      <p className="hint">{t("The hold stays until a different staff member approves.")}</p>
       <TextArea label="Why it can be lifted" value={reason} onChange={setReason} min={HOLD_REASON_MIN} max={HOLD_REASON_MAX} />
     </ConfirmWithPin>
   );
 }
 
 function ApproveLift({ row, onDone, onClose }: { row: HoldRow; onDone: () => void; onClose: () => void }) {
+  const t = useT();
   const key = useMemo(newIdempotencyKey, []);
   return (
     <ConfirmWithPin
@@ -195,17 +199,18 @@ function ApproveLift({ row, onDone, onClose }: { row: HoldRow; onDone: () => voi
         <strong>{personLabel(row.user)}</strong> — {SCOPE_LABEL[row.scope]}
       </p>
       <dl className="facts">
-        <dt>Why it was placed</dt>
+        <dt>{t("Why it was placed")}</dt>
         <dd>{row.reason}</dd>
-        <dt>Why {row.liftRequestedByName || "staff"} wants it lifted</dt>
+        <dt>{t("Why {name} wants it lifted", { name: row.liftRequestedByName || t("staff") })}</dt>
         <dd>{row.liftReason}</dd>
       </dl>
-      <p className="hint">Once lifted, the customer can use their account normally again.</p>
+      <p className="hint">{t("Once lifted, the customer can use their account normally again.")}</p>
     </ConfirmWithPin>
   );
 }
 
 function FindCustomer({ onPick, onClose }: { onPick: (hit: CustomerHit) => void; onClose: () => void }) {
+  const t = useT();
   const [search, setSearch] = useState("");
   const [hits, setHits] = useState<CustomerHit[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -230,29 +235,29 @@ function FindCustomer({ onPick, onClose }: { onPick: (hit: CustomerHit) => void;
   return (
     <div className="overlay" role="presentation">
       <div className="card dialog" role="dialog" aria-modal="true" aria-labelledby="find-title">
-        <h2 id="find-title">Find the account</h2>
+        <h2 id="find-title">{t("Find the account")}</h2>
         <form className="row-start" onSubmit={find}>
-          <input autoFocus placeholder="Phone number or name" value={search} onChange={(e) => setSearch(e.target.value)} />
+          <input autoFocus placeholder={t("Phone number or name")} value={search} onChange={(e) => setSearch(e.target.value)} />
           <button type="submit" disabled={busy || search.trim().length < 3}>
             {busy ? "Searching…" : "Search"}
           </button>
         </form>
-        {error && <p className="error">{error}</p>}
-        {hits && !hits.length && <p className="muted">No customer or agent found.</p>}
+        {error && <p className="error">{t(error)}</p>}
+        {hits && !hits.length && <p className="muted">{t("No customer or agent found.")}</p>}
         {hits && hits.length > 0 && (
           <ul className="hits">
             {hits.map((hit) => (
               <li key={hit._id}>
                 <button className="hit" onClick={() => onPick(hit)}>
                   {personLabel({ name: hit.name || hit.username, phone: hit.phone })}
-                  <span className="muted small">{hit.role === "agent" ? "Agent" : "Customer"}</span>
+                  <span className="muted small">{hit.role === "agent" ? t("Agent") : t("Customer")}</span>
                 </button>
               </li>
             ))}
           </ul>
         )}
         <div className="row-end">
-          <button onClick={onClose}>Cancel</button>
+          <button onClick={onClose}>{t("Cancel")}</button>
         </div>
       </div>
     </div>

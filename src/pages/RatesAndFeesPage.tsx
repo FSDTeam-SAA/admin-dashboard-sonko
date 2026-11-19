@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Tabs } from "../components/common";
 import { ExchangeRatesSection } from "./ExchangeRatesSection";
 import { CashOutSettingsSection } from "./SettingsPage";
+import { useT } from "../i18n/language";
 
 /**
  * Everything that sets prices: exchange rates, the transfer fee, and Agent
@@ -9,13 +10,14 @@ import { CashOutSettingsSection } from "./SettingsPage";
  * change needs two different people and applies when the second approves.
  */
 export function RatesAndFeesPage() {
+  const t = useT();
   const [part, setPart] = useState<"rates" | "cashout">("rates");
   return (
     <section>
       <div className="page-header">
         <div>
-          <h1>Rates and fees</h1>
-          <p className="muted">Senior staff only. Every change needs two different people and applies when the second approves.</p>
+          <h1>{t("Rates and fees")}</h1>
+          <p className="muted">{t("Senior staff only. Every change needs two different people and applies when the second approves.")}</p>
         </div>
       </div>
       <Tabs

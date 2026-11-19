@@ -1,4 +1,4 @@
-import { getLanguage } from "../i18n/language";
+import { getLanguage, translate } from "../i18n/language";
 // Money and dates the same way on every page.
 
 // Currencies with no smaller unit (the CFA franc). Everything else has 2.
@@ -32,7 +32,7 @@ export function when(value: string | null | undefined): string {
 }
 
 export function personLabel(person: { name?: string; phone?: string } | null | undefined): string {
-  if (!person) return "Unknown";
+  if (!person) return translate("Unknown", getLanguage());
   const name = person.name?.trim();
-  return name && person.phone ? `${name} (${person.phone})` : name || person.phone || "Unknown";
+  return name && person.phone ? `${name} (${person.phone})` : name || person.phone || translate("Unknown", getLanguage());
 }

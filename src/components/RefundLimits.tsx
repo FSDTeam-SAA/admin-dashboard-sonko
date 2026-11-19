@@ -12,6 +12,7 @@ import { ConfirmWithPin } from "./ConfirmWithPin";
 import { decimalsOf as decimals, money, when } from "../lib/format";
 import { newIdempotencyKey } from "../lib/idempotency";
 import { useLoad } from "../lib/useLoad";
+import { useT } from "../i18n/language";
 
 /** The limit as words; -1 means the first limit is still waiting. */
 export function limitLabel(
@@ -28,6 +29,7 @@ export function limitLabel(
  * Raising a limit needs two people; lowering it needs one.
  */
 export function RefundLimits() {
+  const t = useT();
   const { staff } = useAuth();
   const mayChange = can(staff, "manage_rates");
   const [reload, setReload] = useState(0);
@@ -42,27 +44,25 @@ export function RefundLimits() {
 
   return (
     <section className="card" style={{ marginTop: 24, padding: 16 }}>
-      <h2>Refund limits</h2>
+      <h2>{t("Refund limits")}</h2>
       <p className="muted">
-        A refund above a country's limit needs a second staff member to approve
-        it. A country with no limit here needs two people for every refund.
-        Raising a limit needs two people; lowering it needs one.
+        {t("A refund above a country's limit needs a second staff member to approve it. A country with no limit here needs two people for every refund. Raising a limit needs two people; lowering it needs one.")}
       </p>
       {error && <p className="error">{error}</p>}
-      {done && <p className="notice">{done}</p>}
+      {done && <p className="notice">{t(done)}</p>}
       {rows.length === 0 && !error && (
         <p className="muted">
-          No limits set yet, so every refund needs two people.
+          {t("No limits set yet, so every refund needs two people.")}
         </p>
       )}
       {rows.length > 0 && (
         <table>
           <thead>
             <tr>
-              <th>Country</th>
-              <th>Limit</th>
-              <th>Waiting</th>
-              <th>Last change</th>
+              <th>{t("Country")}</th>
+              <th>{t("Limit")}</th>
+              <th>{t("Waiting")}</th>
+              <th>{t("Last change")}</th>
               {mayChange && <th />}
             </tr>
           </thead>
@@ -70,16 +70,11 @@ export function RefundLimits() {
             {rows.map((row) => (
               <tr key={row.country}>
                 <td>{row.country}</td>
-                <td>{limitLabel(row)}</td>
+                <td>{row.limitMinor < 0 ? t("Not set: every refund needs two people") : t("Up to {amount} with one person", { amount: money(row.limitMinor, row.currency) })}</td>
                 <td className="small">
                   {row.pendingRaise ? (
                     <>
-                      {row.pendingRaise.requestedByName || "Someone"} asked for{" "}
-                      {money(
-                        row.pendingRaise.limitMinor,
-                        row.pendingRaise.currency,
-                      )}
-                      : "{row.pendingRaise.reason}"{" "}
+                      {t("{name} asked for {amount}: \"{reason}\"", { name: row.pendingRaise.requestedByName || t("Someone"), amount: money(row.pendingRaise.limitMinor, row.pendingRaise.currency), reason: row.pendingRaise.reason })}{" "}
                       {mayChange && (
                         <>
                           {row.pendingRaise.requestedBy !== staff?._id && (
@@ -97,18 +92,18 @@ export function RefundLimits() {
                                 })
                               }
                             >
-                              Review and approve
+                              {t("Review and approve")}
                             </button>
                           )}{" "}
                           <button
                             className="link"
                             onClick={async () => {
                               await cancelRefundLimitRaise(row.country);
-                              setDone("Request cancelled.");
+                              setDone(t("Request cancelled."));
                               setReload((n) => n + 1);
                             }}
                           >
-                            Cancel
+                            {t("Cancel")}
                           </button>
                         </>
                       )}
@@ -138,7 +133,7 @@ export function RefundLimits() {
                         })
                       }
                     >
-                      Change
+                      {t("Change")}
                     </button>
                   </td>
                 )}
@@ -154,7 +149,7 @@ export function RefundLimits() {
               setEditing({ country: "", currency: "", amount: "" })
             }
           >
-            Add a country
+            {t("Add a country")}
           </button>
         </p>
       )}
@@ -183,6 +178,7 @@ function LimitDialog({
   onClose: () => void;
   onDone: (m: string) => void;
 }) {
+  const t = useT();
   const [country, setCountry] = useState(start.country);
   const [currency, setCurrency] = useState(start.currency);
   const [amount, setAmount] = useState(start.amount);
@@ -214,13 +210,13 @@ function LimitDialog({
         );
         onDone(
           result.asked
-            ? "Asked. A higher limit needs a different staff member to approve it."
-            : "Saved.",
+            ? t("Asked. A higher limit needs a different staff member to approve it.")
+            : t("Saved."),
         );
       }}
     >
       <label>
-        Country (two letters, for example GM)
+        {t("Country (two letters, for example GM)")}
         <input
           value={country}
           maxLength={2}
@@ -229,7 +225,7 @@ function LimitDialog({
         />
       </label>
       <label>
-        Currency refunds are paid in (for example GMD)
+        {t("Currency refunds are paid in (for example GMD)")}
         <input
           value={currency}
           maxLength={3}
@@ -237,7 +233,7 @@ function LimitDialog({
         />
       </label>
       <label>
-        One person can refund up to
+        {t("One person can refund up to")}
         <input
           inputMode="decimal"
           value={amount}
@@ -252,8 +248,7 @@ function LimitDialog({
         max={300}
       />
       <p className="hint">
-        Anything above this amount needs a second staff member. To approve
-        someone else's request, enter the same amount.
+        {t("Anything above this amount needs a second staff member. To approve someone else's request, enter the same amount.")}
       </p>
     </ConfirmWithPin>
   );

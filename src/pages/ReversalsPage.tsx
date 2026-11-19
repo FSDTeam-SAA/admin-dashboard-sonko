@@ -17,6 +17,7 @@ import { AskReversalDialog } from "../components/dialogs";
 import { newIdempotencyKey } from "../lib/idempotency";
 import { money, personLabel, when } from "../lib/format";
 import { useLoad } from "../lib/useLoad";
+import { useT } from "../i18n/language";
 
 const KIND_LABEL: Record<ReversalKind, string> = {
   cash_out: "Cash out reversal",
@@ -30,6 +31,7 @@ const isOld = (occurredAt: string) => Date.now() - new Date(occurredAt).getTime(
 type Open = { action: "approve" | "cancel"; row: Reversal } | { action: "new" } | null;
 
 export function ReversalsPage() {
+  const t = useT();
   const { staff } = useAuth();
   const [status, setStatus] = useState<ReversalStatus>("pending");
   const [page, setPage] = useState(1);
@@ -54,7 +56,7 @@ export function ReversalsPage() {
         actions={
           can(staff, "request_reversal") ? (
             <button className="primary" onClick={() => setOpen({ action: "new" })}>
-              Reverse a cash out or cash in
+              {t("Reverse a cash out or cash in")}
             </button>
           ) : undefined
         }
@@ -72,19 +74,19 @@ export function ReversalsPage() {
           setPage(1);
         }}
       />
-      {done && <p className="notice">{done}</p>}
+      {done && <p className="notice">{t(done)}</p>}
       <LoadState loading={loading && !data} error={error} empty={!rows.length} />
       {rows.length > 0 && (
         <div className="table-wrap card">
           <table>
             <thead>
               <tr>
-                <th>What</th>
-                <th>Amount</th>
-                <th>Customer</th>
-                <th>Reason and note</th>
-                <th>Asked by</th>
-                <th aria-label="Actions" />
+                <th>{t("What")}</th>
+                <th>{t("Amount")}</th>
+                <th>{t("Customer")}</th>
+                <th>{t("Reason and note")}</th>
+                <th>{t("Asked by")}</th>
+                <th aria-label={t("Actions")} />
               </tr>
             </thead>
             <tbody>
@@ -93,34 +95,34 @@ export function ReversalsPage() {
                 return (
                   <tr key={row.id}>
                     <td>
-                      {KIND_LABEL[row.kind]}
+                      {t(KIND_LABEL[row.kind])}
                       <div className="muted small">{when(row.occurred_at)}</div>
-                      {row.tx_ref && <div className="muted small">Ref {row.tx_ref}</div>}
+                      {row.tx_ref && <div className="muted small">{t("Ref {ref}", { ref: row.tx_ref })}</div>}
                     </td>
                     <td className="num">{money(row.amount.amount, row.amount.currency)}</td>
                     <td>
                       {name(row.customer_id)}
-                      {row.agent_id && <div className="muted small">Agent: {name(row.agent_id)}</div>}
-                      {row.requester_id && <div className="muted small">Asked for the money: {name(row.requester_id)}</div>}
+                      {row.agent_id && <div className="muted small">{t("Agent: {name}", { name: name(row.agent_id) })}</div>}
+                      {row.requester_id && <div className="muted small">{t("Asked for the money: {name}", { name: name(row.requester_id) })}</div>}
                     </td>
                     <td className="wrap">
-                      <strong>{REASON_LABEL[row.reason] || row.reason}</strong>
+                      <strong>{t(REASON_LABEL[row.reason] || row.reason)}</strong>
                       <div className="small">{row.note}</div>
-                      {row.blocked_reason && <div className="small warn-text">Blocked: {row.blocked_reason}</div>}
+                      {row.blocked_reason && <div className="small warn-text">{t("Blocked: {reason}", { reason: row.blocked_reason })}</div>}
                     </td>
                     <td>
-                      {mine ? "You" : name(row.requested_by)}
-                      {row.completed_at && <div className="muted small">Done {when(row.completed_at)}</div>}
+                      {mine ? t("You") : name(row.requested_by)}
+                      {row.completed_at && <div className="muted small">{t("Done {when}", { when: when(row.completed_at) })}</div>}
                     </td>
                     <td className="actions">
                       {row.status === "pending" && can(staff, "approve_reversal") && !mine && (
                         <button className="primary" onClick={() => setOpen({ action: "approve", row })}>
-                          Approve
+                          {t("Approve")}
                         </button>
                       )}
-                      {row.status === "pending" && mine && <Badge tone="plain">Needs someone else</Badge>}
+                      {row.status === "pending" && mine && <Badge tone="plain">{t("Needs someone else")}</Badge>}
                       {row.status === "pending" && can(staff, "request_reversal") && (
-                        <button onClick={() => setOpen({ action: "cancel", row })}>Cancel</button>
+                        <button onClick={() => setOpen({ action: "cancel", row })}>{t("Cancel")}</button>
                       )}
                     </td>
                   </tr>
@@ -142,6 +144,7 @@ export function ReversalsPage() {
 }
 
 function Approve({ row, people, onDone, onClose }: { row: Reversal; people: Record<string, Person>; onDone: (r: Reversal) => void; onClose: () => void }) {
+  const t = useT();
   const key = useMemo(newIdempotencyKey, []);
   return (
     <ConfirmWithPin
@@ -151,37 +154,38 @@ function Approve({ row, people, onDone, onClose }: { row: Reversal; people: Reco
       onConfirm={async (pin) => onDone(await approveReversal(row.id, pin, key))}
     >
       <dl className="facts">
-        <dt>Amount</dt>
+        <dt>{t("Amount")}</dt>
         <dd>{money(row.amount.amount, row.amount.currency)}</dd>
         {row.kind === "payment_request" ? (
           <>
-            <dt>Refund to</dt>
+            <dt>{t("Refund to")}</dt>
             <dd>{personLabel(people[row.customer_id])}</dd>
-            <dt>Taken from</dt>
+            <dt>{t("Taken from")}</dt>
             <dd>{row.requester_id ? personLabel(people[row.requester_id]) : "—"}</dd>
           </>
         ) : (
           <>
-            <dt>Customer</dt>
+            <dt>{t("Customer")}</dt>
             <dd>{personLabel(people[row.customer_id])}</dd>
-            <dt>Agent</dt>
+            <dt>{t("Agent")}</dt>
             <dd>{row.agent_id ? personLabel(people[row.agent_id]) : "—"}</dd>
           </>
         )}
-        <dt>Reason</dt>
+        <dt>{t("Reason")}</dt>
         <dd>{REASON_LABEL[row.reason] || row.reason}</dd>
-        <dt>What happened</dt>
+        <dt>{t("What happened")}</dt>
         <dd>{row.note}</dd>
-        <dt>Asked by</dt>
+        <dt>{t("Asked by")}</dt>
         <dd>{personLabel(people[row.requested_by])}</dd>
       </dl>
-      {isOld(row.occurred_at) && <p className="notice">This is older than 30 days, so it needs a senior approver.</p>}
-      <p className="hint">Check the note before approving. This moves money and can't be undone here.</p>
+      {isOld(row.occurred_at) && <p className="notice">{t("This is older than 30 days, so it needs a senior approver.")}</p>}
+      <p className="hint">{t("Check the note before approving. This moves money and can't be undone here.")}</p>
     </ConfirmWithPin>
   );
 }
 
 function Cancel({ row, onDone, onClose }: { row: Reversal; onDone: () => void; onClose: () => void }) {
+  const t = useT();
   const [reason, setReason] = useState("");
   return (
     <ConfirmWithPin
@@ -196,7 +200,7 @@ function Cancel({ row, onDone, onClose }: { row: Reversal; onDone: () => void; o
       }}
     >
       <p>
-        {KIND_LABEL[row.kind]} of {money(row.amount.amount, row.amount.currency)}. No money will move.
+        {t("{kind} of {amount}. No money will move.", { kind: t(KIND_LABEL[row.kind]), amount: money(row.amount.amount, row.amount.currency) })}
       </p>
       <TextArea label="Why" value={reason} onChange={setReason} min={5} max={1000} />
     </ConfirmWithPin>
@@ -206,6 +210,7 @@ function Cancel({ row, onDone, onClose }: { row: Reversal; onDone: () => void; o
 const RECORD_ID = /^[a-f0-9]{24}$/i;
 
 function NewReversal({ onDone, onClose }: { onDone: () => void; onClose: () => void }) {
+  const t = useT();
   const [kind, setKind] = useState<"cash_out" | "cash_in">("cash_out");
   const [recordId, setRecordId] = useState("");
   const [ready, setReady] = useState(false);
@@ -234,27 +239,27 @@ function NewReversal({ onDone, onClose }: { onDone: () => void; onClose: () => v
           if (RECORD_ID.test(recordId.trim())) setReady(true);
         }}
       >
-        <h2 id="new-title">Reverse a cash out or cash in</h2>
+        <h2 id="new-title">{t("Reverse a cash out or cash in")}</h2>
         <fieldset className="choices">
-          <legend>Which</legend>
+          <legend>{t("Which")}</legend>
           <label className="check">
-            <input type="radio" checked={kind === "cash_out"} onChange={() => setKind("cash_out")} /> Cash out
+            <input type="radio" checked={kind === "cash_out"} onChange={() => setKind("cash_out")} /> {t("Cash out")}
           </label>
           <label className="check">
-            <input type="radio" checked={kind === "cash_in"} onChange={() => setKind("cash_in")} /> Cash in
+            <input type="radio" checked={kind === "cash_in"} onChange={() => setKind("cash_in")} /> {t("Cash in")}
           </label>
         </fieldset>
         <label>
-          Record ID
-          <input autoFocus value={recordId} onChange={(e) => setRecordId(e.target.value)} placeholder="24 letters and numbers" />
+          {t("Record ID")}
+          <input autoFocus value={recordId} onChange={(e) => setRecordId(e.target.value)} placeholder={t("24 letters and numbers")} />
         </label>
-        <span className="hint">From the cash out or cash in record. The Agents page will link here once it is built.</span>
+        <span className="hint">{t("From the cash out or cash in record. The Agents page will link here once it is built.")}</span>
         <div className="row-end">
           <button type="button" onClick={onClose}>
-            Cancel
+            {t("Cancel")}
           </button>
           <button className="primary" type="submit" disabled={!RECORD_ID.test(recordId.trim())}>
-            Next
+            {t("Next")}
           </button>
         </div>
       </form>

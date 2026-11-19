@@ -7,6 +7,7 @@ import { Badge, LoadState, PageHeader, Pager, Tabs, TextArea, okLength } from ".
 import { AskReversalDialog, PlaceHoldDialog, SCOPE_LABEL } from "../components/dialogs";
 import { money, personLabel, when } from "../lib/format";
 import { useLoad } from "../lib/useLoad";
+import { useT } from "../i18n/language";
 
 const STATUS_LABEL: Record<AgentStatus, string> = {
   pending: "Waiting for review",
@@ -22,6 +23,7 @@ const STATUS_TONE: Record<AgentStatus, "ok" | "warn" | "plain" | "danger"> = {
 };
 
 export function AgentsPage() {
+  const t = useT();
   const [status, setStatus] = useState<AgentStatus | "all">("pending");
   const [search, setSearch] = useState("");
   const [typed, setTyped] = useState("");
@@ -66,8 +68,8 @@ export function AgentsPage() {
         }}
       />
       <form className="row-start search" onSubmit={find}>
-        <input placeholder="Business, name or phone" value={typed} onChange={(e) => setTyped(e.target.value)} />
-        <button type="submit">Search</button>
+        <input placeholder={t("Business, name or phone")} value={typed} onChange={(e) => setTyped(e.target.value)} />
+        <button type="submit">{t("Search")}</button>
         {search && (
           <button
             type="button"
@@ -76,7 +78,7 @@ export function AgentsPage() {
               setTyped("");
             }}
           >
-            Clear
+            {t("Clear")}
           </button>
         )}
       </form>
@@ -86,13 +88,13 @@ export function AgentsPage() {
           <table>
             <thead>
               <tr>
-                <th>Business</th>
-                <th>Agent</th>
-                <th>Where</th>
-                <th>ID check</th>
-                <th>Status</th>
-                <th>Applied</th>
-                <th aria-label="Open" />
+                <th>{t("Business")}</th>
+                <th>{t("Agent")}</th>
+                <th>{t("Where")}</th>
+                <th>{t("ID check")}</th>
+                <th>{t("Status")}</th>
+                <th>{t("Applied")}</th>
+                <th aria-label={t("Open")} />
               </tr>
             </thead>
             <tbody>
@@ -103,7 +105,7 @@ export function AgentsPage() {
                   </td>
                   <td>{personLabel(row)}</td>
                   <td>{[row.city, row.country].filter(Boolean).join(", ") || "—"}</td>
-                  <td>{row.idChecked ? <Badge tone="ok">Checked</Badge> : <Badge tone="danger">Not checked</Badge>}</td>
+                  <td>{row.idChecked ? <Badge tone="ok">{t("Checked")}</Badge> : <Badge tone="danger">{t("Not checked")}</Badge>}</td>
                   <td>
                     <Badge tone={STATUS_TONE[row.status]}>{STATUS_LABEL[row.status]}</Badge>
                     {row.onHold && row.holdScope && (
@@ -120,7 +122,7 @@ export function AgentsPage() {
                         setOpenId(row.id);
                       }}
                     >
-                      Open
+                      {t("Open")}
                     </button>
                   </td>
                 </tr>
@@ -140,6 +142,7 @@ type Open =
   | null;
 
 function AgentView({ agentId, onBack }: { agentId: string; onBack: () => void }) {
+  const t = useT();
   const { staff } = useAuth();
   const [open, setOpen] = useState<Open>(null);
   const [done, setDone] = useState<string | null>(null);
@@ -154,7 +157,7 @@ function AgentView({ agentId, onBack }: { agentId: string; onBack: () => void })
     return (
       <section>
         <button className="link" onClick={onBack}>
-          ← All agents
+          {t("← All agents")}
         </button>
         <LoadState loading={loading} error={error} empty={false} />
       </section>
@@ -167,60 +170,60 @@ function AgentView({ agentId, onBack }: { agentId: string; onBack: () => void })
   return (
     <section>
       <button className="link" onClick={onBack}>
-        ← All agents
+        {t("← All agents")}
       </button>
       <PageHeader
         title={a.businessName || a.name || "Agent"}
         intro={`${personLabel(a)} · ${STATUS_LABEL[a.status]}`}
         actions={
           <>
-            {pending && can(staff, "review_agents") && <button onClick={() => setOpen({ action: "reject" })}>Turn down</button>}
+            {pending && can(staff, "review_agents") && <button onClick={() => setOpen({ action: "reject" })}>{t("Turn down")}</button>}
             {pending && can(staff, "review_agents") && (
               <button className="primary" onClick={() => setOpen({ action: "approve" })}>
-                Approve
+                {t("Approve")}
               </button>
             )}
             {!pending && can(staff, "place_hold") && !(a.hold?.scope === "all") && (
               <button className="danger" onClick={() => setOpen({ action: "hold" })}>
-                Put on hold
+                {t("Put on hold")}
               </button>
             )}
           </>
         }
       />
-      {done && <p className="notice">{done}</p>}
+      {done && <p className="notice">{t(done)}</p>}
       {pending && !a.idChecked && (
-        <p className="notice">Their ID has not been checked yet. They can be approved, but can't do cash outs until the check passes.</p>
+        <p className="notice">{t("Their ID has not been checked yet. They can be approved, but can't do cash outs until the check passes.")}</p>
       )}
       {a.hold && (
         <p className="error">
-          On hold: {SCOPE_LABEL[a.hold.scope]}. {a.hold.reason} (since {when(a.hold.placedAt)}). Lift it on the Account holds page.
+          {t("On hold: {scope}. {reason} (since {when}). Lift it on the Account holds page.", { scope: t(SCOPE_LABEL[a.hold.scope]), reason: a.hold.reason, when: when(a.hold.placedAt) })}
         </p>
       )}
 
       <div className="two-col">
         <div className="card panel">
-          <h2>Details</h2>
+          <h2>{t("Details")}</h2>
           <dl className="facts">
-            <dt>Full name</dt>
+            <dt>{t("Full name")}</dt>
             <dd>{a.fullName || "—"}</dd>
-            <dt>Phone</dt>
+            <dt>{t("Phone")}</dt>
             <dd>{a.phone || "—"}</dd>
-            <dt>Email</dt>
+            <dt>{t("Email")}</dt>
             <dd>{a.email || "—"}</dd>
-            <dt>Business address</dt>
+            <dt>{t("Business address")}</dt>
             <dd>{a.businessAddress || "—"}</dd>
-            <dt>Town, country</dt>
+            <dt>{t("Town, country")}</dt>
             <dd>{[a.city, a.country].filter(Boolean).join(", ") || "—"}</dd>
-            <dt>ID number</dt>
+            <dt>{t("ID number")}</dt>
             <dd>{a.nationalId || "—"}</dd>
-            <dt>ID check</dt>
-            <dd>{a.idChecked ? "Passed" : "Not done"}</dd>
-            <dt>Applied</dt>
+            <dt>{t("ID check")}</dt>
+            <dd>{a.idChecked ? t("Passed") : t("Not done")}</dd>
+            <dt>{t("Applied")}</dt>
             <dd>{when(a.appliedAt)}</dd>
             {a.reviewedAt && (
               <>
-                <dt>Reviewed</dt>
+                <dt>{t("Reviewed")}</dt>
                 <dd>
                   {when(a.reviewedAt)}
                   {a.reviewedBy ? ` by ${a.reviewedBy}` : ""}
@@ -229,7 +232,7 @@ function AgentView({ agentId, onBack }: { agentId: string; onBack: () => void })
             )}
             {a.rejectionReason && (
               <>
-                <dt>Reason given</dt>
+                <dt>{t("Reason given")}</dt>
                 <dd>{a.rejectionReason}</dd>
               </>
             )}
@@ -237,7 +240,7 @@ function AgentView({ agentId, onBack }: { agentId: string; onBack: () => void })
         </div>
         {working && (
           <div className="card panel">
-            <h2>Money</h2>
+            <h2>{t("Money")}</h2>
             <dl className="facts">
               {data.wallets.map((w) => (
                 <Fact key={w.currency} label={`Balance (${w.currency})`} value={money(w.balanceMinor, w.currency)} />
@@ -247,7 +250,7 @@ function AgentView({ agentId, onBack }: { agentId: string; onBack: () => void })
                 <Fact key={w.currency} label="Cash outs, last 7 days" value={`${w.count} · ${money(w.amountMinor, w.currency)}`} />
               ))}
             </dl>
-            <p className="hint">Agents buy their own float. Sunu Pay never lends to agents.</p>
+            <p className="hint">{t("Agents buy their own float. Sunu Pay never lends to agents.")}</p>
           </div>
         )}
       </div>
@@ -272,14 +275,14 @@ function AgentView({ agentId, onBack }: { agentId: string; onBack: () => void })
           />
           <div className="two-col">
             <div className="card panel">
-              <h2>Daily pay, last 14 days</h2>
+              <h2>{t("Daily pay, last 14 days")}</h2>
               {data.commissionDays.length ? (
                 <table className="mini">
                   <thead>
                     <tr>
-                      <th>Day</th>
-                      <th>Volume counted</th>
-                      <th>Earned</th>
+                      <th>{t("Day")}</th>
+                      <th>{t("Volume counted")}</th>
+                      <th>{t("Earned")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -289,25 +292,25 @@ function AgentView({ agentId, onBack }: { agentId: string; onBack: () => void })
                         <td>{money(d.countedVolumeMinor, d.currency)}</td>
                         <td>
                           {money(d.amountMinor - d.clawbackMinor, d.currency)}
-                          {d.clawbackMinor > 0 && <span className="muted small"> ({money(d.clawbackMinor, d.currency)} taken back)</span>}
+                          {d.clawbackMinor > 0 && <span className="muted small"> ({t("{amount} taken back", { amount: money(d.clawbackMinor, d.currency) })})</span>}
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               ) : (
-                <p className="muted">No closed days yet.</p>
+                <p className="muted">{t("No closed days yet.")}</p>
               )}
             </div>
             <div className="card panel">
-              <h2>Weekly payouts</h2>
+              <h2>{t("Weekly payouts")}</h2>
               {data.payouts.length ? (
                 <table className="mini">
                   <thead>
                     <tr>
-                      <th>Week</th>
-                      <th>Pay</th>
-                      <th>Status</th>
+                      <th>{t("Week")}</th>
+                      <th>{t("Pay")}</th>
+                      <th>{t("Status")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -323,7 +326,7 @@ function AgentView({ agentId, onBack }: { agentId: string; onBack: () => void })
                   </tbody>
                 </table>
               ) : (
-                <p className="muted">No payouts yet.</p>
+                <p className="muted">{t("No payouts yet.")}</p>
               )}
             </div>
           </div>
@@ -342,9 +345,9 @@ function AgentView({ agentId, onBack }: { agentId: string; onBack: () => void })
           }}
         >
           <p>
-            <strong>{a.businessName || a.name}</strong> becomes a Sunu Pay agent. They buy their own float; Sunu Pay never lends to agents.
+            {t("{name} becomes a Sunu Pay agent. They buy their own float; Sunu Pay never lends to agents.", { name: a.businessName || a.name })}
           </p>
-          {!a.idChecked && <p className="notice">Their ID check has not passed yet, so cash outs stay blocked until it does.</p>}
+          {!a.idChecked && <p className="notice">{t("Their ID check has not passed yet, so cash outs stay blocked until it does.")}</p>}
         </ConfirmWithPin>
       )}
       {open?.action === "reject" && <Reject agentId={a.id} onClose={() => setOpen(null)} onDone={() => finish("Turned down. They will see your reason when they log in.")} />}
@@ -378,6 +381,7 @@ function Fact({ label, value }: { label: string; value: string }) {
 type RecordRow = AgentDetail["cashIns"][number] & { canReverse: boolean; extra: string };
 
 function Records({ title, rows, reverseAllowed, onReverse }: { title: string; rows: RecordRow[]; reverseAllowed: boolean; onReverse: (row: RecordRow) => void }) {
+  const t = useT();
   return (
     <div className="card panel">
       <h2>{title}</h2>
@@ -386,12 +390,12 @@ function Records({ title, rows, reverseAllowed, onReverse }: { title: string; ro
           <table>
             <thead>
               <tr>
-                <th>When</th>
-                <th>Reference</th>
-                <th>Customer</th>
-                <th>Amount</th>
-                <th>Status</th>
-                <th aria-label="Actions" />
+                <th>{t("When")}</th>
+                <th>{t("Reference")}</th>
+                <th>{t("Customer")}</th>
+                <th>{t("Amount")}</th>
+                <th>{t("Status")}</th>
+                <th aria-label={t("Actions")} />
               </tr>
             </thead>
             <tbody>
@@ -404,21 +408,22 @@ function Records({ title, rows, reverseAllowed, onReverse }: { title: string; ro
                     {money(row.amountMinor, row.currency)}
                     {row.extra && <div className="muted small">{row.extra}</div>}
                   </td>
-                  <td>{row.status}</td>
-                  <td className="actions">{reverseAllowed && row.canReverse && <button onClick={() => onReverse(row)}>Reverse</button>}</td>
+                  <td>{t(row.status)}</td>
+                  <td className="actions">{reverseAllowed && row.canReverse && <button onClick={() => onReverse(row)}>{t("Reverse")}</button>}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       ) : (
-        <p className="muted">None yet.</p>
+        <p className="muted">{t("None yet.")}</p>
       )}
     </div>
   );
 }
 
 function Reject({ agentId, onDone, onClose }: { agentId: string; onDone: () => void; onClose: () => void }) {
+  const t = useT();
   const [reason, setReason] = useState("");
   return (
     <ConfirmWithPin
@@ -433,7 +438,7 @@ function Reject({ agentId, onDone, onClose }: { agentId: string; onDone: () => v
         onDone();
       }}
     >
-      <p className="notice">The applicant sees this reason when they log in. Write it for them, politely.</p>
+      <p className="notice">{t("The applicant sees this reason when they log in. Write it for them, politely.")}</p>
       <TextArea label="Reason for the applicant" value={reason} onChange={setReason} min={5} max={300} />
     </ConfirmWithPin>
   );

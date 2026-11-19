@@ -1,4 +1,4 @@
-import { getLanguage } from "../i18n/language";
+import { getLanguage, useT } from "../i18n/language";
 import { analytics } from "../api/admin";
 import { LoadState, PageHeader } from "../components/common";
 import { money } from "../lib/format";
@@ -14,12 +14,13 @@ export function monthLabel(key: string): string {
 
 /** A horizontal bar for each row, drawn as wide as its share of the biggest. */
 export function Bars({ rows }: { rows: { label: string; value: number; note?: string }[] }) {
+  const t = useT();
   const biggest = Math.max(1, ...rows.map((r) => r.value));
   return (
     <ul className="bars">
       {rows.map((r) => (
         <li key={r.label}>
-          <span className="bar-label">{r.label}</span>
+          <span className="bar-label">{t(r.label)}</span>
           <span className="bar-track" aria-hidden>
             <span className="bar-fill" style={{ width: r.value > 0 ? `${Math.max(1, Math.round((r.value / biggest) * 100))}%` : 0 }} />
           </span>
@@ -31,6 +32,7 @@ export function Bars({ rows }: { rows: { label: string; value: number; note?: st
 }
 
 export function AnalyticsPage() {
+  const t = useT();
   const { data, error, loading } = useLoad(analytics, []);
   if (!data) return <LoadState loading={loading} error={error} empty={false} />;
 
@@ -43,33 +45,33 @@ export function AnalyticsPage() {
       <PageHeader title="Analytics" intro="How the business is doing. Counts only, with no personal details. Ticket figures are on the Tickets page." />
       <div className="grid stats">
         <div className="card tile">
-          <span className="muted">Customers</span>
+          <span className="muted">{t("Customers")}</span>
           <strong className="big">{data.totals.customers.toLocaleString("en-GB")}</strong>
         </div>
         <div className="card tile">
-          <span className="muted">Agents</span>
+          <span className="muted">{t("Agents")}</span>
           <strong className="big">{data.totals.agents.toLocaleString("en-GB")}</strong>
         </div>
         <div className="card tile">
-          <span className="muted">Active in the last 30 days</span>
+          <span className="muted">{t("Active in the last 30 days")}</span>
           <strong className="big">{data.activeCustomersLast30Days.toLocaleString("en-GB")}</strong>
-          <span className="muted small">People who spent money</span>
+          <span className="muted small">{t("People who spent money")}</span>
         </div>
         <div className="card tile">
-          <span className="muted">New sign-ups this month</span>
+          <span className="muted">{t("New sign-ups this month")}</span>
           <strong className="big">{latest?.signups ?? 0}</strong>
-          {previous && <span className="muted small">{previous.signups} last month</span>}
+          {previous && <span className="muted small">{t("{n} last month", { n: previous.signups })}</span>}
         </div>
       </div>
 
       <div className="card panel">
-        <h2>Sign-ups by month</h2>
+        <h2>{t("Sign-ups by month")}</h2>
         <Bars rows={data.months.map((m) => ({ label: monthLabel(m.month), value: m.signups }))} />
       </div>
 
       {currencies.map((currency) => (
         <div className="card panel" key={currency}>
-          <h2>Money spent by customers, {currency}</h2>
+          <h2>{t("Money spent by customers, {currency}", { currency })}</h2>
           <Bars
             rows={data.months.map((m) => {
               const row = m.volume.find((v) => v.currency === currency);
@@ -78,20 +80,20 @@ export function AnalyticsPage() {
           />
         </div>
       ))}
-      {!currencies.length && <p className="muted">No spending to show yet.</p>}
+      {!currencies.length && <p className="muted">{t("No spending to show yet.")}</p>}
 
       <div className="card panel">
-        <h2>Most and least used, last 90 days</h2>
+        <h2>{t("Most and least used, last 90 days")}</h2>
         {data.usageLast90Days.length ? (
           <>
             <Bars rows={data.usageLast90Days.map((u) => ({ label: TYPE_LABEL[u.type] ?? u.type, value: u.count }))} />
-            <p className="hint">Most used at the top, least used at the bottom.</p>
+            <p className="hint">{t("Most used at the top, least used at the bottom.")}</p>
           </>
         ) : (
-          <p className="muted">Nothing yet.</p>
+          <p className="muted">{t("Nothing yet.")}</p>
         )}
       </div>
-      <p className="hint">Revenue (the fees Sunu Pay keeps) is not here yet. It needs its own report from the ledger.</p>
+      <p className="hint">{t("Revenue (the fees Sunu Pay keeps) is not here yet. It needs its own report from the ledger.")}</p>
     </section>
   );
 }

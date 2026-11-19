@@ -3,6 +3,7 @@ import { auditTrail, type AuditEvent, type AuditKind } from "../api/admin";
 import { Badge, LoadState, PageHeader, Pager, Tabs } from "../components/common";
 import { when } from "../lib/format";
 import { useLoad } from "../lib/useLoad";
+import { useT } from "../i18n/language";
 
 /** What a line means, in plain words. */
 export function describeEvent(e: Pick<AuditEvent, "kind" | "method" | "route">): string {
@@ -32,6 +33,7 @@ export function resultOf(e: Pick<AuditEvent, "kind" | "status">): { label: strin
 }
 
 export function AuditPage() {
+  const t = useT();
   const [kind, setKind] = useState<AuditKind | "all">("all");
   const [who, setWho] = useState<{ id: string; name: string } | null>(null);
   const [page, setPage] = useState(1);
@@ -57,7 +59,7 @@ export function AuditPage() {
       />
       {who && (
         <p className="notice">
-          Showing {who.name || "one person"} only.{" "}
+          {t("Showing {name} only.", { name: who.name || t("one person") })}{" "}
           <button
             className="link"
             onClick={() => {
@@ -65,7 +67,7 @@ export function AuditPage() {
               setPage(1);
             }}
           >
-            Show everyone
+            {t("Show everyone")}
           </button>
         </p>
       )}
@@ -75,11 +77,11 @@ export function AuditPage() {
           <table>
             <thead>
               <tr>
-                <th>When</th>
-                <th>Who</th>
-                <th>What</th>
-                <th>Result</th>
-                <th>Address</th>
+                <th>{t("When")}</th>
+                <th>{t("Who")}</th>
+                <th>{t("What")}</th>
+                <th>{t("Result")}</th>
+                <th>{t("Address")}</th>
               </tr>
             </thead>
             <tbody>
@@ -96,12 +98,12 @@ export function AuditPage() {
                           setPage(1);
                         }}
                       >
-                        {e.staff.name || "Staff"}
+                        {e.staff.name || t("Staff")}
                       </button>
                     </td>
                     <td>
-                      {describeEvent(e)}
-                      {e.targets.length > 0 && <div className="muted small">about {e.targets.join(", ")}</div>}
+                      {t(describeEvent(e))}
+                      {e.targets.length > 0 && <div className="muted small">{t("about {names}", { names: e.targets.join(", ") })}</div>}
                     </td>
                     <td>
                       <Badge tone={r.tone}>{r.label}</Badge>

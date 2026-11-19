@@ -14,6 +14,7 @@ import { ConfirmWithPin } from "../components/ConfirmWithPin";
 import { when } from "../lib/format";
 import { newIdempotencyKey } from "../lib/idempotency";
 import { useLoad } from "../lib/useLoad";
+import { useT } from "../i18n/language";
 
 export const STATE_LABEL: Record<
   AnnouncementState,
@@ -57,6 +58,7 @@ const inDays = (days: number) => {
  * permission can take one down at once.
  */
 export function AnnouncementsPage() {
+  const t = useT();
   const { staff } = useAuth();
   const [reload, setReload] = useState(0);
   const [writing, setWriting] = useState(false);
@@ -80,11 +82,11 @@ export function AnnouncementsPage() {
         intro="Short notices customers see on the app's Home screen, in English or French. A different staff member must approve each one. Links and phone numbers are not allowed, so customers know a real SunuPay announcement never asks them to call or click."
         actions={
           <button className="primary" onClick={() => setWriting(true)}>
-            Write an announcement
+            {t("Write an announcement")}
           </button>
         }
       />
-      {done && <p className="notice">{done}</p>}
+      {done && <p className="notice">{t(done)}</p>}
       <LoadState
         loading={loading && !data}
         error={error}
@@ -98,12 +100,12 @@ export function AnnouncementsPage() {
         >
           <p>
             <Badge tone={STATE_LABEL[a.state].tone}>
-              {STATE_LABEL[a.state].label}
+              {t(STATE_LABEL[a.state].label)}
             </Badge>{" "}
             <span className="muted small">
-              {AUDIENCE_LABEL[a.audience]} ·{" "}
-              {a.country === "ALL" ? "All countries" : a.country} ·{" "}
-              {when(a.startsAt)} to {when(a.endsAt)}
+              {t(AUDIENCE_LABEL[a.audience])} ·{" "}
+              {a.country === "ALL" ? t("All countries") : a.country} ·{" "}
+              {t("{from} to {to}", { from: when(a.startsAt), to: when(a.endsAt) })}
             </span>
           </p>
           <h3>{a.titleEn}</h3>
@@ -112,27 +114,27 @@ export function AnnouncementsPage() {
             <strong>{a.titleFr}</strong> — {a.bodyFr}
           </p>
           <p className="muted small">
-            Written by {a.createdByName || "—"}, {when(a.createdAt)}
+            {t("Written by {name}, {when}", { name: a.createdByName || "—", when: when(a.createdAt) })}
             {a.approvedAt
-              ? ` · Approved by ${a.approvedByName || "—"}, ${when(a.approvedAt)}`
+              ? ` · ${t("Approved by {name}, {when}", { name: a.approvedByName || "—", when: when(a.approvedAt) })}`
               : ""}
             {a.withdrawnAt
-              ? ` · Taken down by ${a.withdrawnByName || "—"}, ${when(a.withdrawnAt)}${a.withdrawReason ? `: ${a.withdrawReason}` : ""}`
+              ? ` · ${t("Taken down by {name}, {when}", { name: a.withdrawnByName || "—", when: when(a.withdrawnAt) })}${a.withdrawReason ? `: ${a.withdrawReason}` : ""}`
               : ""}
           </p>
           {a.state === "waiting" && a.createdBy !== staff?._id && (
-            <button onClick={() => setApproving(a)}>Review and approve</button>
+            <button onClick={() => setApproving(a)}>{t("Review and approve")}</button>
           )}
           {a.state === "waiting" && a.createdBy === staff?._id && (
             <p className="hint">
-              You wrote this. A different staff member must approve it.
+              {t("You wrote this. A different staff member must approve it.")}
             </p>
           )}
           {(a.state === "waiting" ||
             a.state === "scheduled" ||
             a.state === "live") && (
             <button className="danger" onClick={() => setRemoving(a)}>
-              Take down
+              {t("Take down")}
             </button>
           )}
         </article>
@@ -165,6 +167,7 @@ function WriteDialog({
   onClose: () => void;
   onDone: (m: string) => void;
 }) {
+  const t = useT();
   const [draft, setDraft] = useState<AnnouncementDraft>({
     titleEn: "",
     titleFr: "",
@@ -194,7 +197,7 @@ function WriteDialog({
     max: number,
   ) => (
     <label>
-      {label}
+      {t(label)}
       {name.startsWith("title") ? (
         <input
           value={draft[name]}
@@ -210,7 +213,7 @@ function WriteDialog({
         />
       )}
       {draft[name] && problems[name] && (
-        <span className="hint warn-text">{problems[name]}</span>
+        <span className="hint warn-text">{problems[name]!.startsWith("3 to ") ? t("3 to {max} characters.", { max }) : t(problems[name]!)}</span>
       )}
     </label>
   );
@@ -240,18 +243,18 @@ function WriteDialog({
       {field("titleFr", "Title (French)", 80)}
       {field("bodyFr", "Message (French)", 400)}
       <label>
-        Who sees it
+        {t("Who sees it")}
         <select
           value={draft.audience}
           onChange={(e) => set("audience")(e.target.value)}
         >
-          <option value="all">Everyone</option>
-          <option value="user">Customers only</option>
-          <option value="agent">Agents only</option>
+          <option value="all">{t("Everyone")}</option>
+          <option value="user">{t("Customers only")}</option>
+          <option value="agent">{t("Agents only")}</option>
         </select>
       </label>
       <label>
-        Country (two letters, or ALL)
+        {t("Country (two letters, or ALL)")}
         <input
           value={draft.country}
           maxLength={3}
@@ -259,7 +262,7 @@ function WriteDialog({
         />
       </label>
       <label>
-        Starts
+        {t("Starts")}
         <input
           type="datetime-local"
           value={draft.startsAt}
@@ -267,7 +270,7 @@ function WriteDialog({
         />
       </label>
       <label>
-        Ends (30 days at most)
+        {t("Ends (30 days at most)")}
         <input
           type="datetime-local"
           value={draft.endsAt}
@@ -287,6 +290,7 @@ function ApproveDialog({
   onClose: () => void;
   onDone: (m: string) => void;
 }) {
+  const t = useT();
   const key = useMemo(newIdempotencyKey, []);
   return (
     <ConfirmWithPin
@@ -299,10 +303,7 @@ function ApproveDialog({
       }}
     >
       <p>
-        {AUDIENCE_LABEL[a.audience]} in{" "}
-        {a.country === "ALL" ? "all countries" : a.country} will see this from{" "}
-        {when(a.startsAt)} to {when(a.endsAt)}. Read both languages: you are the
-        second check.
+        {t("{who} in {country} will see this from {from} to {to}. Read both languages: you are the second check.", { who: t(AUDIENCE_LABEL[a.audience]), country: a.country === "ALL" ? t("all countries") : a.country, from: when(a.startsAt), to: when(a.endsAt) })}
       </p>
       <p>
         <strong>{a.titleEn}</strong>
@@ -327,6 +328,7 @@ function TakeDownDialog({
   onClose: () => void;
   onDone: (m: string) => void;
 }) {
+  const t = useT();
   const [reason, setReason] = useState("");
   return (
     <ConfirmWithPin
@@ -341,11 +343,10 @@ function TakeDownDialog({
       }}
     >
       <p>
-        "{a.titleEn}" stops showing straight away. This can't be undone: to show
-        it again, write it again.
+        {t("\"{title}\" stops showing straight away. This can't be undone: to show it again, write it again.", { title: a.titleEn })}
       </p>
       <label>
-        Why (optional)
+        {t("Why (optional)")}
         <input
           value={reason}
           maxLength={300}

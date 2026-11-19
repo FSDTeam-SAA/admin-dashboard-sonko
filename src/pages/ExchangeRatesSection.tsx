@@ -19,6 +19,8 @@ import { newIdempotencyKey } from "../lib/idempotency";
 import { personLabel, when } from "../lib/format";
 import { buildRateChange, examples, gmdPerEur, label, NAMES, sentence, toRatesForm, type RatesForm } from "../lib/ratesForm";
 import { useLoad } from "../lib/useLoad";
+import { useT } from "../i18n/language";
+import { tp } from "../i18n/patterns";
 
 const REASON_MIN = 10;
 const REASON_MAX = 500;
@@ -29,6 +31,7 @@ function feeText(bps: number) {
 
 /** Before and after, in plain words, for a waiting or past change. */
 function RateDiff({ change }: { change: RateChange }) {
+  const t = useT();
   const rows: { what: string; before: string; after: string }[] = [];
   for (const code of RATE_CURRENCIES) {
     if (change.before.ratesFromGmd?.[code] !== change.after.ratesFromGmd?.[code]) {
@@ -52,15 +55,15 @@ function RateDiff({ change }: { change: RateChange }) {
     <table className="diff">
       <thead>
         <tr>
-          <th>What</th>
-          <th>Now</th>
-          <th>Proposed</th>
+          <th>{t("What")}</th>
+          <th>{t("Now")}</th>
+          <th>{t("Proposed")}</th>
         </tr>
       </thead>
       <tbody>
         {rows.map((r) => (
           <tr key={r.what}>
-            <td>{r.what}</td>
+            <td>{t(r.what)}</td>
             <td>{r.before}</td>
             <td className="changed">{r.after}</td>
           </tr>
@@ -71,6 +74,7 @@ function RateDiff({ change }: { change: RateChange }) {
 }
 
 export function ExchangeRatesSection() {
+  const t = useT();
   const { staff } = useAuth();
   const [view, setView] = useState<"now" | "history">("now");
   const [open, setOpen] = useState<"propose" | "approve" | "cancel" | null>(null);
@@ -99,41 +103,41 @@ export function ExchangeRatesSection() {
         ] as const}
         onChange={setView}
       />
-      {done && <p className="notice">{done}</p>}
+      {done && <p className="notice">{t(done)}</p>}
       {view === "now" && (
         <>
           <LoadState loading={loading && !data} error={error} empty={false} />
           {settings && pending && (
             <div className="card panel">
               <div className="panel-head">
-                <h2>A change is waiting for approval</h2>
-                <Badge tone="warn">Expires {when(pending.expiresAt)}</Badge>
+                <h2>{t("A change is waiting for approval")}</h2>
+                <Badge tone="warn">{t("Expires {when}", { when: when(pending.expiresAt) })}</Badge>
               </div>
               <RateDiff change={pending} />
               <p className="small">
-                <strong>Why:</strong> {pending.reason}
+                <strong>{t("Why:")}</strong> {pending.reason}
               </p>
               <p className="muted small">
-                Proposed by {mine ? "you" : personLabel(people[pending.requestedBy ?? ""])} on {when(pending.createdAt)}
+                {t("Proposed by {name} on {when}", { name: mine ? t("you") : personLabel(people[pending.requestedBy ?? ""]), when: when(pending.createdAt) })}
               </p>
               <div className="row-end">
-                {senior && <button onClick={() => setOpen("cancel")}>Cancel change</button>}
+                {senior && <button onClick={() => setOpen("cancel")}>{t("Cancel change")}</button>}
                 {senior && !mine && (
                   <button className="primary" onClick={() => setOpen("approve")}>
-                    Approve change
+                    {t("Approve change")}
                   </button>
                 )}
-                {mine && <Badge tone="plain">A different person must approve</Badge>}
+                {mine && <Badge tone="plain">{t("A different person must approve")}</Badge>}
               </div>
             </div>
           )}
           {settings && (
             <div className="card panel">
               <div className="panel-head">
-                <h2>In force (version {settings.version})</h2>
+                <h2>{t("In force (version {n})", { n: settings.version })}</h2>
                 {senior && !pending && (
                   <button className="primary" onClick={() => setOpen("propose")}>
-                    Propose a change
+                    {t("Propose a change")}
                   </button>
                 )}
               </div>
@@ -168,6 +172,7 @@ function Row({ label: text, value }: { label: string; value: string }) {
 }
 
 function Propose({ settings, onDone, onClose }: { settings: RateSettings; onDone: () => void; onClose: () => void }) {
+  const t = useT();
   const original = useMemo(() => toRatesForm(settings), [settings]);
   const [form, setForm] = useState<RatesForm>(original);
   const [reason, setReason] = useState("");
@@ -188,34 +193,34 @@ function Propose({ settings, onDone, onClose }: { settings: RateSettings; onDone
         onDone();
       }}
     >
-      <p className="hint">Change only what moved. A different senior staff member must approve within 24 hours.</p>
+      <p className="hint">{t("Change only what moved. A different senior staff member must approve within 24 hours.")}</p>
       <div className="form-grid">
         {RATE_CURRENCIES.map((code) => (
           <label key={code}>
-            {NAMES[code]}: {label(code)}
+            {t(NAMES[code])}: {label(code)}
             <input inputMode="decimal" value={form.rates[code]} onChange={(e) => setRate(code, e.target.value)} />
           </label>
         ))}
         <label>
-          Swedish krona: 1 EUR = … SEK
+          {t("Swedish krona: 1 EUR = … SEK")}
           <input inputMode="decimal" value={form.sekPerEur} onChange={(e) => setForm((f) => ({ ...f, sekPerEur: e.target.value }))} />
         </label>
         <label>
-          Wallet transfer fee (%)
+          {t("Wallet transfer fee (%)")}
           <input inputMode="decimal" value={form.feePercent} onChange={(e) => setForm((f) => ({ ...f, feePercent: e.target.value }))} />
         </label>
       </div>
-      <p className="hint">The euro is not set here: it follows the CFA franc, which is fixed at 655.957 per euro.</p>
-      {built.errors.length > 0 && <p className="error">{built.errors.join(". ")}.</p>}
+      <p className="hint">{t("The euro is not set here: it follows the CFA franc, which is fixed at 655.957 per euro.")}</p>
+      {built.errors.length > 0 && <p className="error">{built.errors.map((e) => tp(t, e)).join(". ")}.</p>}
       {lines.length > 0 && (
         <div className="notice">
-          <strong>Check:</strong>
+          <strong>{t("Check:")}</strong>
           <ul className="flat">
             {lines.map((line) => (
-              <li key={line}>{line}</li>
+              <li key={line}>{tp(t, line)}</li>
             ))}
           </ul>
-          {built.warnings.length > 0 && <p className="small warn-text">{built.warnings.join(". ")}. Make sure that is right.</p>}
+          {built.warnings.length > 0 && <p className="small warn-text">{built.warnings.map((w) => tp(t, w)).join(". ")}. {t("Make sure that is right.")}</p>}
         </div>
       )}
       <TextArea label="Why" value={reason} onChange={setReason} min={REASON_MIN} max={REASON_MAX} />
@@ -224,6 +229,7 @@ function Propose({ settings, onDone, onClose }: { settings: RateSettings; onDone
 }
 
 function Approve({ change, people, onDone, onClose }: { change: RateChange; people: Record<string, Person>; onDone: () => void; onClose: () => void }) {
+  const t = useT();
   const key = useMemo(newIdempotencyKey, []);
   return (
     <ConfirmWithPin
@@ -237,14 +243,15 @@ function Approve({ change, people, onDone, onClose }: { change: RateChange; peop
     >
       <RateDiff change={change} />
       <p className="small">
-        <strong>Why:</strong> {change.reason} — {personLabel(people[change.requestedBy ?? ""])}
+        <strong>{t("Why:")}</strong> {change.reason} — {personLabel(people[change.requestedBy ?? ""])}
       </p>
-      <p className="hint">Every transfer uses the new rates the moment you approve. Check each one.</p>
+      <p className="hint">{t("Every transfer uses the new rates the moment you approve. Check each one.")}</p>
     </ConfirmWithPin>
   );
 }
 
 function Cancel({ change, onDone, onClose }: { change: RateChange; onDone: () => void; onClose: () => void }) {
+  const t = useT();
   const [reason, setReason] = useState("");
   return (
     <ConfirmWithPin
@@ -258,7 +265,7 @@ function Cancel({ change, onDone, onClose }: { change: RateChange; onDone: () =>
         onDone();
       }}
     >
-      <p>Nothing will change.</p>
+      <p>{t("Nothing will change.")}</p>
       <TextArea label="Why" value={reason} onChange={setReason} min={5} max={500} />
     </ConfirmWithPin>
   );
@@ -273,6 +280,7 @@ const STATUS_LABEL: Record<RateChange["status"], string> = {
 };
 
 function History() {
+  const t = useT();
   const [page, setPage] = useState(1);
   const { data, error, loading } = useLoad(() => rateHistory(page), [page]);
   const rows = data?.changes ?? [];
@@ -285,29 +293,29 @@ function History() {
         <div key={change.id} className="card panel">
           <div className="panel-head">
             <h2 className="small-title">{when(change.createdAt)}</h2>
-            <Badge tone={change.status === "approved" ? "ok" : change.status === "pending" ? "warn" : "plain"}>{STATUS_LABEL[change.status]}</Badge>
+            <Badge tone={change.status === "approved" ? "ok" : change.status === "pending" ? "warn" : "plain"}>{t(STATUS_LABEL[change.status])}</Badge>
           </div>
           <RateDiff change={change} />
           <p className="small">
-            <strong>Why:</strong> {change.reason}
+            <strong>{t("Why:")}</strong> {change.reason}
           </p>
           <p className="muted small">
-            Proposed by {personLabel(people[change.requestedBy ?? ""])}
-            {change.approvedBy && ` · approved by ${personLabel(people[change.approvedBy])} on ${when(change.approvedAt)}`}
-            {change.cancelledBy && ` · cancelled by ${personLabel(people[change.cancelledBy])}${change.cancelReason ? `: ${change.cancelReason}` : ""}`}
+            {t("Proposed by {name}", { name: personLabel(people[change.requestedBy ?? ""]) })}
+            {change.approvedBy && ` · ${t("approved by {name} on {when}", { name: personLabel(people[change.approvedBy]), when: when(change.approvedAt) })}`}
+            {change.cancelledBy && ` · ${t("cancelled by {name}", { name: personLabel(people[change.cancelledBy]) })}${change.cancelReason ? `: ${change.cancelReason}` : ""}`}
           </p>
         </div>
       ))}
       {pages > 1 && (
         <div className="pager">
           <button disabled={page <= 1} onClick={() => setPage(page - 1)}>
-            Previous
+            {t("Previous")}
           </button>
           <span className="muted">
-            Page {page} of {pages}
+            {t("Page {page} of {pages}", { page, pages })}
           </span>
           <button disabled={page >= pages} onClick={() => setPage(page + 1)}>
-            Next
+            {t("Next")}
           </button>
         </div>
       )}

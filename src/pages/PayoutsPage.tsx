@@ -18,6 +18,7 @@ import { Badge, LoadState, PageHeader, Pager, Tabs, TextArea, okLength } from ".
 import { newIdempotencyKey } from "../lib/idempotency";
 import { money, personLabel } from "../lib/format";
 import { useLoad } from "../lib/useLoad";
+import { useT } from "../i18n/language";
 
 // What each fraud check flag means, for the person deciding.
 export const FLAG_LABEL: Record<string, string> = {
@@ -38,6 +39,7 @@ const week = (p: Payout) => {
 type Open = { action: "approve" | "hold" | "release"; row: Payout } | { action: "batch"; rows: Payout[] } | null;
 
 export function PayoutsPage() {
+  const t = useT();
   const { staff } = useAuth();
   const [status, setStatus] = useState<PayoutStatus>("in_review");
   const [page, setPage] = useState(1);
@@ -78,7 +80,7 @@ export function PayoutsPage() {
         actions={
           canApprove && status === "in_review" && pickedRows.length > 0 ? (
             <button className="primary" onClick={() => setOpen({ action: "batch", rows: pickedRows })}>
-              Approve {pickedRows.length} selected
+              {t("Approve {n} selected", { n: pickedRows.length })}
             </button>
           ) : undefined
         }
@@ -98,21 +100,21 @@ export function PayoutsPage() {
           setPicked(new Set());
         }}
       />
-      {done && <p className="notice">{done}</p>}
+      {done && <p className="notice">{t(done)}</p>}
       <LoadState loading={loading && !data} error={error} empty={!rows.length} />
       {rows.length > 0 && (
         <div className="table-wrap card">
           <table>
             <thead>
               <tr>
-                {canApprove && status === "in_review" && <th aria-label="Select" />}
-                <th>Agent</th>
-                <th>Week</th>
-                <th>Activity</th>
-                <th>Pay</th>
-                <th>Checks</th>
-                <th>Approvals</th>
-                <th aria-label="Actions" />
+                {canApprove && status === "in_review" && <th aria-label={t("Select")} />}
+                <th>{t("Agent")}</th>
+                <th>{t("Week")}</th>
+                <th>{t("Activity")}</th>
+                <th>{t("Pay")}</th>
+                <th>{t("Checks")}</th>
+                <th>{t("Approvals")}</th>
+                <th aria-label={t("Actions")} />
               </tr>
             </thead>
             <tbody>
@@ -130,21 +132,21 @@ export function PayoutsPage() {
                     </td>
                   )}
                   <td>
-                    {row.agent.business_name || "Agent"}
+                    {row.agent.business_name || t("Agent")}
                     <div className="muted small">{row.country}</div>
                   </td>
                   <td>{week(row)}</td>
                   <td className="small">
-                    {row.days_earned} days earned
+                    {t("{n} days earned", { n: row.days_earned })}
                     <div className="muted">
-                      {row.cashout_count} cash outs, {row.cashin_count} cash ins
+                      {t("{out} cash outs, {inn} cash ins", { out: row.cashout_count, inn: row.cashin_count })}
                     </div>
                   </td>
                   <td className="num">
                     <strong>{money(row.net.amount, row.net.currency)}</strong>
                     {row.clawbacks.amount > 0 && (
                       <div className="muted small">
-                        {money(row.gross.amount, row.gross.currency)} less {money(row.clawbacks.amount, row.clawbacks.currency)} taken back
+                        {t("{gross} less {back} taken back", { gross: money(row.gross.amount, row.gross.currency), back: money(row.clawbacks.amount, row.clawbacks.currency) })}
                       </div>
                     )}
                   </td>
@@ -152,37 +154,37 @@ export function PayoutsPage() {
                     {row.fraud_check.flags.length ? (
                       row.fraud_check.flags.map((f) => (
                         <div key={f}>
-                          <Badge tone="danger">{FLAG_LABEL[f] || f}</Badge>
+                          <Badge tone="danger">{t(FLAG_LABEL[f] || f)}</Badge>
                         </div>
                       ))
                     ) : (
-                      <Badge tone="ok">No flags</Badge>
+                      <Badge tone="ok">{t("No flags")}</Badge>
                     )}
                   </td>
                   <td className="small">
-                    {row.approved_by.length} of {APPROVALS_NEEDED}
+                    {t("{done} of {needed}", { done: row.approved_by.length, needed: APPROVALS_NEEDED })}
                     {row.approved_by.map((a) => (
                       <div key={a.id} className="muted">
-                        {a.id === me ? "You" : personLabel(people[a.id])}
+                        {a.id === me ? t("You") : personLabel(people[a.id])}
                       </div>
                     ))}
                   </td>
                   <td className="actions">
                     {row.status === "in_review" && canApprove && !approvedByMe(row) && (
                       <button className="primary" onClick={() => setOpen({ action: "approve", row })}>
-                        Approve
+                        {t("Approve")}
                       </button>
                     )}
                     {row.status === "approved" && canApprove && (
                       <button className="primary" onClick={() => setOpen({ action: "approve", row })}>
-                        Try payment again
+                        {t("Try payment again")}
                       </button>
                     )}
                     {row.status === "in_review" && can(staff, "hold_commission") && (
-                      <button onClick={() => setOpen({ action: "hold", row })}>Hold</button>
+                      <button onClick={() => setOpen({ action: "hold", row })}>{t("Hold")}</button>
                     )}
                     {row.status === "held" && can(staff, "release_commission") && (
-                      <button onClick={() => setOpen({ action: "release", row })}>Release</button>
+                      <button onClick={() => setOpen({ action: "release", row })}>{t("Release")}</button>
                     )}
                   </td>
                 </tr>
@@ -203,6 +205,7 @@ export function PayoutsPage() {
 }
 
 function Approve({ row, people, onDone, onClose }: { row: Payout; people: Record<string, Person>; onDone: (m: string) => void; onClose: () => void }) {
+  const t = useT();
   const key = useMemo(newIdempotencyKey, []);
   const second = row.approved_by.length >= APPROVALS_NEEDED - 1 || row.status === "approved";
   return (
@@ -216,35 +219,36 @@ function Approve({ row, people, onDone, onClose }: { row: Payout; people: Record
       }}
     >
       <dl className="facts">
-        <dt>Agent</dt>
+        <dt>{t("Agent")}</dt>
         <dd>{row.agent.business_name || "Agent"}</dd>
-        <dt>Week</dt>
+        <dt>{t("Week")}</dt>
         <dd>{week(row)}</dd>
-        <dt>Pay</dt>
+        <dt>{t("Pay")}</dt>
         <dd>{money(row.net.amount, row.net.currency)}</dd>
         {row.approved_by.length > 0 && (
           <>
-            <dt>Already approved by</dt>
+            <dt>{t("Already approved by")}</dt>
             <dd>{row.approved_by.map((a) => personLabel(people[a.id])).join(", ")}</dd>
           </>
         )}
       </dl>
       {row.fraud_check.flags.length > 0 && (
         <div className="notice">
-          <strong>Check these before approving:</strong>
+          <strong>{t("Check these before approving:")}</strong>
           <ul className="flat">
             {row.fraud_check.flags.map((f) => (
-              <li key={f}>{FLAG_LABEL[f] || f}</li>
+              <li key={f}>{t(FLAG_LABEL[f] || f)}</li>
             ))}
           </ul>
         </div>
       )}
-      <p className="hint">{second ? "This pays the agent now." : "Nothing is paid until a second person approves."}</p>
+      <p className="hint">{second ? t("This pays the agent now.") : t("Nothing is paid until a second person approves.")}</p>
     </ConfirmWithPin>
   );
 }
 
 function HoldOrRelease({ row, release, onDone, onClose }: { row: Payout; release: boolean; onDone: (m: string) => void; onClose: () => void }) {
+  const t = useT();
   const [reason, setReason] = useState("");
   return (
     <ConfirmWithPin
@@ -260,15 +264,16 @@ function HoldOrRelease({ row, release, onDone, onClose }: { row: Payout; release
       }}
     >
       <p>
-        {row.agent.business_name || "Agent"}, {week(row)}: {money(row.net.amount, row.net.currency)}.
+        {row.agent.business_name || t("Agent")}, {week(row)}: {money(row.net.amount, row.net.currency)}.
       </p>
-      <p className="hint">{release ? "Any earlier approvals are cleared; two people must approve again." : "Any approvals so far are cleared."}</p>
+      <p className="hint">{release ? t("Any earlier approvals are cleared; two people must approve again.") : t("Any approvals so far are cleared.")}</p>
       <TextArea label="Why" value={reason} onChange={setReason} min={5} max={500} />
     </ConfirmWithPin>
   );
 }
 
 function Batch({ rows, onDone, onClose }: { rows: Payout[]; onDone: (m: string) => void; onClose: () => void }) {
+  const t = useT();
   const key = useMemo(newIdempotencyKey, []);
   const [results, setResults] = useState<BatchResult[] | null>(null);
   const total = rows.reduce((sum, r) => sum + r.net.amount, 0);
@@ -278,9 +283,9 @@ function Batch({ rows, onDone, onClose }: { rows: Payout[]; onDone: (m: string) 
     return (
       <div className="overlay" role="presentation">
         <div className="card dialog stack" role="dialog" aria-modal="true">
-          <h2>Batch approval done</h2>
+          <h2>{t("Batch approval done")}</h2>
           <p>
-            Paid: {count("paid")}. Approved once (a second person must approve): {count("approved_once")}. Refused: {count("refused")}.
+            {t("Paid: {paid}. Approved once (a second person must approve): {once}. Refused: {refused}.", { paid: count("paid"), once: count("approved_once"), refused: count("refused") })}
           </p>
           {results
             .filter((r) => r.result === "refused")
@@ -291,7 +296,7 @@ function Batch({ rows, onDone, onClose }: { rows: Payout[]; onDone: (m: string) 
             ))}
           <div className="row-end">
             <button className="primary" onClick={() => onDone("Batch approval done.")}>
-              Close
+              {t("Close")}
             </button>
           </div>
         </div>
@@ -300,15 +305,14 @@ function Batch({ rows, onDone, onClose }: { rows: Payout[]; onDone: (m: string) 
   }
   return (
     <ConfirmWithPin
-      title={`Approve ${rows.length} payouts`}
+      title={t("Approve {n} payouts", { n: rows.length })}
       confirmLabel="Approve all"
       onClose={onClose}
       onConfirm={async (pin) => setResults((await approvePayoutBatch(rows.map((r) => r.id), pin, key)).results)}
     >
       <p>
-        {rows.length} payouts with no fraud flags
-        {currencies.length === 1 ? `, ${money(total, currencies[0]!)} in total` : ""}. Each still needs two different
-        people; the ones you are the second person for are paid now.
+        {t("{n} payouts with no fraud flags", { n: rows.length })}
+        {currencies.length === 1 ? t(", {total} in total", { total: money(total, currencies[0]!) }) : ""}. {t("Each still needs two different people; the ones you are the second person for are paid now.")}
       </p>
     </ConfirmWithPin>
   );

@@ -6,6 +6,7 @@ import { Badge, LoadState, PageHeader, Pager } from "../components/common";
 import { AskReversalDialog, PlaceHoldDialog, SCOPE_LABEL } from "../components/dialogs";
 import { moneyMajor, personLabel, when } from "../lib/format";
 import { useLoad } from "../lib/useLoad";
+import { useT } from "../i18n/language";
 
 const STATUS_LABEL: Record<string, string> = {
   pending: "Not paid",
@@ -22,6 +23,7 @@ const who = (p: { name?: string; username?: string; phone?: string } | null) =>
   personLabel(p ? { name: p.name || p.username, phone: p.phone } : null);
 
 export function ReportsPage() {
+  const t = useT();
   const { staff } = useAuth();
   const [page, setPage] = useState(1);
   const [open, setOpen] = useState<Open>(null);
@@ -38,20 +40,20 @@ export function ReportsPage() {
   return (
     <section>
       <PageHeader title="Reported requests" intro="Payment requests a customer reported, newest first." />
-      {done && <p className="notice">{done}</p>}
+      {done && <p className="notice">{t(done)}</p>}
       <LoadState loading={loading && !data} error={error} empty={!rows.length} />
       {rows.length > 0 && (
         <div className="table-wrap card">
           <table>
             <thead>
               <tr>
-                <th>Reported</th>
-                <th>Asked by</th>
-                <th>Reported by (payer)</th>
-                <th>Amount</th>
-                <th>Status</th>
-                <th>Why</th>
-                <th aria-label="Actions" />
+                <th>{t("Reported")}</th>
+                <th>{t("Asked by")}</th>
+                <th>{t("Reported by (payer)")}</th>
+                <th>{t("Amount")}</th>
+                <th>{t("Status")}</th>
+                <th>{t("Why")}</th>
+                <th aria-label={t("Actions")} />
               </tr>
             </thead>
             <tbody>
@@ -73,14 +75,14 @@ export function ReportsPage() {
                     <td>{who(row.payer)}</td>
                     <td className="num">{moneyMajor(row.amount, row.currency)}</td>
                     <td>
-                      {row.refundedAt ? <Badge tone="ok">Refunded</Badge> : <Badge tone={row.status === "paid" ? "warn" : "plain"}>{STATUS_LABEL[row.status] || row.status}</Badge>}
+                      {row.refundedAt ? <Badge tone="ok">{t("Refunded")}</Badge> : <Badge tone={row.status === "paid" ? "warn" : "plain"}>{STATUS_LABEL[row.status] || row.status}</Badge>}
                     </td>
                     <td className="wrap">{row.reportReason || "—"}</td>
                     <td className="actions">
                       {canHold && (
-                        <button onClick={() => setOpen({ action: "hold", row })}>{hold?.active ? "Make full hold" : "Hold"}</button>
+                        <button onClick={() => setOpen({ action: "hold", row })}>{hold?.active ? t("Make full hold") : t("Put on hold")}</button>
                       )}
-                      {canRefund && <button onClick={() => setOpen({ action: "refund", row })}>Refund payer</button>}
+                      {canRefund && <button onClick={() => setOpen({ action: "refund", row })}>{t("Refund payer")}</button>}
                     </td>
                   </tr>
                 );
@@ -105,7 +107,7 @@ export function ReportsPage() {
           kind="payment_request"
           targetId={open.row._id}
           title="Refund the payer"
-          summary={`Give ${moneyMajor(open.row.amount, open.row.currency)} back to ${who(open.row.payer)}, taken from ${who(open.row.requester)}.`}
+          summary={t("Give {amount} back to {payer}, taken from {requester}.", { amount: moneyMajor(open.row.amount, open.row.currency), payer: who(open.row.payer), requester: who(open.row.requester) })}
           onClose={() => setOpen(null)}
           onDone={() => finish("Refund asked for. A different staff member must approve it on the Refunds and reversals page.")}
         />

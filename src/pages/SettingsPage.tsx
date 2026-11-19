@@ -20,6 +20,7 @@ import { newIdempotencyKey } from "../lib/idempotency";
 import { money, personLabel, when } from "../lib/format";
 import { changesFrom, FIELD_LABEL, fromForm, toForm, type SettingsForm } from "../lib/settingsForm";
 import { useLoad } from "../lib/useLoad";
+import { getLanguage, translate, useT } from "../i18n/language";
 
 // Countries that can have Cash Out settings. The server says if one is not set up yet.
 const COUNTRIES = [
@@ -35,14 +36,14 @@ function show(field: EditableField, value: unknown, currency: string): ReactNode
   if (value === undefined || value === null) return "—";
   switch (field) {
     case "enabled":
-      return value ? "On" : "Off";
+      return translate(value ? "On" : "Off", getLanguage());
     case "customerFeeBps":
       return `${Number(value) / 100}%`;
     case "maxPendingPerAgent":
       return String(value);
     case "codeTtlSeconds":
     case "pendingTtlSeconds":
-      return `${value} seconds`;
+      return translate("{n} seconds", getLanguage(), { n: String(value) });
     case "commissionTiers":
       return <TierTable tiers={value as Tier[]} currency={currency} />;
     default:
@@ -51,14 +52,15 @@ function show(field: EditableField, value: unknown, currency: string): ReactNode
 }
 
 function TierTable({ tiers, currency }: { tiers: Tier[]; currency: string }) {
+  const t = useT();
   return (
     <table className="mini">
       <thead>
         <tr>
-          <th>Tier</th>
-          <th>Day's volume from</th>
-          <th>Customers from</th>
-          <th>Agent earns</th>
+          <th>{t("Tier")}</th>
+          <th>{t("Day's volume from")}</th>
+          <th>{t("Customers from")}</th>
+          <th>{t("Agent earns")}</th>
         </tr>
       </thead>
       <tbody>
@@ -76,6 +78,7 @@ function TierTable({ tiers, currency }: { tiers: Tier[]; currency: string }) {
 }
 
 export function CashOutSettingsSection() {
+  const t = useT();
   const { staff } = useAuth();
   const [country, setCountry] = useState<Country>("GM");
   const [view, setView] = useState<"now" | "history">("now");
@@ -99,7 +102,7 @@ export function CashOutSettingsSection() {
         title="Agent cash out"
         intro="Cash out fees, agent daily pay and limits, by country."
         actions={
-          <select aria-label="Country" value={country} onChange={(e) => setCountry(e.target.value as Country)}>
+          <select aria-label={t("Country")} value={country} onChange={(e) => setCountry(e.target.value as Country)}>
             {COUNTRIES.map(([code, label]) => (
               <option key={code} value={code}>
                 {label}
@@ -116,7 +119,7 @@ export function CashOutSettingsSection() {
         ] as const}
         onChange={setView}
       />
-      {done && <p className="notice">{done}</p>}
+      {done && <p className="notice">{t(done)}</p>}
 
       {view === "now" && (
         <>
@@ -124,39 +127,39 @@ export function CashOutSettingsSection() {
           {settings && pending && (
             <div className="card panel">
               <div className="panel-head">
-                <h2>A change is waiting for approval</h2>
-                <Badge tone="warn">Expires {when(pending.expiresAt)}</Badge>
+                <h2>{t("A change is waiting for approval")}</h2>
+                <Badge tone="warn">{t("Expires {when}", { when: when(pending.expiresAt) })}</Badge>
               </div>
               <ChangeDiff change={pending} currency={settings.currency} />
               <p className="small">
-                <strong>Why:</strong> {pending.reason}
+                <strong>{t("Why:")}</strong> {pending.reason}
               </p>
               <p className="muted small">
-                Proposed by {mine ? "you" : personLabel(people[pending.requestedBy ?? ""])} on {when(pending.createdAt)}
+                {t("Proposed by {name} on {when}", { name: mine ? t("you") : personLabel(people[pending.requestedBy ?? ""]), when: when(pending.createdAt) })}
               </p>
               <div className="row-end">
-                {can(staff, "manage_rates") && <button onClick={() => setOpen("cancel")}>Cancel change</button>}
+                {can(staff, "manage_rates") && <button onClick={() => setOpen("cancel")}>{t("Cancel change")}</button>}
                 {can(staff, "manage_rates") && !mine && (
                   <button className="primary" onClick={() => setOpen("approve")}>
-                    Approve change
+                    {t("Approve change")}
                   </button>
                 )}
-                {mine && <Badge tone="plain">A different person must approve</Badge>}
+                {mine && <Badge tone="plain">{t("A different person must approve")}</Badge>}
               </div>
             </div>
           )}
           {settings && (
             <div className="card panel">
               <div className="panel-head">
-                <h2>In force (version {settings.version})</h2>
+                <h2>{t("In force (version {n})", { n: settings.version })}</h2>
                 {can(staff, "manage_rates") && !pending && (
                   <button className="primary" onClick={() => setOpen("propose")}>
-                    Propose a change
+                    {t("Propose a change")}
                   </button>
                 )}
               </div>
               {settings.commissionTiersFromDay && (
-                <p className="notice">New agent pay tiers start on {settings.commissionTiersFromDay}. Until then the earlier tiers apply.</p>
+                <p className="notice">{t("New agent pay tiers start on {day}. Until then the earlier tiers apply.", { day: settings.commissionTiersFromDay })}</p>
               )}
               <dl className="facts wide">
                 {(Object.keys(FIELD_LABEL) as EditableField[]).map((field) => (
@@ -183,22 +186,24 @@ export function CashOutSettingsSection() {
 }
 
 function Row({ label, children }: { label: string; children: ReactNode }) {
+  const t = useT();
   return (
     <>
-      <dt>{label}</dt>
+      <dt>{t(label)}</dt>
       <dd>{children}</dd>
     </>
   );
 }
 
 function ChangeDiff({ change, currency }: { change: SettingsChange; currency: string }) {
+  const t = useT();
   return (
     <table className="diff">
       <thead>
         <tr>
-          <th>Setting</th>
-          <th>Now</th>
-          <th>Proposed</th>
+          <th>{t("Setting")}</th>
+          <th>{t("Now")}</th>
+          <th>{t("Proposed")}</th>
         </tr>
       </thead>
       <tbody>
@@ -215,6 +220,7 @@ function ChangeDiff({ change, currency }: { change: SettingsChange; currency: st
 }
 
 function Approve({ change, currency, people, onDone, onClose }: { change: SettingsChange; currency: string; people: Record<string, Person>; onDone: () => void; onClose: () => void }) {
+  const t = useT();
   const key = useMemo(newIdempotencyKey, []);
   return (
     <ConfirmWithPin
@@ -228,14 +234,15 @@ function Approve({ change, currency, people, onDone, onClose }: { change: Settin
     >
       <ChangeDiff change={change} currency={currency} />
       <p className="small">
-        <strong>Why:</strong> {change.reason} — {personLabel(people[change.requestedBy ?? ""])}
+        <strong>{t("Why:")}</strong> {change.reason} — {personLabel(people[change.requestedBy ?? ""])}
       </p>
-      <p className="hint">It applies as soon as you approve. New pay tiers start from the next full day.</p>
+      <p className="hint">{t("It applies as soon as you approve. New pay tiers start from the next full day.")}</p>
     </ConfirmWithPin>
   );
 }
 
 function Cancel({ change, onDone, onClose }: { change: SettingsChange; onDone: () => void; onClose: () => void }) {
+  const t = useT();
   const [reason, setReason] = useState("");
   return (
     <ConfirmWithPin
@@ -249,13 +256,14 @@ function Cancel({ change, onDone, onClose }: { change: SettingsChange; onDone: (
         onDone();
       }}
     >
-      <p>Nothing will change. Anyone can propose again afterwards.</p>
+      <p>{t("Nothing will change. Anyone can propose again afterwards.")}</p>
       <TextArea label="Why" value={reason} onChange={setReason} min={5} max={500} />
     </ConfirmWithPin>
   );
 }
 
 function Propose({ settings, onDone, onClose }: { settings: CashOutSettings; onDone: () => void; onClose: () => void }) {
+  const t = useT();
   const [form, setForm] = useState<SettingsForm>(() => toForm(settings));
   const [reason, setReason] = useState("");
   const key = useMemo(newIdempotencyKey, []);
@@ -269,13 +277,13 @@ function Propose({ settings, onDone, onClose }: { settings: CashOutSettings; onD
 
   const money_ = (label: string, value: string, onChange: (v: string) => void) => (
     <label>
-      {label} ({c})
+      {t(label)} ({c})
       <input inputMode="decimal" value={value} onChange={(e) => onChange(e.target.value)} />
     </label>
   );
   const whole = (label: string, value: string, onChange: (v: string) => void) => (
     <label>
-      {label}
+      {t(label)}
       <input inputMode="numeric" value={value} onChange={(e) => onChange(e.target.value)} />
     </label>
   );
@@ -291,14 +299,14 @@ function Propose({ settings, onDone, onClose }: { settings: CashOutSettings; onD
         onDone();
       }}
     >
-      <p className="hint">Change only what you need. A different staff member must approve within 24 hours.</p>
+      <p className="hint">{t("Change only what you need. A different staff member must approve within 24 hours.")}</p>
       <label className="check">
         <input type="checkbox" checked={form.enabled} onChange={(e) => set({ enabled: e.target.checked })} />
-        Cash out switched on
+        {t("Cash out switched on")}
       </label>
       <div className="form-grid">
         <label>
-          Customer fee (%)
+          {t("Customer fee (%)")}
           <input inputMode="decimal" value={form.feePercent} onChange={(e) => set({ feePercent: e.target.value })} />
         </label>
         {money_("Customer fee, fixed", form.feeFixed, (v) => set({ feeFixed: v }))}
@@ -310,33 +318,33 @@ function Propose({ settings, onDone, onClose }: { settings: CashOutSettings; onD
         {whole("Time to confirm (seconds)", form.pendingSeconds, (v) => set({ pendingSeconds: v }))}
       </div>
       <fieldset className="choices">
-        <legend>Agent daily pay tiers (the highest one reached pays)</legend>
+        <legend>{t("Agent daily pay tiers (the highest one reached pays)")}</legend>
         <table className="mini edit">
           <thead>
             <tr>
-              <th>Tier</th>
-              <th>Volume from ({c})</th>
-              <th>Customers from</th>
-              <th>Pays ({c})</th>
-              <th aria-label="Remove" />
+              <th>{t("Tier")}</th>
+              <th>{t("Volume from ({c})", { c })}</th>
+              <th>{t("Customers from")}</th>
+              <th>{t("Pays ({c})", { c })}</th>
+              <th aria-label={t("Remove")} />
             </tr>
           </thead>
           <tbody>
-            {form.tiers.map((t, i) => (
+            {form.tiers.map((tier, i) => (
               <tr key={i}>
                 <td>{i + 1}</td>
                 <td>
-                  <input aria-label={`Tier ${i + 1} volume`} inputMode="decimal" value={t.volume} onChange={(e) => setTier(i, { volume: e.target.value })} />
+                  <input aria-label={`Tier ${i + 1} volume`} inputMode="decimal" value={tier.volume} onChange={(e) => setTier(i, { volume: e.target.value })} />
                 </td>
                 <td>
-                  <input aria-label={`Tier ${i + 1} customers`} inputMode="numeric" value={t.customers} onChange={(e) => setTier(i, { customers: e.target.value })} />
+                  <input aria-label={`Tier ${i + 1} customers`} inputMode="numeric" value={tier.customers} onChange={(e) => setTier(i, { customers: e.target.value })} />
                 </td>
                 <td>
-                  <input aria-label={`Tier ${i + 1} pay`} inputMode="decimal" value={t.pay} onChange={(e) => setTier(i, { pay: e.target.value })} />
+                  <input aria-label={`Tier ${i + 1} pay`} inputMode="decimal" value={tier.pay} onChange={(e) => setTier(i, { pay: e.target.value })} />
                 </td>
                 <td>
                   <button type="button" className="link" onClick={() => setForm((f) => ({ ...f, tiers: f.tiers.filter((_, j) => j !== i) }))}>
-                    Remove
+                    {t("Remove")}
                   </button>
                 </td>
               </tr>
@@ -344,13 +352,13 @@ function Propose({ settings, onDone, onClose }: { settings: CashOutSettings; onD
           </tbody>
         </table>
         <button type="button" className="link" onClick={() => setForm((f) => ({ ...f, tiers: [...f.tiers, { volume: "", customers: "", pay: "" }] }))}>
-          Add a tier
+          {t("Add a tier")}
         </button>
       </fieldset>
-      {built.errors.length > 0 && <p className="error">Check: {built.errors.join(", ")}.</p>}
+      {built.errors.length > 0 && <p className="error">{t("Check: {list}.", { list: built.errors.map((e) => t(e)).join(", ") })}</p>}
       {!built.errors.length && changed.length > 0 && (
         <p className="small">
-          <strong>Changing:</strong> {changed.map((f) => FIELD_LABEL[f]).join(", ")}
+          <strong>{t("Changing:")}</strong> {changed.map((f) => t(FIELD_LABEL[f])).join(", ")}
         </p>
       )}
       <TextArea label="Why" value={reason} onChange={setReason} min={REASON_MIN} max={REASON_MAX} />
@@ -374,6 +382,7 @@ const STATUS_LABEL: Record<SettingsChange["status"], string> = {
 };
 
 function History({ country, currency }: { country: string; currency: string }) {
+  const t = useT();
   const [page, setPage] = useState(1);
   const { data, error, loading } = useLoad(() => settingsHistory(country, page), [country, page]);
   const rows = data?.changes ?? [];
@@ -386,29 +395,29 @@ function History({ country, currency }: { country: string; currency: string }) {
         <div key={change.id} className="card panel">
           <div className="panel-head">
             <h2 className="small-title">{when(change.createdAt)}</h2>
-            <Badge tone={STATUS_TONE[change.status]}>{STATUS_LABEL[change.status]}</Badge>
+            <Badge tone={STATUS_TONE[change.status]}>{t(STATUS_LABEL[change.status])}</Badge>
           </div>
           <ChangeDiff change={change} currency={currency} />
           <p className="small">
-            <strong>Why:</strong> {change.reason}
+            <strong>{t("Why:")}</strong> {change.reason}
           </p>
           <p className="muted small">
-            Proposed by {personLabel(people[change.requestedBy ?? ""])}
-            {change.approvedBy && ` · approved by ${personLabel(people[change.approvedBy])} on ${when(change.approvedAt)}`}
-            {change.cancelledBy && ` · cancelled by ${personLabel(people[change.cancelledBy])}${change.cancelReason ? `: ${change.cancelReason}` : ""}`}
+            {t("Proposed by {name}", { name: personLabel(people[change.requestedBy ?? ""]) })}
+            {change.approvedBy && ` · ${t("approved by {name} on {when}", { name: personLabel(people[change.approvedBy]), when: when(change.approvedAt) })}`}
+            {change.cancelledBy && ` · ${t("cancelled by {name}", { name: personLabel(people[change.cancelledBy]) })}${change.cancelReason ? `: ${change.cancelReason}` : ""}`}
           </p>
         </div>
       ))}
       {pages > 1 && (
         <div className="pager">
           <button disabled={page <= 1} onClick={() => setPage(page - 1)}>
-            Previous
+            {t("Previous")}
           </button>
           <span className="muted">
-            Page {page} of {pages}
+            {t("Page {page} of {pages}", { page, pages })}
           </span>
           <button disabled={page >= pages} onClick={() => setPage(page + 1)}>
-            Next
+            {t("Next")}
           </button>
         </div>
       )}

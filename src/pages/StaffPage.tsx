@@ -19,6 +19,7 @@ import { newIdempotencyKey } from "../lib/idempotency";
 import { personLabel, when } from "../lib/format";
 import { ALL_PERMISSIONS, PERMISSION_GROUPS, PERMISSION_LABEL } from "../lib/permissions";
 import { useLoad } from "../lib/useLoad";
+import { useT } from "../i18n/language";
 
 type Open =
   | { action: "permissions" | "approvePermissions" | "remove" | "approveRole" | "reset" | "cancelRole" | "cancelPermissions"; row: StaffRow }
@@ -29,6 +30,7 @@ type Open =
 const ROLE_LABEL: Record<string, string> = { user: "customer", agent: "agent", admin: "staff" };
 
 export function StaffPage() {
+  const t = useT();
   const { staff } = useAuth();
   const [open, setOpen] = useState<Open>(null);
   const [done, setDone] = useState<string | null>(null);
@@ -53,30 +55,30 @@ export function StaffPage() {
         actions={
           can(staff, "view_customers") ? (
             <button className="primary" onClick={() => setOpen({ action: "add" })}>
-              Make someone staff
+              {t("Make someone staff")}
             </button>
           ) : undefined
         }
       />
-      {done && <p className="notice">{done}</p>}
+      {done && <p className="notice">{t(done)}</p>}
       <LoadState loading={loading && !data} error={error} empty={false} />
 
       {waiting.length > 0 && (
         <div className="card panel">
-          <h2>Waiting to become staff</h2>
+          <h2>{t("Waiting to become staff")}</h2>
           {waiting.map((row) => (
             <div key={row.id} className="staff-line">
               <div>
                 <strong>{personLabel(row)}</strong>
                 <div className="muted small">
-                  Asked by {askedBy(row.pendingRoleChange!.requestedBy)} on {when(row.pendingRoleChange!.requestedAt)}
+                  {t("Asked by {name} on {when}", { name: askedBy(row.pendingRoleChange!.requestedBy), when: when(row.pendingRoleChange!.requestedAt) })}
                 </div>
               </div>
               <div className="row-end">
-                <button onClick={() => setOpen({ action: "cancelRole", row })}>Cancel</button>
+                <button onClick={() => setOpen({ action: "cancelRole", row })}>{t("Cancel")}</button>
                 {row.pendingRoleChange!.requestedBy !== me && (
                   <button className="primary" onClick={() => setOpen({ action: "approveRole", row })}>
-                    Approve
+                    {t("Approve")}
                   </button>
                 )}
               </div>
@@ -90,11 +92,11 @@ export function StaffPage() {
           <table>
             <thead>
               <tr>
-                <th>Staff member</th>
-                <th>Can do</th>
-                <th>Authenticator</th>
-                <th>Waiting changes</th>
-                <th aria-label="Actions" />
+                <th>{t("Staff member")}</th>
+                <th>{t("Can do")}</th>
+                <th>{t("Authenticator")}</th>
+                <th>{t("Waiting changes")}</th>
+                <th aria-label={t("Actions")} />
               </tr>
             </thead>
             <tbody>
@@ -106,37 +108,37 @@ export function StaffPage() {
                   <tr key={row.id}>
                     <td>
                       {personLabel(row)}
-                      {self && <div><Badge tone="plain">You</Badge></div>}
+                      {self && <div><Badge tone="plain">{t("You")}</Badge></div>}
                     </td>
                     <td className="wrap small">
-                      {row.fullAdmin ? <Badge tone="warn">Full admin: everything</Badge> : row.permissions.map((p) => PERMISSION_LABEL[p] || p).join(", ")}
+                      {row.fullAdmin ? <Badge tone="warn">{t("Full admin: everything")}</Badge> : row.permissions.map((p) => t(PERMISSION_LABEL[p] || p)).join(", ")}
                     </td>
-                    <td>{row.twoStepSetUp ? <Badge tone="ok">Set up</Badge> : <Badge tone="danger">Not set up</Badge>}</td>
+                    <td>{row.twoStepSetUp ? <Badge tone="ok">{t("Set up")}</Badge> : <Badge tone="danger">{t("Not set up")}</Badge>}</td>
                     <td className="wrap small">
                       {perm && (
                         <div>
-                          New permissions asked by {askedBy(perm.requestedBy)}: {perm.full ? "full admin" : `${perm.permissions.length} permissions`}
+                          {t("New permissions asked by {name}: {what}", { name: askedBy(perm.requestedBy), what: perm.full ? t("full admin") : t("{n} permissions", { n: perm.permissions.length }) })}
                         </div>
                       )}
-                      {role && <div>Removal from staff asked by {askedBy(role.requestedBy)}</div>}
+                      {role && <div>{t("Removal from staff asked by {name}", { name: askedBy(role.requestedBy) })}</div>}
                       {!perm && !role && "—"}
                     </td>
                     <td className="actions">
-                      {!self && !perm && <button onClick={() => setOpen({ action: "permissions", row })}>Change permissions</button>}
+                      {!self && !perm && <button onClick={() => setOpen({ action: "permissions", row })}>{t("Change permissions")}</button>}
                       {!self && perm && perm.requestedBy !== me && (
                         <button className="primary" onClick={() => setOpen({ action: "approvePermissions", row })}>
-                          Approve permissions
+                          {t("Approve permissions")}
                         </button>
                       )}
-                      {!self && perm && <button onClick={() => setOpen({ action: "cancelPermissions", row })}>Cancel change</button>}
-                      {!self && !role && <button onClick={() => setOpen({ action: "remove", row })}>Remove from staff</button>}
+                      {!self && perm && <button onClick={() => setOpen({ action: "cancelPermissions", row })}>{t("Cancel change")}</button>}
+                      {!self && !role && <button onClick={() => setOpen({ action: "remove", row })}>{t("Remove from staff")}</button>}
                       {!self && role && role.requestedBy !== me && (
                         <button className="primary" onClick={() => setOpen({ action: "approveRole", row })}>
-                          Approve removal
+                          {t("Approve removal")}
                         </button>
                       )}
-                      {!self && role && <button onClick={() => setOpen({ action: "cancelRole", row })}>Keep as staff</button>}
-                      {!self && row.twoStepSetUp && <button onClick={() => setOpen({ action: "reset", row })}>Reset authenticator</button>}
+                      {!self && role && <button onClick={() => setOpen({ action: "cancelRole", row })}>{t("Keep as staff")}</button>}
+                      {!self && row.twoStepSetUp && <button onClick={() => setOpen({ action: "reset", row })}>{t("Reset authenticator")}</button>}
                     </td>
                   </tr>
                 );
@@ -161,7 +163,7 @@ export function StaffPage() {
       {open?.action === "approveRole" && open.row.pendingRoleChange && (
         <RoleDialog
           title={open.row.pendingRoleChange.role === "admin" ? "Approve making this person staff" : "Approve removal from staff"}
-          text={`${personLabel(open.row)} becomes ${ROLE_LABEL[open.row.pendingRoleChange.role] || open.row.pendingRoleChange.role}. Asked by ${askedBy(open.row.pendingRoleChange.requestedBy)}.`}
+          text={t("{name} becomes {role}. Asked by {by}.", { name: personLabel(open.row), role: t(ROLE_LABEL[open.row.pendingRoleChange.role] || open.row.pendingRoleChange.role), by: askedBy(open.row.pendingRoleChange.requestedBy) })}
           label="Approve"
           onConfirm={(pin) => changeRole(open.row.id, open.row.pendingRoleChange!.role as "user" | "agent" | "admin", pin)}
           onClose={() => setOpen(null)}
@@ -179,7 +181,7 @@ export function StaffPage() {
             finish("Role change cancelled. Nothing changed.");
           }}
         >
-          <p>{personLabel(open.row)} keeps their current role.</p>
+          <p>{t("{name} keeps their current role.", { name: personLabel(open.row) })}</p>
         </ConfirmWithPin>
       )}
       {open?.action === "cancelPermissions" && (
@@ -193,7 +195,7 @@ export function StaffPage() {
             finish("Permissions change cancelled. Nothing changed.");
           }}
         >
-          <p>{personLabel(open.row)} keeps their current permissions.</p>
+          <p>{t("{name} keeps their current permissions.", { name: personLabel(open.row) })}</p>
         </ConfirmWithPin>
       )}
       {open?.action === "reset" && (
@@ -208,10 +210,9 @@ export function StaffPage() {
           }}
         >
           <p>
-            Only do this if <strong>{personLabel(open.row)}</strong> lost their phone, and you have checked it is really them
-            (for example on a video call). They are logged out at once.
+            {t("Only do this if {name} lost their phone, and you have checked it is really them (for example on a video call). They are logged out at once.", { name: personLabel(open.row) })}
           </p>
-          <p className="hint">Until they log in again, anyone with their PIN could set up the app in their place.</p>
+          <p className="hint">{t("Until they log in again, anyone with their PIN could set up the app in their place.")}</p>
         </ConfirmWithPin>
       )}
       {open?.action === "add" && <FindPerson onClose={() => setOpen(null)} onPick={(hit) => setOpen({ action: "addConfirm", hit })} />}
@@ -246,6 +247,7 @@ function RoleDialog({ title, text, label, onConfirm, onDone, onClose }: { title:
 }
 
 function PermissionsDialog({ row, approving, people = {}, onDone, onClose }: { row: StaffRow; approving?: boolean; people?: Record<string, Person>; onDone: (m: string) => void; onClose: () => void }) {
+  const t = useT();
   const pending = row.pendingPermissionsChange;
   const start = approving && pending ? pending : { full: row.fullAdmin, permissions: row.permissions };
   const [full, setFull] = useState(start.full);
@@ -273,34 +275,35 @@ function PermissionsDialog({ row, approving, people = {}, onDone, onClose }: { r
     >
       <p>
         <strong>{personLabel(row)}</strong>
-        {approving && pending && <span className="muted"> — asked by {personLabel(people[pending.requestedBy])}</span>}
+        {approving && pending && <span className="muted"> {t("— asked by {name}", { name: personLabel(people[pending.requestedBy]) })}</span>}
       </p>
-      {approving && <p className="hint">Approving applies exactly this list. To change it, cancel and ask again.</p>}
+      {approving && <p className="hint">{t("Approving applies exactly this list. To change it, cancel and ask again.")}</p>}
       <label className="check">
         <input type="checkbox" checked={full} disabled={approving} onChange={(e) => setFull(e.target.checked)} />
-        Full admin: can do everything
+        {t("Full admin: can do everything")}
       </label>
       {!full && (
         <div className="perm-groups">
           {PERMISSION_GROUPS.map((group) => (
             <fieldset key={group.title} className="choices">
-              <legend>{group.title}</legend>
+              <legend>{t(group.title)}</legend>
               {group.items.map(([p, label]) => (
                 <label key={p} className="check small">
                   <input type="checkbox" checked={picked.has(p)} disabled={approving} onChange={() => toggle(p)} />
-                  {label}
+                  {t(label)}
                 </label>
               ))}
             </fieldset>
           ))}
         </div>
       )}
-      {!full && !list.length && <p className="hint warn-text">Choose at least one.</p>}
+      {!full && !list.length && <p className="hint warn-text">{t("Choose at least one.")}</p>}
     </ConfirmWithPin>
   );
 }
 
 function FindPerson({ onPick, onClose }: { onPick: (hit: CustomerHit) => void; onClose: () => void }) {
+  const t = useT();
   const [search, setSearch] = useState("");
   const [hits, setHits] = useState<CustomerHit[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -323,30 +326,30 @@ function FindPerson({ onPick, onClose }: { onPick: (hit: CustomerHit) => void; o
   return (
     <div className="overlay" role="presentation">
       <div className="card dialog stack" role="dialog" aria-modal="true" aria-labelledby="find-staff-title">
-        <h2 id="find-staff-title">Find their Sunu Pay account</h2>
-        <p className="hint">They need their own Sunu Pay account first, with their own phone number.</p>
+        <h2 id="find-staff-title">{t("Find their Sunu Pay account")}</h2>
+        <p className="hint">{t("They need their own Sunu Pay account first, with their own phone number.")}</p>
         <form className="row-start" onSubmit={find}>
-          <input autoFocus placeholder="Phone number or name" value={search} onChange={(e) => setSearch(e.target.value)} />
+          <input autoFocus placeholder={t("Phone number or name")} value={search} onChange={(e) => setSearch(e.target.value)} />
           <button type="submit" disabled={busy || search.trim().length < 3}>
             {busy ? "Searching…" : "Search"}
           </button>
         </form>
-        {error && <p className="error">{error}</p>}
-        {hits && !hits.length && <p className="muted">No account found.</p>}
+        {error && <p className="error">{t(error)}</p>}
+        {hits && !hits.length && <p className="muted">{t("No account found.")}</p>}
         {hits && hits.length > 0 && (
           <ul className="hits">
             {hits.map((hit) => (
               <li key={hit._id}>
                 <button className="hit" onClick={() => onPick(hit)}>
                   {personLabel({ name: hit.name || hit.username, phone: hit.phone })}
-                  <span className="muted small">{hit.role === "agent" ? "Agent" : "Customer"}</span>
+                  <span className="muted small">{hit.role === "agent" ? t("Agent") : t("Customer")}</span>
                 </button>
               </li>
             ))}
           </ul>
         )}
         <div className="row-end">
-          <button onClick={onClose}>Cancel</button>
+          <button onClick={onClose}>{t("Cancel")}</button>
         </div>
       </div>
     </div>

@@ -20,6 +20,7 @@ import { ConfirmWithPin } from "../components/ConfirmWithPin";
 import { Badge, LoadState, PageHeader, Tabs, TextArea, okLength } from "../components/common";
 import { when } from "../lib/format";
 import { useLoad } from "../lib/useLoad";
+import { useT } from "../i18n/language";
 
 const STATE_LABEL: Record<SwitchState, string> = { on: "On", paused: "Paused", off: "Off" };
 const STATE_TONE: Record<SwitchState, "ok" | "warn" | "danger"> = { on: "ok", paused: "warn", off: "danger" };
@@ -61,6 +62,7 @@ export function ServicesPage() {
 type ServiceOpen = { service: ServiceName; current: SwitchState; pending: ServiceSwitchRow["pendingOn"] } | null;
 
 function ServicesTab() {
+  const t = useT();
   const { staff } = useAuth();
   const [country, setCountry] = useState("ALL");
   const [open, setOpen] = useState<ServiceOpen>(null);
@@ -75,17 +77,17 @@ function ServicesTab() {
 
   return (
     <>
-      {done && <p className="notice">{done}</p>}
+      {done && <p className="notice">{t(done)}</p>}
       <LoadState loading={switches.loading && !switches.data} error={switches.error} empty={false} />
       {waiting.length > 0 && (
         <div className="card panel">
-          <h2>Waiting for a second person</h2>
+          <h2>{t("Waiting for a second person")}</h2>
           <ul className="plain-list">
             {waiting.map((r) => (
               <li key={`${r.country}:${r.service}`}>
-                Switch on <strong>{SERVICE_LABEL[r.service]}</strong> in {countryName(r.country)}, asked by {r.pendingOn!.requestedByName || "staff"} {when(r.pendingOn!.requestedAt)}: {r.pendingOn!.reason}{" "}
+                {t("Switch on {service} in {country}, asked by {name} {when}: {reason}", { service: t(SERVICE_LABEL[r.service] ?? r.service), country: countryName(r.country), name: r.pendingOn!.requestedByName || t("staff"), when: when(r.pendingOn!.requestedAt), reason: r.pendingOn!.reason })}{" "}
                 <button className="link" onClick={() => setCountry(r.country)}>
-                  Go to it
+                  {t("Go to it")}
                 </button>
               </li>
             ))}
@@ -94,14 +96,14 @@ function ServicesTab() {
       )}
       {notOn.length > 0 && (
         <p className="notice">
-          Not fully on: {notOn.map((r) => `${SERVICE_LABEL[r.service]} in ${countryName(r.country)} (${STATE_LABEL[r.state].toLowerCase()})`).join("; ")}.
+          {t("Not fully on: {list}.", { list: notOn.map((r) => t("{service} in {country} ({state})", { service: t(SERVICE_LABEL[r.service] ?? r.service), country: countryName(r.country), state: t(STATE_LABEL[r.state]).toLowerCase() })).join("; ") })}
         </p>
       )}
       <div className="row-start search">
         <label>
-          Country
+          {t("Country")}
           <select value={country} onChange={(e) => setCountry(e.target.value)}>
-            <option value="ALL">Every country</option>
+            <option value="ALL">{t("Every country")}</option>
             {(countries.data ?? []).map((c) => (
               <option key={c.code} value={c.code}>
                 {c.name} ({c.code}){c.enabled ? "" : " - country off"}
@@ -111,17 +113,17 @@ function ServicesTab() {
         </label>
       </div>
       {country !== "ALL" && countries.data?.find((c) => c.code === country && !c.enabled) && (
-        <p className="error">This country is switched off, so none of its services can be used whatever they show below.</p>
+        <p className="error">{t("This country is switched off, so none of its services can be used whatever they show below.")}</p>
       )}
       <div className="table-wrap card">
         <table>
           <thead>
             <tr>
-              <th>Service</th>
-              <th>Here</th>
-              <th>What customers get</th>
-              <th>Reason</th>
-              <th aria-label="Actions" />
+              <th>{t("Service")}</th>
+              <th>{t("Here")}</th>
+              <th>{t("What customers get")}</th>
+              <th>{t("Reason")}</th>
+              <th aria-label={t("Actions")} />
             </tr>
           </thead>
           <tbody>
@@ -132,25 +134,25 @@ function ServicesTab() {
               return (
                 <tr key={service}>
                   <td>
-                    <strong>{label}</strong>
-                    {row?.pendingOn && <div className="muted small">Switch on asked by {row.pendingOn.requestedByName || "staff"}</div>}
+                    <strong>{t(label)}</strong>
+                    {row?.pendingOn && <div className="muted small">{t("Switch on asked by {name}", { name: row.pendingOn.requestedByName || t("staff") })}</div>}
                   </td>
                   <td>
                     <Badge tone={STATE_TONE[here]}>{STATE_LABEL[here]}</Badge>
                   </td>
                   <td>
                     <Badge tone={STATE_TONE[effective]}>{STATE_LABEL[effective]}</Badge>
-                    {effective !== here && <div className="muted small">set for every country</div>}
+                    {effective !== here && <div className="muted small">{t("set for every country")}</div>}
                   </td>
                   <td className="small">{row?.reason || "—"}</td>
-                  <td className="actions">{mayChange && <button onClick={() => setOpen({ service, current: here, pending: row?.pendingOn ?? null })}>Change</button>}</td>
+                  <td className="actions">{mayChange && <button onClick={() => setOpen({ service, current: here, pending: row?.pendingOn ?? null })}>{t("Change")}</button>}</td>
                 </tr>
               );
             })}
           </tbody>
         </table>
       </div>
-      {!mayChange && <p className="hint">You can see these switches. Changing them needs the "Change countries, services and logos" permission.</p>}
+      {!mayChange && <p className="hint">{t("You can see these switches. Changing them needs the \"Change countries, services and logos\" permission.")}</p>}
       {open && (
         <ServiceDialog
           country={country}
@@ -170,13 +172,14 @@ function ServicesTab() {
 }
 
 function ServiceDialog({ country, countryLabel, open, myId, onClose, onDone }: { country: string; countryLabel: string; open: NonNullable<ServiceOpen>; myId: string; onClose: () => void; onDone: (m: string) => void }) {
+  const t = useT();
   const [state, setState] = useState<SwitchState>(open.current === "on" ? "paused" : "on");
   const [reason, setReason] = useState(open.pending?.reason ?? "");
   const [cancelling, setCancelling] = useState(false);
   const pending = open.pending;
   const myRequest = pending?.requestedBy === myId;
   const approving = state === "on" && pending && !myRequest;
-  const label = SERVICE_LABEL[open.service];
+  const label = t(SERVICE_LABEL[open.service] ?? open.service);
 
   return (
     <ConfirmWithPin
@@ -189,28 +192,28 @@ function ServiceDialog({ country, countryLabel, open, myId, onClose, onDone }: {
         await switchService(country, open.service, { state, reason: reason.trim(), pin });
         onDone(
           state !== "on"
-            ? `${label} is ${state === "paused" ? "paused" : "off"} in ${countryLabel}. Customers see a message and can't use it.`
+            ? t(state === "paused" ? "{label} is paused in {country}. Customers see a message and can't use it." : "{label} is off in {country}. Customers see a message and can't use it.", { label, country: countryLabel })
             : approving
-              ? `${label} is switched on in ${countryLabel}.`
+              ? t("{label} is switched on in {country}.", { label, country: countryLabel })
               : "Asked. A different staff member must approve it here.",
         );
       }}
     >
       <p>
-        Now: <strong>{STATE_LABEL[open.current]}</strong>
-        {country === "ALL" ? ". This switch covers every country." : "."}
+        {t("Now:")} <strong>{t(STATE_LABEL[open.current])}</strong>
+        {country === "ALL" ? `. ${t("This switch covers every country.")}` : "."}
       </p>
       <fieldset className="choices">
         {(["on", "paused", "off"] as const).map((s) => (
           <label key={s} className="check">
             <input type="radio" name="state" checked={state === s} disabled={s === open.current} onChange={() => setState(s)} />
-            {s === "on" ? "On (needs a second person)" : s === "paused" ? "Paused for a while (at once)" : "Off (at once)"}
+            {s === "on" ? t("On (needs a second person)") : s === "paused" ? t("Paused for a while (at once)") : t("Off (at once)")}
           </label>
         ))}
       </fieldset>
       {pending && (
         <p className="notice">
-          {myRequest ? "You asked to switch this on. A different staff member must approve it." : `Switch on was asked for: ${pending.reason}`}{" "}
+          {myRequest ? t("You asked to switch this on. A different staff member must approve it.") : t("Switch on was asked for: {reason}", { reason: pending.reason })}{" "}
           <button
             type="button"
             className="link"
@@ -221,7 +224,7 @@ function ServiceDialog({ country, countryLabel, open, myId, onClose, onDone }: {
               onDone("Request to switch on cancelled.");
             }}
           >
-            Cancel the request
+            {t("Cancel the request")}
           </button>
         </p>
       )}
@@ -233,6 +236,7 @@ function ServiceDialog({ country, countryLabel, open, myId, onClose, onDone }: {
 type CountryOpen = { action: "on" | "off" | "licence"; country: CountryRow } | null;
 
 function CountriesTab() {
+  const t = useT();
   const { staff } = useAuth();
   const [open, setOpen] = useState<CountryOpen>(null);
   const [done, setDone] = useState<string | null>(null);
@@ -246,17 +250,17 @@ function CountriesTab() {
 
   return (
     <>
-      {done && <p className="notice">{done}</p>}
+      {done && <p className="notice">{t(done)}</p>}
       <LoadState loading={loading && !data} error={error} empty={!data?.length} />
       {data && (
         <div className="table-wrap card">
           <table>
             <thead>
               <tr>
-                <th>Country</th>
-                <th>Switch</th>
-                <th>Licence</th>
-                <th aria-label="Actions" />
+                <th>{t("Country")}</th>
+                <th>{t("Switch")}</th>
+                <th>{t("Licence")}</th>
+                <th aria-label={t("Actions")} />
               </tr>
             </thead>
             <tbody>
@@ -269,16 +273,16 @@ function CountriesTab() {
                       <strong>{c.name}</strong> <span className="muted small">{c.code}</span>
                     </td>
                     <td>
-                      <Badge tone={c.enabled ? "ok" : "plain"}>{c.enabled ? "On" : "Off"}</Badge>
+                      <Badge tone={c.enabled ? "ok" : "plain"}>{c.enabled ? t("On") : t("Off")}</Badge>
                       {c.enabled && !licensed && (
                         <div>
-                          <Badge tone="warn">On without a licence recorded</Badge>
+                          <Badge tone="warn">{t("On without a licence recorded")}</Badge>
                         </div>
                       )}
-                      {c.pendingOn && <div className="muted small">Switch on asked by {staffName(c.pendingOn.requestedBy)}</div>}
+                      {c.pendingOn && <div className="muted small">{t("Switch on asked by {name}", { name: staffName(c.pendingOn.requestedBy) })}</div>}
                     </td>
                     <td className="small">
-                      {LICENCE_LABEL[c.licence.status]}
+                      {t(LICENCE_LABEL[c.licence.status])}
                       {licensed && (
                         <div className="muted">
                           {c.licence.holder} · {c.licence.reference}
@@ -288,14 +292,14 @@ function CountriesTab() {
                     <td className="actions">
                       {mayChange && (
                         <>
-                          <button onClick={() => setOpen({ action: "licence", country: c })}>Licence</button>
+                          <button onClick={() => setOpen({ action: "licence", country: c })}>{t("Licence")}</button>
                           {c.enabled ? (
                             <button className="danger" onClick={() => setOpen({ action: "off", country: c })}>
-                              Switch off
+                              {t("Switch off")}
                             </button>
                           ) : (
-                            <button className="primary" disabled={!licensed || mine} title={!licensed ? "Record the licence first" : mine ? "A different staff member must approve" : ""} onClick={() => setOpen({ action: "on", country: c })}>
-                              {c.pendingOn && !mine ? "Approve on" : "Switch on"}
+                            <button className="primary" disabled={!licensed || mine} title={!licensed ? t("Record the licence first") : mine ? t("A different staff member must approve") : ""} onClick={() => setOpen({ action: "on", country: c })}>
+                              {c.pendingOn && !mine ? t("Approve on") : t("Switch on")}
                             </button>
                           )}
                           {c.pendingOn && (
@@ -305,7 +309,7 @@ function CountriesTab() {
                                 finish(`Request to switch on ${c.name} cancelled.`);
                               }}
                             >
-                              Cancel request
+                              {t("Cancel request")}
                             </button>
                           )}
                         </>
@@ -318,39 +322,40 @@ function CountriesTab() {
           </table>
         </div>
       )}
-      <p className="hint">A country can only be switched on once its licence is recorded. Countries added for later (Guinea, Guinea-Bissau, Sierra Leone, Mali) start off.</p>
-      {open?.action === "licence" && <LicenceDialog country={open.country} onClose={() => setOpen(null)} onDone={() => finish(`Licence saved for ${open.country.name}.`)} />}
+      <p className="hint">{t("A country can only be switched on once its licence is recorded. Countries added for later (Guinea, Guinea-Bissau, Sierra Leone, Mali) start off.")}</p>
+      {open?.action === "licence" && <LicenceDialog country={open.country} onClose={() => setOpen(null)} onDone={() => finish(t("Licence saved for {name}.", { name: open.country.name }))} />}
       {(open?.action === "on" || open?.action === "off") && <CountrySwitchDialog open={{ action: open.action, country: open.country }} onClose={() => setOpen(null)} onDone={finish} />}
     </>
   );
 }
 
 function CountrySwitchDialog({ open, onClose, onDone }: { open: { action: "on" | "off"; country: CountryRow }; onClose: () => void; onDone: (m: string) => void }) {
+  const t = useT();
   const c = open.country;
   const approving = open.action === "on" && Boolean(c.pendingOn);
   const [reason, setReason] = useState(approving ? c.pendingOn!.reason : "");
   return (
     <ConfirmWithPin
-      title={open.action === "off" ? `Switch off ${c.name}` : approving ? `Approve switching on ${c.name}` : `Ask to switch on ${c.name}`}
+      title={open.action === "off" ? t("Switch off {name}", { name: c.name }) : approving ? t("Approve switching on {name}", { name: c.name }) : t("Ask to switch on {name}", { name: c.name })}
       confirmLabel={open.action === "off" ? "Switch off now" : approving ? "Approve" : "Ask"}
       danger={open.action === "off"}
       canConfirm={okLength(reason, 5, 300)}
       onClose={onClose}
       onConfirm={async (pin) => {
         await switchCountry(c.code, { enabled: open.action === "on", reason: reason.trim(), pin });
-        onDone(open.action === "off" ? `${c.name} is switched off. Customers can't send to it or use services there.` : approving ? `${c.name} is switched on.` : "Asked. A different staff member must approve it on this page.");
+        onDone(open.action === "off" ? t("{name} is switched off. Customers can't send to it or use services there.", { name: c.name }) : approving ? t("{name} is switched on.", { name: c.name }) : t("Asked. A different staff member must approve it on this page."));
       }}
     >
       {open.action === "off" ? (
-        <p>Every service in {c.name} stops at once. Money already on its way is not affected.</p>
+        <p>{t("Every service in {name} stops at once. Money already on its way is not affected.", { name: c.name })}</p>
       ) : (
         <>
           <p>
-            Licence: {LICENCE_LABEL[c.licence.status]}, {c.licence.holder} · {c.licence.reference}
+            {t("Licence: {status}, {holder} · {reference}", { status: t(LICENCE_LABEL[c.licence.status]), holder: c.licence.holder, reference: c.licence.reference })}
           </p>
           {approving && (
             <p className="notice">
-              Asked by {staffName(c.pendingOn!.requestedBy)} {when(c.pendingOn!.requestedAt)}. Check the licence above before approving.
+              {t("Asked by {name} {when}. Check the licence above before approving.", { name: staffName(c.pendingOn!.requestedBy), when: when(c.pendingOn!.requestedAt) })}
             </p>
           )}
         </>
@@ -361,6 +366,7 @@ function CountrySwitchDialog({ open, onClose, onDone }: { open: { action: "on" |
 }
 
 function LicenceDialog({ country, onClose, onDone }: { country: CountryRow; onClose: () => void; onDone: () => void }) {
+  const t = useT();
   const [status, setStatus] = useState<LicenceStatus>(country.licence.status);
   const [holder, setHolder] = useState(country.licence.holder);
   const [reference, setReference] = useState(country.licence.reference);
@@ -368,7 +374,7 @@ function LicenceDialog({ country, onClose, onDone }: { country: CountryRow; onCl
   const filled = status === "none" || (holder.trim().length >= 2 && reference.trim().length >= 2);
   return (
     <ConfirmWithPin
-      title={`Licence for ${country.name}`}
+      title={t("Licence for {name}", { name: country.name })}
       confirmLabel="Save licence"
       canConfirm={filled}
       onClose={onClose}
@@ -378,30 +384,30 @@ function LicenceDialog({ country, onClose, onDone }: { country: CountryRow; onCl
       }}
     >
       <label>
-        Licence
+        {t("Licence")}
         <select value={status} onChange={(e) => setStatus(e.target.value as LicenceStatus)}>
-          <option value="none">No licence</option>
-          <option value="own">Our own licence</option>
-          <option value="partner">A licensed partner</option>
+          <option value="none">{t("No licence")}</option>
+          <option value="own">{t("Our own licence")}</option>
+          <option value="partner">{t("A licensed partner")}</option>
         </select>
       </label>
       {status !== "none" && (
         <>
           <label>
-            Licence holder
+            {t("Licence holder")}
             <input value={holder} maxLength={120} onChange={(e) => setHolder(e.target.value)} />
           </label>
           <label>
-            Licence or registration number
+            {t("Licence or registration number")}
             <input value={reference} maxLength={120} onChange={(e) => setReference(e.target.value)} />
           </label>
         </>
       )}
       <label>
-        Note
+        {t("Note")}
         <input value={note} maxLength={300} onChange={(e) => setNote(e.target.value)} />
       </label>
-      {status === "none" && country.enabled && <p className="notice">This country stays on. Switch it off separately if it must stop.</p>}
+      {status === "none" && country.enabled && <p className="notice">{t("This country stays on. Switch it off separately if it must stop.")}</p>}
     </ConfirmWithPin>
   );
 }

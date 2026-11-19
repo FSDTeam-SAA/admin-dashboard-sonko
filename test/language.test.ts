@@ -19,6 +19,23 @@ const TRANSLATED = [
   "src/pages/ComingSoonPage.tsx",
   "src/pages/CustomersPage.tsx",
   "src/pages/TicketsPage.tsx",
+  "src/pages/ExchangeRatesSection.tsx",
+  "src/pages/StaffPage.tsx",
+  "src/pages/PayoutsPage.tsx",
+  "src/pages/BlocklistPage.tsx",
+  "src/pages/AgentsPage.tsx",
+  "src/pages/ServicesPage.tsx",
+  "src/pages/AuditPage.tsx",
+  "src/pages/AnalyticsPage.tsx",
+  "src/pages/BillsPage.tsx",
+  "src/pages/AnnouncementsPage.tsx",
+  "src/pages/ReportsPage.tsx",
+  "src/pages/ReversalsPage.tsx",
+  "src/pages/HoldsPage.tsx",
+  "src/pages/SettingsPage.tsx",
+  "src/pages/RatesAndFeesPage.tsx",
+  "src/i18n/patterns.ts",
+  "src/components/RefundLimits.tsx",
 ];
 
 describe("panel language", () => {
