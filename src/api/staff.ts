@@ -12,6 +12,8 @@ export type Staff = {
   language?: "en" | "fr";
   /** The server has a translation key, so the Translate button can work. */
   translationOn?: boolean;
+  /** The server has file storage and its key, so files can be attached to tickets. */
+  filesOn?: boolean;
 };
 
 export const NOT_STAFF = "This account is not a Sunu Pay staff account.";

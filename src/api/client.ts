@@ -19,6 +19,10 @@ type RequestOptions = {
   idempotencyKey?: string;
   /** Leave the Authorization header off (login only). */
   noAuth?: boolean;
+  /** A file upload (sent as it is, not as JSON). */
+  form?: FormData;
+  /** The answer is a file: return its bytes instead of reading JSON. */
+  asFile?: boolean;
 };
 
 const TIMEOUT_MS = 20_000;
@@ -61,19 +65,20 @@ async function send<T>(path: string, options: RequestOptions, mayRefresh: boolea
     // it has French, and in English otherwise.
     "Accept-Language": getLanguage(),
   };
-  if (options.body !== undefined) headers["Content-Type"] = "application/json";
+  if (options.body !== undefined && !options.form) headers["Content-Type"] = "application/json";
   if (options.idempotencyKey) headers["Idempotency-Key"] = options.idempotencyKey;
   const tokens = getTokens();
   if (!options.noAuth && tokens) headers.Authorization = `Bearer ${tokens.access}`;
 
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  // Files can take longer on a slow connection.
+  const timer = setTimeout(() => controller.abort(), options.form || options.asFile ? 60_000 : TIMEOUT_MS);
   let response: Response;
   try {
     response = await fetch(`${API_BASE}${path}`, {
       method: options.method || "GET",
       headers,
-      body: options.body === undefined ? undefined : JSON.stringify(options.body),
+      body: options.form ?? (options.body === undefined ? undefined : JSON.stringify(options.body)),
       // Tokens go in the header, never in cookies, so other sites can't make
       // the browser act for the staff member.
       credentials: "omit",
@@ -92,6 +97,8 @@ async function send<T>(path: string, options: RequestOptions, mayRefresh: boolea
     endSession("expired");
     throw new ApiError(401, "Your session has ended. Please log in again.");
   }
+
+  if (options.asFile && response.ok) return (await response.blob()) as T;
 
   let payload: { success?: boolean; message?: unknown; data?: T } | null = null;
   try {

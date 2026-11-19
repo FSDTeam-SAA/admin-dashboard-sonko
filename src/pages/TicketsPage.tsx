@@ -1,9 +1,14 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useSearchParams } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { can } from "../api/staff";
 import {
   addTicketNote,
+  attachTicketFile,
+  removeTicketFile,
+  ticketFile,
+  type TicketDetail,
+  type TicketFile,
   translateTicketNote,
   type NoteTranslation,
   changeTicket,
@@ -19,6 +24,7 @@ import {
   type TicketStatus,
 } from "../api/admin";
 import { Badge, LoadState, PageHeader, Pager, Tabs } from "../components/common";
+import { ConfirmWithPin } from "../components/ConfirmWithPin";
 import { Bars, monthLabel } from "./AnalyticsPage";
 import { newIdempotencyKey } from "../lib/idempotency";
 import { when } from "../lib/format";
@@ -415,14 +421,20 @@ function TicketView({ ticketId, onBack }: { ticketId: string; onBack: () => void
         )}
       </div>
 
+      <TicketFiles ticket={data} mayManage={mayManage} onChanged={reload} />
+
       <div className="card panel">
         <h2>{t("History")}</h2>
         {data.history.length ? (
           <ul className="plain-list">
             {data.history.map((h, i) => (
               <li key={i} className="small">
-                {when(h.at)} · {t("{name} changed {field}", { name: h.by?.name || t("Staff"), field: t(FIELD_LABEL[h.field] ?? h.field) })}
-                {h.field === "assignedTo" ? "" : `: ${nice(h.field, h.from, t.language)} → ${nice(h.field, h.to, t.language)}`}
+                {when(h.at)} ·{" "}
+                {h.field === "file"
+                  ? t("{name} attached a file: {file}", { name: h.by?.name || t("Staff"), file: h.to })
+                  : h.field === "file_removed"
+                    ? t("{name} took off a file: {file}", { name: h.by?.name || t("Staff"), file: h.from })
+                    : `${t("{name} changed {field}", { name: h.by?.name || t("Staff"), field: t(FIELD_LABEL[h.field] ?? h.field) })}${h.field === "assignedTo" ? "" : `: ${nice(h.field, h.from, t.language)} → ${nice(h.field, h.to, t.language)}`}`}
               </li>
             ))}
           </ul>
@@ -568,5 +580,184 @@ function Figures({ onBack }: { onBack: () => void }) {
         </div>
       </div>
     </section>
+  );
+}
+
+const FILE_TYPES = ["image/jpeg", "image/png", "application/pdf"];
+const MAX_FILE = 5 * 1024 * 1024;
+const EXT: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "application/pdf": "pdf" };
+
+export function fileSize(bytes: number): string {
+  return bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+/** What is wrong with a chosen file before sending it, or null. The server checks again. */
+export function pickProblem(file: { type: string; size: number } | null): string | null {
+  if (!file) return "Choose a file to attach.";
+  if (!FILE_TYPES.includes(file.type)) return "Only JPG, PNG or PDF files can be attached.";
+  if (file.size > MAX_FILE) return "The file is bigger than 5 MB.";
+  return null;
+}
+
+/**
+ * Evidence files on a ticket. Seeing and adding them needs ticket_files.
+ * Files always download; pictures can also be looked at here.
+ */
+function TicketFiles({ ticket: data, mayManage, onChanged }: { ticket: TicketDetail; mayManage: boolean; onChanged: () => void }) {
+  const { staff } = useAuth();
+  const t = useT();
+  const [picked, setPicked] = useState<File | null>(null);
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState<string | null>(null);
+  const [viewing, setViewing] = useState<{ url: string; name: string } | null>(null);
+  const [removing, setRemoving] = useState<TicketFile | null>(null);
+  const [inputKey, setInputKey] = useState(0);
+  const key = useMemo(newIdempotencyKey, [data.files?.length]);
+  useEffect(() => () => (viewing ? URL.revokeObjectURL(viewing.url) : undefined), [viewing]);
+
+  if (!data.files) {
+    if (!data.fileCount) return null;
+    return (
+      <div className="card panel">
+        <h2>{t("Files")}</h2>
+        <p className="muted">{t("This ticket has {n} files. Seeing them needs the ticket files permission.", { n: data.fileCount })}</p>
+      </div>
+    );
+  }
+  const live = data.files.filter((f) => !f.removed);
+  const mayAdd = mayManage && can(staff, "ticket_files") && Boolean(staff?.filesOn) && data.status !== "closed" && live.length < 10;
+  const fileName = (f: TicketFile) => `ticket-${data.number}-file-${f.index + 1}.${EXT[f.type] ?? "bin"}`;
+
+  const fetchFile = async (f: TicketFile) => {
+    setFailed(null);
+    try {
+      return await ticketFile(data.id, f.id);
+    } catch (caught) {
+      setFailed(caught instanceof Error ? caught.message : "That did not work. Please try again.");
+      return null;
+    }
+  };
+  const download = async (f: TicketFile) => {
+    const blob = await fetchFile(f);
+    if (!blob) return;
+    const url = URL.createObjectURL(new Blob([blob], { type: "application/octet-stream" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName(f);
+    a.rel = "noopener";
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 10_000);
+  };
+  const view = async (f: TicketFile) => {
+    const blob = await fetchFile(f);
+    if (blob) setViewing({ url: URL.createObjectURL(new Blob([blob], { type: f.type })), name: f.name });
+  };
+  const problem = pickProblem(picked);
+  const noteOk = note.trim().length >= 3 && note.trim().length <= 200;
+
+  return (
+    <div className="card panel">
+      <h2>{t("Files")}</h2>
+      {failed && (
+        <p className="error" role="alert">
+          {t(failed)}
+        </p>
+      )}
+      {data.files.length ? (
+        <ul className="plain-list">
+          {data.files.map((f) =>
+            f.removed ? (
+              <li key={f.id} className="muted small">
+                {t("A file was taken off by {name}, {when}.", { name: f.by?.name || t("Staff"), when: when(f.removedAt) })}
+              </li>
+            ) : (
+              <li key={f.id}>
+                <strong>{f.name}</strong> <span className="muted small">{f.type === "application/pdf" ? "PDF" : t("Picture")} · {fileSize(f.size)}</span>
+                <p>{f.note}</p>
+                <p className="muted small">{t("Attached by {name}, {when}", { name: f.by?.name || t("Staff"), when: when(f.at) })}</p>
+                <div className="row-start">
+                  <button onClick={() => download(f)}>{t("Download")}</button>
+                  {f.type !== "application/pdf" && <button onClick={() => view(f)}>{t("View")}</button>}
+                  {f.canRemove && (
+                    <button className="danger" onClick={() => setRemoving(f)}>
+                      {t("Take off")}
+                    </button>
+                  )}
+                </div>
+              </li>
+            ),
+          )}
+        </ul>
+      ) : (
+        <p className="muted">{t("No files yet.")}</p>
+      )}
+      {mayManage && can(staff, "ticket_files") && !staff?.filesOn && <p className="hint">{t("Files can't be attached until the developer sets up file storage.")}</p>}
+      {mayAdd && (
+        <form
+          className="stack"
+          onSubmit={async (event) => {
+            event.preventDefault();
+            if (!picked || problem || !noteOk || busy) return;
+            setBusy(true);
+            setFailed(null);
+            try {
+              await attachTicketFile(data.id, picked, note.trim(), key);
+              setPicked(null);
+              setNote("");
+              setInputKey((n) => n + 1);
+              onChanged();
+            } catch (caught) {
+              setFailed(caught instanceof Error ? caught.message : "That did not work. Please try again.");
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          <label>
+            {t("Attach a file")}
+            <input key={inputKey} type="file" accept=".jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf" onChange={(e) => setPicked(e.target.files?.[0] ?? null)} />
+          </label>
+          {picked && problem && <p className="hint warn-text">{t(problem)}</p>}
+          <label>
+            {t("What is this file?")}
+            <input value={note} maxLength={200} placeholder={t("For example: bank statement the customer emailed")} onChange={(e) => setNote(e.target.value)} />
+          </label>
+          <p className="hint">{t("JPG, PNG or PDF, up to 5 MB. Pictures are redrawn and lose their location details. PDFs that can run things are refused. Only you can take a file off, and only in the first 10 minutes.")}</p>
+          <div className="row-end">
+            <button className="primary" type="submit" disabled={!picked || Boolean(problem) || !noteOk || busy}>
+              {busy ? t("Attaching…") : t("Attach")}
+            </button>
+          </div>
+        </form>
+      )}
+      {viewing && (
+        <div className="overlay" role="presentation" onClick={() => setViewing(null)}>
+          <div className="card dialog stack" role="dialog" aria-modal="true" aria-label={viewing.name} onClick={(e) => e.stopPropagation()}>
+            <h2>{viewing.name}</h2>
+            <img src={viewing.url} alt={viewing.name} style={{ maxWidth: "100%", maxHeight: "70vh", objectFit: "contain" }} />
+            <div className="row-end">
+              <button onClick={() => setViewing(null)}>{t("Close")}</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {removing && (
+        <ConfirmWithPin
+          title="Take off this file"
+          confirmLabel="Take off"
+          danger
+          needsPin={false}
+          onClose={() => setRemoving(null)}
+          onConfirm={async () => {
+            await removeTicketFile(data.id, removing.id);
+            setRemoving(null);
+            onChanged();
+          }}
+        >
+          <p>{t("{name} is deleted for good. Use this only for a wrong file.", { name: removing.name })}</p>
+        </ConfirmWithPin>
+      )}
+    </div>
   );
 }

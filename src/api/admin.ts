@@ -513,6 +513,23 @@ export type TicketDetail = Omit<TicketRow, "customer" | "assignedTo"> & {
   assignedTo: Mini;
   notes: { by: Mini; text: string; at: string }[];
   history: { by: Mini; field: string; from: string; to: string; at: string }[];
+  fileCount: number;
+  /** null when this person may not see files (no ticket_files). */
+  files: TicketFile[] | null;
+};
+
+export type TicketFile = {
+  id: string;
+  index: number;
+  name: string;
+  note: string;
+  type: "image/jpeg" | "image/png" | "application/pdf";
+  size: number;
+  by: Mini;
+  at: string;
+  removed: boolean;
+  removedAt: string | null;
+  canRemove: boolean;
 };
 
 export type TicketFilters = { status: TicketStatus | "active" | "all"; priority: TicketPriority | "all"; mine: boolean; search: string; customer?: string };
@@ -544,6 +561,23 @@ export type NoteTranslation = { sameLanguage: boolean; text: string; target: "en
 /** Translates one note for the reader. Nothing is saved; the note stays as written. */
 export function translateTicketNote(ticketId: string, index: number, target: "en" | "fr") {
   return api<NoteTranslation>(`/admin/tickets/${id(ticketId)}/notes/${index}/translate`, { method: "POST", body: { target } });
+}
+
+/** Attach one evidence file (JPG, PNG or PDF, 5 MB at most) with a short note. */
+export function attachTicketFile(ticketId: string, file: File, note: string, key: string) {
+  const form = new FormData();
+  form.append("note", note);
+  form.append("file", file);
+  return api(`/admin/tickets/${id(ticketId)}/files`, { method: "POST", form, idempotencyKey: key });
+}
+
+/** The file's bytes. The server always sends it as a download. */
+export function ticketFile(ticketId: string, fileId: string) {
+  return api<Blob>(`/admin/tickets/${id(ticketId)}/files/${id(fileId)}`, { asFile: true });
+}
+
+export function removeTicketFile(ticketId: string, fileId: string) {
+  return api(`/admin/tickets/${id(ticketId)}/files/${id(fileId)}`, { method: "DELETE" });
 }
 
 export function changeTicket(ticketId: string, body: { priority?: TicketPriority; status?: TicketStatus; category?: TicketCategory; assignedTo?: string | null }) {

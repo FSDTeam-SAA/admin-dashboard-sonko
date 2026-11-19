@@ -11,7 +11,8 @@ function securityPolicy(apiOrigin: string): Plugin {
     "default-src 'self'",
     "script-src 'self'",
     "style-src 'self'",
-    "img-src 'self' data: https://res.cloudinary.com",
+    // blob: is for evidence pictures shown on a ticket (made in the page from the server's bytes).
+    "img-src 'self' data: blob: https://res.cloudinary.com",
     `connect-src 'self' ${apiOrigin}`,
     "font-src 'self'",
     "object-src 'none'",
