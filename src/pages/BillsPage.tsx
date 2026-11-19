@@ -1,9 +1,11 @@
 import { useMemo, useState } from "react";
 import {
+  cancelRefundAsk,
   decidePurchase,
   stuckPurchases,
   type StuckPurchase,
 } from "../api/admin";
+import { RefundLimits } from "../components/RefundLimits";
 import { can } from "../api/staff";
 import { useAuth } from "../auth/AuthContext";
 import { Badge, LoadState, PageHeader, Pager } from "../components/common";
@@ -117,6 +119,23 @@ export function BillsPage() {
                     <td className="small">{row.reviewReason || "—"}</td>
                     {mayDecide && (
                       <td>
+                        {row.refundAsk && (
+                          <p className="notice small">
+                            {row.refundAsk.requestedBy === staff?._id
+                              ? "You asked for this refund. A different staff member must approve it."
+                              : `Refund asked ${when(row.refundAsk.requestedAt)}: "${row.refundAsk.reason}". Check it with the provider, then press Approve refund.`}{" "}
+                            <button
+                              className="link"
+                              onClick={async () => {
+                                await cancelRefundAsk(row.id);
+                                setDone("Refund request cancelled.");
+                                setReload((n) => n + 1);
+                              }}
+                            >
+                              Cancel request
+                            </button>
+                          </p>
+                        )}
                         <button
                           onClick={() =>
                             setOpen({ row, outcome: "successful" })
@@ -126,9 +145,13 @@ export function BillsPage() {
                         </button>{" "}
                         <button
                           className="danger"
+                          disabled={row.refundAsk?.requestedBy === staff?._id}
                           onClick={() => setOpen({ row, outcome: "failed" })}
                         >
-                          It failed: refund
+                          {row.refundAsk &&
+                          row.refundAsk.requestedBy !== staff?._id
+                            ? "Approve refund"
+                            : "It failed: refund"}
                         </button>
                       </td>
                     )}
@@ -140,6 +163,7 @@ export function BillsPage() {
         </>
       )}
       <Pager pagination={data?.pagination} onPage={setPage} />
+      <RefundLimits />
       {open && (
         <DecideDialog
           row={open.row}
@@ -186,11 +210,17 @@ function DecideDialog({
       canConfirm={ok}
       onClose={onClose}
       onConfirm={async (pin) => {
-        await decidePurchase(
+        const result = await decidePurchase(
           row.id,
           { outcome, reason: reason.trim(), pin },
           key,
         );
+        if (result && "asked" in result) {
+          onDone(
+            `This refund is above the limit for ${row.country || "this country"}. Asked: a different staff member must approve it.`,
+          );
+          return;
+        }
         onDone(
           outcome === "successful"
             ? "Marked as went through. No refund."

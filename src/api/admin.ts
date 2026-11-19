@@ -717,6 +717,8 @@ export type StuckPurchase = {
   target: string;
   reviewReason: string;
   country: string;
+  /** Set when a refund above the country's limit is waiting for a second person. */
+  refundAsk: { requestedBy: string; requestedAt: string; reason: string } | null;
   createdAt: string;
   customer: { id: string; name: string; phone: string } | null;
 };
@@ -727,5 +729,34 @@ export function stuckPurchases(page: number) {
 
 /** "successful": no refund. "failed": the customer is refunded once. */
 export function decidePurchase(transactionId: string, body: { outcome: "successful" | "failed"; reason: string; pin: string }, key: string) {
-  return api<{ id: string; status: string } | null>(`/admin/needs-checking/${id(transactionId)}`, { method: "PATCH", body, idempotencyKey: key });
+  // Answers 202 { asked: true } when the refund needs a second person.
+  return api<{ id: string; status: string } | { asked: true } | null>(`/admin/needs-checking/${id(transactionId)}`, { method: "PATCH", body, idempotencyKey: key });
+}
+
+export function cancelRefundAsk(transactionId: string) {
+  return api(`/admin/needs-checking/${id(transactionId)}/refund-ask`, { method: "DELETE" });
+}
+
+// ---- Refund limits per country ----
+
+export type RefundLimit = {
+  country: string;
+  currency: string;
+  /** -1 while the first limit waits for approval: every refund needs two people. */
+  limitMinor: number;
+  pendingRaise: { limitMinor: number; currency: string; reason: string; requestedBy: string; requestedByName: string; requestedAt: string } | null;
+  history: { limitMinor: number; currency: string; reason: string; by: string; at: string }[];
+};
+
+export function refundLimits() {
+  return api<RefundLimit[]>("/admin/refund-limits");
+}
+
+/** Lowering saves at once; raising (or the first limit) answers { asked: true } until a second person approves. */
+export function setRefundLimit(country: string, body: { amount: number; currency: string; reason: string; pin: string }, key: string) {
+  return api<{ asked?: true; done?: true }>(`/admin/refund-limits/${id(country)}`, { method: "PUT", body, idempotencyKey: key });
+}
+
+export function cancelRefundLimitRaise(country: string) {
+  return api(`/admin/refund-limits/${id(country)}/raise`, { method: "DELETE" });
 }

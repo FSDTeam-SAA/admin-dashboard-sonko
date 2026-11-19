@@ -43,3 +43,25 @@ describe("bills and top-ups", () => {
     expect(hoursWaiting("2026-11-20T09:30:00Z", now)).toBe(0);
   });
 });
+
+import { cancelRefundAsk, refundLimits, setRefundLimit } from "../src/api/admin";
+import { limitLabel } from "../src/components/RefundLimits";
+
+describe("refund limits", () => {
+  it("reads and sets limits with the PIN and an idempotency key", async () => {
+    await refundLimits();
+    await setRefundLimit("GM", { amount: 3000, currency: "GMD", reason: "Start here", pin: "482915" }, "k2");
+    await cancelRefundAsk("t1");
+    expect(path(calls[0]!)).toBe("/admin/refund-limits");
+    expect(path(calls[1]!)).toBe("/admin/refund-limits/GM");
+    expect(calls[1]!.init.method).toBe("PUT");
+    expect((calls[1]!.init.headers as Record<string, string>)["Idempotency-Key"]).toBe("k2");
+    expect(path(calls[2]!)).toBe("/admin/needs-checking/t1/refund-ask");
+    expect(calls[2]!.init.method).toBe("DELETE");
+  });
+
+  it("a limit still waiting says every refund needs two people", () => {
+    expect(limitLabel({ limitMinor: -1, currency: "GMD" })).toMatch(/every refund needs two/);
+    expect(limitLabel({ limitMinor: 300000, currency: "GMD" })).toBe("Up to GMD 3,000.00 with one person");
+  });
+});
