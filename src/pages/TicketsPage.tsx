@@ -4,6 +4,8 @@ import { useAuth } from "../auth/AuthContext";
 import { can } from "../api/staff";
 import {
   addTicketNote,
+  translateTicketNote,
+  type NoteTranslation,
   changeTicket,
   openTicket,
   ticket,
@@ -257,6 +259,8 @@ function TicketView({ ticketId, onBack }: { ticketId: string; onBack: () => void
   const { data, error, loading, reload } = useLoad(() => ticket(ticketId), [ticketId]);
   const noteKey = useMemo(newIdempotencyKey, [data?.notes.length]);
   const mayManage = can(staff, "manage_tickets");
+  // Hidden until the server has its Google key and this person is allowed.
+  const canTranslate = Boolean(staff?.translationOn) && can(staff, "translate_notes") && can(staff, "view_tickets");
 
   const run = async (action: () => Promise<unknown>) => {
     setBusy(true);
@@ -380,6 +384,7 @@ function TicketView({ ticketId, onBack }: { ticketId: string; onBack: () => void
               <li key={i}>
                 <strong>{n.by?.name || t("Staff")}</strong> <span className="muted small">{when(n.at)}</span>
                 <p>{n.text}</p>
+                {canTranslate && <NoteTranslate ticketId={data.id} index={i} />}
               </li>
             ))}
           </ul>
@@ -400,6 +405,7 @@ function TicketView({ ticketId, onBack }: { ticketId: string; onBack: () => void
               <textarea rows={3} maxLength={2000} value={note} onChange={(e) => setNote(e.target.value)} />
             </label>
             <p className="hint">{t("Notes can't be changed or removed once added. Don't write PINs, codes or full ID numbers here.")}</p>
+            {Boolean(staff?.translationOn) && <p className="hint">{t("Keep names to what you need. Notes can be translated by Google, which cannot hide names.")}</p>}
             <div className="row-end">
               <button className="primary" type="submit" disabled={!note.trim() || busy}>
                 {t("Add note")}
@@ -425,6 +431,61 @@ function TicketView({ ticketId, onBack }: { ticketId: string; onBack: () => void
         )}
       </div>
     </section>
+  );
+}
+
+/**
+ * "Translate" under a note: shows a translation to this reader only. The
+ * note is not changed and the translation is not saved anywhere.
+ */
+function NoteTranslate({ ticketId, index }: { ticketId: string; index: number }) {
+  const t = useT();
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<NoteTranslation | null>(null);
+  const [problem, setProblem] = useState<string | null>(null);
+  return (
+    <div>
+      {!result && (
+        <button
+          type="button"
+          className="link"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            setProblem(null);
+            try {
+              setResult(await translateTicketNote(ticketId, index, t.language));
+            } catch (caught) {
+              setProblem(caught instanceof Error ? caught.message : "Translation did not work. Please try again.");
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          {busy ? t("Translating…") : t("Translate")}
+        </button>
+      )}
+      {problem && (
+        <p className="error" role="alert">
+          {t(problem)}
+        </p>
+      )}
+      {result &&
+        (result.sameLanguage ? (
+          <p className="muted small">{t("This note is already in your language.")}</p>
+        ) : (
+          <div className="notice">
+            <p>{result.text}</p>
+            <p className="muted small">
+              {t("Translated by Google. The note itself is unchanged.")}
+              {result.partlyHidden ? ` ${t("Some numbers could not be placed back.")}` : ""}
+            </p>
+            <button type="button" className="link" onClick={() => setResult(null)}>
+              {t("Hide translation")}
+            </button>
+          </div>
+        ))}
+    </div>
   );
 }
 

@@ -539,6 +539,13 @@ export function addTicketNote(ticketId: string, text: string, key: string) {
   return api(`/admin/tickets/${id(ticketId)}/notes`, { method: "POST", body: { text }, idempotencyKey: key });
 }
 
+export type NoteTranslation = { sameLanguage: boolean; text: string; target: "en" | "fr"; from?: string; partlyHidden?: boolean };
+
+/** Translates one note for the reader. Nothing is saved; the note stays as written. */
+export function translateTicketNote(ticketId: string, index: number, target: "en" | "fr") {
+  return api<NoteTranslation>(`/admin/tickets/${id(ticketId)}/notes/${index}/translate`, { method: "POST", body: { target } });
+}
+
 export function changeTicket(ticketId: string, body: { priority?: TicketPriority; status?: TicketStatus; category?: TicketCategory; assignedTo?: string | null }) {
   return api(`/admin/tickets/${id(ticketId)}`, { method: "PATCH", body });
 }

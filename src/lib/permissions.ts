@@ -17,6 +17,7 @@ export const PERMISSION_GROUPS: { title: string; items: [string, string][] }[] =
       ["verify_callers", "Check a caller is the customer (text code or questions)"],
       ["view_tickets", "See tickets and ticket figures"],
       ["manage_tickets", "Open tickets, write notes, change priority and status"],
+      ["translate_notes", "Translate ticket notes (the note's text, without phone numbers or emails, is sent to Google)"],
       ["view_analytics", "See sales, usage and sign-up figures (senior)"],
       ["view_audit", "See the audit trail of every staff login and action (senior)"],
       ["send_announcements", "Write announcements to customers (a second person approves)"],
