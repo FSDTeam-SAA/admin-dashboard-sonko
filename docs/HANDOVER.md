@@ -104,3 +104,8 @@ On server branch `agent-cash-out` (and merged into `notification-feed`):
   links to it. The server checks the record, the amount and the people.
 - The hold reason and refund note are the only evidence until file uploads
   (contract 7.6) are built.
+- With only one staff account, nothing that needs two people can be done,
+  including adding the second staff member. The developer must make the
+  second staff account directly in the database (role `admin`,
+  `permissions` set to what they need, never left empty unless they are
+  meant to be a full admin). After that, everything goes through the panel.
