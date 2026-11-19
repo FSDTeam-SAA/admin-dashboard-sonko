@@ -267,7 +267,9 @@ function CustomerView({
       {done && <p className="notice">{done}</p>}
       {data.callerChecks.verifiedUntil ? (
         <p className="notice">
-          Caller checked. Counts until {when(data.callerChecks.verifiedUntil)}.
+          {data.callerChecks.verifiedBy === staff?._id
+            ? `You checked this caller. Counts until ${when(data.callerChecks.verifiedUntil)}.`
+            : `Caller checked by ${data.callerChecks.verifiedByName || "another staff member"}, until ${when(data.callerChecks.verifiedUntil)}. Only they can change the phone or email. If you are on the call, check the caller yourself.`}
         </p>
       ) : (
         <p className="muted small">

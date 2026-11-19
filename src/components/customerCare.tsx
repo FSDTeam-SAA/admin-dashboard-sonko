@@ -67,6 +67,7 @@ export function EditCustomerDialog({ customer, onClose, onDone }: { customer: Cu
         {line("zipCode", "Postcode")}
         {line("country", "Country code (GM, SN, GB)", 2)}
       </div>
+      <p className="hint">Changing the email needs you to have checked the caller in the last 30 minutes. The customer is told at their old email and phone.</p>
       <p className="hint">To change the phone number, use Change phone. It needs a second person.</p>
       <TextArea label="Reason (kept with the change)" value={reason} onChange={setReason} min={5} max={300} />
     </ConfirmWithPin>
@@ -120,7 +121,10 @@ export function ChangePhoneDialog({
           <TextArea label="Reason, and how you checked who they are" value={reason} onChange={setReason} min={5} max={300} />
         </>
       )}
-      <p className="hint">Once changed, the customer is signed out on every phone.</p>
+      <p className="hint">
+        To ask, you must have checked the caller in the last 30 minutes. Once changed, the customer is signed out on every phone, the old number and
+        email are told, and no money can leave the account for 72 hours.
+      </p>
     </ConfirmWithPin>
   );
 }

@@ -452,8 +452,11 @@ export type CustomerDetail = {
   callerChecks: {
     questionsSet: boolean;
     questionsSetAt: string | null;
-    /** Set when a check passed in the last 30 minutes. */
+    /** Set when the latest check passed in the last 30 minutes. A later failed check cancels it. */
     verifiedUntil: string | null;
+    /** The staff member the check counts for. Only they can ask for a phone or email change. */
+    verifiedBy: string | null;
+    verifiedByName: string | null;
     recent: { method: "code" | "questions"; passed: boolean; by: string; at: string }[];
   };
   recentlyOpenedBy: { staff: string; at: string }[];
