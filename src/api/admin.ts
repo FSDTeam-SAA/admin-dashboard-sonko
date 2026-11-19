@@ -404,3 +404,156 @@ export function agent(agentId: string) {
 export function decideApplication(userId: string, body: { status: "approved" } | { status: "rejected"; rejectionReason: string }) {
   return api(`/admin/agent-applications/${id(userId)}`, { method: "PATCH", body });
 }
+
+// ---- Customers ----
+
+export type CustomerFilter = "verified" | "unverified" | "held";
+
+export type CustomerRow = {
+  id: string;
+  name: string;
+  phone: string;
+  role: string;
+  country: string;
+  idChecked: boolean;
+  onHold: boolean;
+  joinedAt: string;
+  lastLoginAt: string | null;
+};
+
+export type CustomerDetail = {
+  customer: CustomerRow & {
+    email: string;
+    username: string;
+    address: { street?: string; city?: string; state?: string; zipCode?: string; country?: string };
+    receivingCurrency: string;
+    /** Only a picture the customer chose. It is not proof of who they are. */
+    profilePicture: string;
+    verification: { identityVerifiedAt: string | null; addressVerifiedAt: string | null; nameOnId: string; country: string };
+    hold: { scope: HoldScope; reason: string; placedAt: string | null } | null;
+  };
+  wallets: { currency: string; balanceMinor: number; amount: number }[];
+  spend: { currency: string; count: number; amountMinor: number }[];
+  transactions: {
+    id: string;
+    txRef: string;
+    type: string;
+    status: string;
+    currency: string;
+    amountMinor: number;
+    description: string;
+    direction: "in" | "out";
+    otherParty: Person | null;
+    at: string;
+  }[];
+  tickets: { id: string; number: number; subject: string; priority: TicketPriority; status: TicketStatus; createdAt: string }[];
+  recentlyOpenedBy: { staff: string; at: string }[];
+};
+
+export function customers(filter: CustomerFilter | "all", search: string, page: number) {
+  const query = new URLSearchParams({ page: String(page), limit: "25" });
+  if (filter !== "all") query.set("filter", filter);
+  if (search.trim()) query.set("search", search.trim());
+  return api<{ customers: CustomerRow[]; pagination: Pagination }>(`/admin/customers?${query.toString()}`);
+}
+
+/** Opening a customer file is recorded on the server against the staff member. */
+export function customer(customerId: string) {
+  return api<CustomerDetail>(`/admin/customers/${id(customerId)}`);
+}
+
+// ---- Tickets ----
+
+export type TicketPriority = "high" | "medium" | "low";
+export type TicketStatus = "open" | "in_progress" | "resolved" | "closed";
+export const TICKET_CATEGORIES = [
+  ["payment_failed", "Payment failed"],
+  ["money_missing", "Money missing"],
+  ["cash_out", "Cash out"],
+  ["agent", "Agent"],
+  ["id_check", "ID check"],
+  ["login_or_pin", "Login or PIN"],
+  ["fees_or_rates", "Fees or rates"],
+  ["account", "Account"],
+  ["other", "Other"],
+] as const;
+export type TicketCategory = (typeof TICKET_CATEGORIES)[number][0];
+
+type Named = { id: string; name: string } | null;
+
+export type TicketRow = {
+  id: string;
+  number: number;
+  subject: string;
+  priority: TicketPriority;
+  status: TicketStatus;
+  category: TicketCategory;
+  customer: Named;
+  assignedTo: Named;
+  createdAt: string;
+  resolvedAt: string | null;
+};
+
+export type TicketDetail = Omit<TicketRow, "customer" | "assignedTo"> & {
+  detail: string;
+  customer: Mini;
+  createdBy: Mini;
+  assignedTo: Mini;
+  notes: { by: Mini; text: string; at: string }[];
+  history: { by: Mini; field: string; from: string; to: string; at: string }[];
+};
+
+export type TicketFilters = { status: TicketStatus | "active" | "all"; priority: TicketPriority | "all"; mine: boolean; search: string; customer?: string };
+
+export function tickets(filters: TicketFilters, page: number) {
+  const query = new URLSearchParams({ page: String(page), limit: "25" });
+  if (filters.status !== "all") query.set("status", filters.status);
+  if (filters.priority !== "all") query.set("priority", filters.priority);
+  if (filters.mine) query.set("assignedTo", "me");
+  if (filters.search.trim()) query.set("search", filters.search.trim());
+  if (filters.customer) query.set("customer", id(filters.customer));
+  return api<{ tickets: TicketRow[]; pagination: Pagination }>(`/admin/tickets?${query.toString()}`);
+}
+
+export function ticket(ticketId: string) {
+  return api<TicketDetail>(`/admin/tickets/${id(ticketId)}`);
+}
+
+export function openTicket(body: { subject: string; detail: string; priority: TicketPriority; category: TicketCategory; customer?: string }, key: string) {
+  return api<{ id: string; number: number }>(`/admin/tickets`, { method: "POST", body, idempotencyKey: key });
+}
+
+export function addTicketNote(ticketId: string, text: string, key: string) {
+  return api(`/admin/tickets/${id(ticketId)}/notes`, { method: "POST", body: { text }, idempotencyKey: key });
+}
+
+export function changeTicket(ticketId: string, body: { priority?: TicketPriority; status?: TicketStatus; category?: TicketCategory; assignedTo?: string | null }) {
+  return api(`/admin/tickets/${id(ticketId)}`, { method: "PATCH", body });
+}
+
+export type TurnaroundMonth = { month: string; handled: number; averageHours: number };
+
+export type TicketStats = {
+  months: TurnaroundMonth[];
+  thisMonth: TurnaroundMonth | null;
+  lastMonth: TurnaroundMonth | null;
+  openByPriority: { key: TicketPriority; count: number }[];
+  byCategory: { key: TicketCategory; count: number }[];
+};
+
+export function ticketStats() {
+  return api<TicketStats>(`/admin/tickets/stats`);
+}
+
+// ---- Analytics ----
+
+export type Analytics = {
+  totals: { customers: number; agents: number };
+  activeCustomersLast30Days: number;
+  months: { month: string; signups: number; volume: { currency: string; count: number; amountMinor: number }[] }[];
+  usageLast90Days: { type: string; count: number }[];
+};
+
+export function analytics() {
+  return api<Analytics>(`/admin/analytics`);
+}

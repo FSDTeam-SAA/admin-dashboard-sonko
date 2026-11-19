@@ -92,8 +92,29 @@ export const NAV: NavItem[] = [
     path: "/customers",
     label: "Customers",
     permission: "view_customers",
-    routes: ["GET /admin/users", "GET /admin/transactions"],
-    ready: false,
+    routes: ["GET /admin/customers", "GET /admin/customers/:id"],
+    ready: true,
+  },
+  {
+    path: "/tickets",
+    label: "Tickets",
+    permission: "view_tickets",
+    routes: [
+      "GET /admin/tickets",
+      "GET /admin/tickets/stats",
+      "GET /admin/tickets/:id",
+      "POST /admin/tickets",
+      "POST /admin/tickets/:id/notes",
+      "PATCH /admin/tickets/:id",
+    ],
+    ready: true,
+  },
+  {
+    path: "/analytics",
+    label: "Analytics",
+    permission: "view_analytics",
+    routes: ["GET /admin/analytics"],
+    ready: true,
   },
 ];
 

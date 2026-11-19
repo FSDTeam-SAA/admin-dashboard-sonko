@@ -11,6 +11,14 @@ export const PERMISSION_GROUPS: { title: string; items: [string, string][] }[] =
     ],
   },
   {
+    title: "Tickets and analytics",
+    items: [
+      ["view_tickets", "See tickets and ticket figures"],
+      ["manage_tickets", "Open tickets, write notes, change priority and status"],
+      ["view_analytics", "See sales, usage and sign-up figures (senior)"],
+    ],
+  },
+  {
     title: "Agents",
     items: [
       ["view_agents", "See agents, their activity and balances"],

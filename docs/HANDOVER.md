@@ -88,6 +88,17 @@ On server branch `agent-cash-out` (and merged into `notification-feed`):
   `view_agents`). Agent applications can only be decided while waiting, and
   turning one down needs a reason. Database test: `test/agentAdmin.test.js`
   (not run here).
+- Customers, tickets and analytics (19 Nov). `GET /admin/customers` and
+  `/admin/customers/:id` (`view_customers`): opening a file saves who opened
+  it (`CustomerFileView`, never edited). The ID number is never sent. Tickets
+  (`SupportTicket`): `GET/POST /admin/tickets`, `GET /admin/tickets/:id`,
+  `GET /admin/tickets/stats`, `POST /admin/tickets/:id/notes`,
+  `PATCH /admin/tickets/:id` (`view_tickets`, `manage_tickets`). Notes and
+  history are only added to. `GET /admin/analytics` (`view_analytics`,
+  senior). New `lastLoginAt` on users, set at login. The old
+  `GET /admin/users` no longer sends the agent ID number or `cash`.
+  Database test: `test/customersTickets.test.js` (not run here); unit test
+  `test/ticket.rules.test.js`.
 
 ## Before it goes live
 
@@ -106,7 +117,14 @@ On server branch `agent-cash-out` (and merged into `notification-feed`):
 
 ## Next steps, in order
 
-1. The rest of the agreed panel: customers, tickets, analytics, and so on.
+1. Ticket file attachments (needs a place to keep the files and the same
+   upload rules as other pictures: size limit, type check).
+2. Analytics: revenue (the fees Sunu Pay keeps, from the ledger), and a
+   sales-team view of their own sign-ups (needs each customer to record who
+   signed them up).
+3. Editing customer details, security questions for callers, the full audit
+   trail (every login and action), Services and countries, announcements,
+   the per-user language setting.
 
 ## Known gaps
 

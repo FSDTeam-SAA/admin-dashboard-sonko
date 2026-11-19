@@ -199,3 +199,16 @@ tr.clickable:hover td { background: var(--bg); }
 .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .two-col .panel { margin-bottom: 16px; }
 @media (max-width: 900px) { .two-col { grid-template-columns: 1fr; } }
+
+/* Customers, tickets, analytics */
+.avatar { border-radius: 50%; object-fit: cover; flex: none; }
+.empty-avatar { width: 56px; height: 56px; background: var(--line); }
+.plain-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.plain-list p { margin: 4px 0 0; white-space: pre-wrap; }
+.stats { margin-top: 0; margin-bottom: 16px; }
+.big { font-size: 28px; }
+.bars { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.bars li { display: grid; grid-template-columns: 130px 1fr 170px; gap: 10px; align-items: center; font-size: 14px; }
+.bar-track { background: var(--line); border-radius: 6px; height: 12px; overflow: hidden; }
+.bar-fill { display: block; height: 100%; background: var(--accent); border-radius: 6px; }
+.bar-value { text-align: right; font-variant-numeric: tabular-nums; }
