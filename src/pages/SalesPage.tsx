@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import {
   addSalesRep,
+  cancelSalesMinimumChange,
   changeSalesMinimum,
   mySales,
   salesReport,
@@ -52,7 +53,8 @@ export function SalesPage() {
   const [done, setDone] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [stopping, setStopping] = useState<SalesRow | null>(null);
-  const [changing, setChanging] = useState(false);
+  const [changing, setChanging] = useState<"new" | "approve" | null>(null);
+  const [withdrawing, setWithdrawing] = useState(false);
   const period = periodFor(kind);
   const report = useLoad(() => (seesAll ? salesReport(period) : mySales(period)), [kind, seesAll]);
   const settings = useLoad(() => (seesAll ? salesSettings() : Promise.resolve(null)), [seesAll]);
@@ -141,7 +143,25 @@ export function SalesPage() {
           <p>
             <strong>{money(settings.data.minimumGmdMinor, "GMD")}</strong> <span className="muted">{t("(about 10 US dollars at the starting rates; check it against today's rates)")}</span>
           </p>
-          {manages && <button onClick={() => setChanging(true)}>{t("Change the minimum")}</button>}
+          {settings.data.pending && (
+            <div className="notice">
+              <p>
+                {t("Waiting for a second person: change to {amount}, asked {when}. Reason: {reason}", {
+                  amount: money(settings.data.pending.toGmdMinor, "GMD"),
+                  when: when(settings.data.pending.at),
+                  reason: settings.data.pending.reason,
+                })}
+              </p>
+              {manages && (
+                <p>
+                  {settings.data.pending.by !== staff?._id && <button onClick={() => setChanging("approve")}>{t("Approve")}</button>}{" "}
+                  <button onClick={() => setWithdrawing(true)}>{t("Withdraw")}</button>
+                </p>
+              )}
+              {manages && settings.data.pending.by === staff?._id && <p className="muted small">{t("You asked for this, so a different staff member must approve it.")}</p>}
+            </div>
+          )}
+          {manages && <button onClick={() => setChanging("new")}>{t("Change the minimum")}</button>}
           {settings.data.changes.length > 0 && (
             <>
               <h3>{t("Changes")}</h3>
@@ -149,6 +169,7 @@ export function SalesPage() {
                 {settings.data.changes.map((c) => (
                   <li key={c.at} className="small">
                     {when(c.at)}: {money(c.fromGmdMinor, "GMD")} → {money(c.toGmdMinor, "GMD")}. {c.reason}
+                    {c.approveReason ? ` · ${t("Approved")}: ${c.approveReason}` : ""}
                   </li>
                 ))}
               </ul>
@@ -184,12 +205,28 @@ export function SalesPage() {
       {changing && settings.data && (
         <MinimumDialog
           currentGmd={settings.data.minimumGmdMinor / 100}
-          onClose={() => setChanging(false)}
+          approveGmd={changing === "approve" && settings.data.pending ? settings.data.pending.toGmdMinor / 100 : undefined}
+          onClose={() => setChanging(null)}
           onDone={(m) => {
-            setChanging(false);
+            setChanging(null);
             finish(m);
           }}
         />
+      )}
+      {withdrawing && (
+        <ConfirmWithPin
+          title="Withdraw the waiting change"
+          confirmLabel="Withdraw"
+          needsPin={false}
+          onClose={() => setWithdrawing(false)}
+          onConfirm={async () => {
+            await cancelSalesMinimumChange();
+            setWithdrawing(false);
+            finish("Request withdrawn. The minimum stays as it is.");
+          }}
+        >
+          <p>{t("The minimum stays as it is.")}</p>
+        </ConfirmWithPin>
       )}
     </section>
   );
@@ -242,28 +279,41 @@ function AddRepDialog({ onClose, onDone }: { onClose: () => void; onDone: (m: st
   );
 }
 
-function MinimumDialog({ currentGmd, onClose, onDone }: { currentGmd: number; onClose: () => void; onDone: (m: string) => void }) {
+function MinimumDialog({
+  currentGmd,
+  approveGmd,
+  onClose,
+  onDone,
+}: {
+  currentGmd: number;
+  /** Set when approving someone else's request: the amount is fixed. */
+  approveGmd?: number;
+  onClose: () => void;
+  onDone: (m: string) => void;
+}) {
   const t = useT();
-  const [value, setValue] = useState(String(currentGmd));
+  const approving = approveGmd !== undefined;
+  const [value, setValue] = useState(String(approveGmd ?? currentGmd));
   const [reason, setReason] = useState("");
   const key = useMemo(newIdempotencyKey, []);
   const amount = Number(value);
   const valid = Number.isFinite(amount) && amount >= 10 && amount <= 100000 && amount !== currentGmd;
   return (
     <ConfirmWithPin
-      title="Change the minimum"
-      confirmLabel="Change"
+      title={approving ? "Approve the new minimum" : "Change the minimum"}
+      confirmLabel={approving ? "Approve" : "Ask for the change"}
       canConfirm={valid && okLength(reason, 3, 300)}
       onClose={onClose}
       onConfirm={async (pin) => {
-        await changeSalesMinimum(amount, reason.trim(), pin, key);
-        onDone("Minimum changed.");
+        const result = await changeSalesMinimum(amount, reason.trim(), pin, key);
+        onDone(result.asked ? "Asked. A different staff member must approve the same amount within 24 hours." : "Minimum changed.");
       }}
     >
       <p>{t("This changes who counts in every period, including past ones, because the report is worked out each time it is opened.")}</p>
+      {!approving && <p>{t("Two people: you ask, then a different staff member approves the same amount within 24 hours. Until then nothing changes.")}</p>}
       <label>
         {t("Minimum, in dalasi")}
-        <input type="number" min={10} max={100000} step="1" value={value} onChange={(e) => setValue(e.target.value)} />
+        <input type="number" min={10} max={100000} step="1" value={value} readOnly={approving} onChange={(e) => setValue(e.target.value)} />
       </label>
       <TextArea label="Why" value={reason} onChange={setReason} min={3} max={300} />
     </ConfirmWithPin>

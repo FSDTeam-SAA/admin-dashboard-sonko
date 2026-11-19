@@ -173,9 +173,11 @@ On server branch `agent-cash-out` (and merged into `notification-feed`):
   minimum, other currencies converted to GMD at the rates in force when the
   report is opened. Routes: `GET /admin/sales`, `GET /admin/sales/mine`,
   `GET/PUT /admin/sales/settings`, `POST /admin/sales/reps`,
-  `POST /admin/sales/reps/:id/stop`. Changing the minimum is one person with
-  PIN and reason (it changes counts, it moves no money); make it two people if
-  salespeople are paid on it. Unit test `test/sales.rules.test.js` (passes);
+  `POST /admin/sales/reps/:id/stop`. Changing the minimum needs two people
+  (20 Nov): the first `PUT /admin/sales/settings` asks (202); the same amount
+  from a different staff member within 24 hours changes it; a different
+  amount replaces the request; `DELETE /admin/sales/settings/change`
+  withdraws it. PIN and reason from both; who asked and who approved are kept. Unit test `test/sales.rules.test.js` (passes);
   database test `test/sales.test.js` (not run here). App: the sign-up screen
   needs a "Sales code (optional)" field that sends `referralCode`.
 

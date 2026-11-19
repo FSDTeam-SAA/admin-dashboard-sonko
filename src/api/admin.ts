@@ -1023,7 +1023,9 @@ export type SalesRow = { id: string; name: string; code: string; active: boolean
 export type SalesReport = { from: string; until: string; minimumGmdMinor: number; salespeople: SalesRow[] };
 export type SalesSettings = {
   minimumGmdMinor: number;
-  changes: { fromGmdMinor: number; toGmdMinor: number; reason: string; by: string; at: string }[];
+  /** A change one person asked for, waiting for a different person (24 hours). */
+  pending: { toGmdMinor: number; reason: string; by: string; at: string } | null;
+  changes: { fromGmdMinor: number; toGmdMinor: number; reason: string; by: string; approvedBy?: string; approveReason?: string; at: string }[];
 };
 
 function periodQuery(period?: { from: string; to: string }) {
@@ -1044,8 +1046,17 @@ export function salesSettings() {
   return api<SalesSettings>(`/admin/sales/settings`);
 }
 
+/** Same call to ask and (by a different person, same amount) to approve. */
 export function changeSalesMinimum(minimumGmd: number, reason: string, pin: string, key: string) {
-  return api<SalesSettings>(`/admin/sales/settings`, { method: "PUT", body: { minimumGmd, reason, pin }, idempotencyKey: key });
+  return api<{ asked?: boolean; done?: boolean; settings: SalesSettings }>(`/admin/sales/settings`, {
+    method: "PUT",
+    body: { minimumGmd, reason, pin },
+    idempotencyKey: key,
+  });
+}
+
+export function cancelSalesMinimumChange() {
+  return api<null>(`/admin/sales/settings/change`, { method: "DELETE" });
 }
 
 export function addSalesRep(rep: { name: string; code: string; staffUserId?: string }, pin: string, key: string) {
