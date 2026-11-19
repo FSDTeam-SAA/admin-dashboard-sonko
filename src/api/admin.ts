@@ -508,6 +508,8 @@ export type TicketRow = {
 
 export type TicketDetail = Omit<TicketRow, "customer" | "assignedTo"> & {
   detail: string;
+  /** Wiped after six years of quiet: words gone, figures stay. */
+  erased?: boolean;
   customer: Mini;
   createdBy: Mini;
   assignedTo: Mini;

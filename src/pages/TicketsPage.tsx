@@ -329,7 +329,9 @@ function TicketView({ ticketId, onBack }: { ticketId: string; onBack: () => void
         </div>
         <div className="card panel">
           <h2>{t("Handle")}</h2>
-          {mayManage ? (
+          {data.erased ? (
+            <p className="muted">{t("This ticket was wiped after six years. Its words are gone; only the figures stay. It can't be changed.")}</p>
+          ) : mayManage ? (
             <div className="stack">
               <label>
                 {t("Priority")}
@@ -400,7 +402,7 @@ function TicketView({ ticketId, onBack }: { ticketId: string; onBack: () => void
         ) : (
           <p className="muted">{t("No notes yet.")}</p>
         )}
-        {mayManage && (
+        {mayManage && !data.erased && (
           <form
             className="stack"
             onSubmit={async (event) => {
@@ -434,7 +436,9 @@ function TicketView({ ticketId, onBack }: { ticketId: string; onBack: () => void
             {data.history.map((h, i) => (
               <li key={i} className="small">
                 {when(h.at)} ·{" "}
-                {h.field === "file_expired"
+                {h.field === "ticket_erased"
+                  ? t("The ticket's words were wiped automatically after six years.")
+                  : h.field === "file_expired"
                   ? t("A file was deleted automatically after six years.")
                   : h.field === "keep"
                     ? h.to && !h.from
@@ -790,7 +794,7 @@ function TicketKeepBox({ ticket: data, onChanged }: { ticket: TicketDetail; onCh
   const [done, setDone] = useState<string | null>(null);
   const key = useMemo(newIdempotencyKey, [open, data.keep?.until, data.keep?.ask?.at]);
   const keep = data.keep;
-  if (!keep && (!mayKeep || !data.fileCount)) return null;
+  if (!keep && (!mayKeep || data.erased)) return null;
   const ask = keep?.ask ?? null;
   const askMine = ask?.by?.id === staff?._id;
   const reasonOk = reason.trim().length >= 10 && reason.trim().length <= 300;
@@ -807,10 +811,10 @@ function TicketKeepBox({ ticket: data, onChanged }: { ticket: TicketDetail; onCh
 
   return (
     <div className="card panel">
-      <h2>{t("Keep files longer")}</h2>
+      <h2>{t("Keep longer")}</h2>
       {done && <p className="notice">{t(done)}</p>}
       {!keep ? (
-        <p className="muted">{t("Files are deleted six years after the ticket is finished and the customer has stopped using SunuPay. For fraud, the police or a dispute, keep them longer.")}</p>
+        <p className="muted">{t("Files and notes are deleted six years after the ticket is finished and the customer has stopped using SunuPay. For fraud, the police or a dispute, keep them longer.")}</p>
       ) : (
         <>
           <p>
@@ -880,7 +884,7 @@ function TicketKeepBox({ ticket: data, onChanged }: { ticket: TicketDetail; onCh
             finish("Asked. A different staff member must approve it within 24 hours.");
           }}
         >
-          {open === "end" && <p>{t("Once ended, files older than six years are deleted at the next nightly clean-up.")}</p>}
+          {open === "end" && <p>{t("Once ended, files and notes older than six years are deleted at the next nightly clean-up.")}</p>}
           <KeepFields until={until} setUntil={setUntil} reason={reason} setReason={setReason} withDate={open === "change"} />
         </ConfirmWithPin>
       )}
@@ -900,7 +904,7 @@ function TicketKeepBox({ ticket: data, onChanged }: { ticket: TicketDetail; onCh
               ? t("{name} asked to end this: {reason}", { name: ask.by?.name || t("Staff"), reason: ask.reason })
               : t("{name} asked to change the date to {date}: {reason}", { name: ask.by?.name || t("Staff"), date: day(ask.until), reason: ask.reason })}
           </p>
-          {ask.action === "end" && <p className="hint warn-text">{t("Once ended, files older than six years are deleted at the next nightly clean-up.")}</p>}
+          {ask.action === "end" && <p className="hint warn-text">{t("Once ended, files and notes older than six years are deleted at the next nightly clean-up.")}</p>}
         </ConfirmWithPin>
       )}
     </div>
