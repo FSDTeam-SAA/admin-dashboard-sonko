@@ -19,6 +19,7 @@ export const PERMISSION_GROUPS: { title: string; items: [string, string][] }[] =
       ["manage_tickets", "Open tickets, write notes, change priority and status"],
       ["view_analytics", "See sales, usage and sign-up figures (senior)"],
       ["view_audit", "See the audit trail of every staff login and action (senior)"],
+      ["send_announcements", "Write announcements to customers (a second person approves)"],
     ],
   },
   {

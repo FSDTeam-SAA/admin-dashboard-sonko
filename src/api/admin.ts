@@ -760,3 +760,44 @@ export function setRefundLimit(country: string, body: { amount: number; currency
 export function cancelRefundLimitRaise(country: string) {
   return api(`/admin/refund-limits/${id(country)}/raise`, { method: "DELETE" });
 }
+
+// ---- Announcements ----
+
+export type AnnouncementState = "waiting" | "scheduled" | "live" | "ended" | "withdrawn";
+export type Announcement = {
+  id: string;
+  titleEn: string;
+  titleFr: string;
+  bodyEn: string;
+  bodyFr: string;
+  country: string;
+  audience: "all" | "user" | "agent";
+  startsAt: string;
+  endsAt: string;
+  state: AnnouncementState;
+  createdBy: string;
+  createdByName: string;
+  createdAt: string;
+  approvedByName: string;
+  approvedAt: string | null;
+  withdrawnByName: string;
+  withdrawnAt: string | null;
+  withdrawReason: string;
+};
+export type AnnouncementDraft = Pick<Announcement, "titleEn" | "titleFr" | "bodyEn" | "bodyFr" | "country" | "audience" | "startsAt" | "endsAt">;
+
+export function announcements() {
+  return api<Announcement[]>("/admin/announcements");
+}
+
+export function writeAnnouncement(draft: AnnouncementDraft, pin: string, key: string) {
+  return api<{ id: string }>("/admin/announcements", { method: "POST", body: { ...draft, pin }, idempotencyKey: key });
+}
+
+export function approveAnnouncement(announcementId: string, pin: string, key: string) {
+  return api(`/admin/announcements/${id(announcementId)}/approve`, { method: "POST", body: { pin }, idempotencyKey: key });
+}
+
+export function withdrawAnnouncement(announcementId: string, reason: string) {
+  return api(`/admin/announcements/${id(announcementId)}/withdraw`, { method: "POST", body: { reason } });
+}

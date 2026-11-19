@@ -134,6 +134,13 @@ export const NAV: NavItem[] = [
     ready: true,
   },
   {
+    path: "/announcements",
+    label: "Announcements",
+    permission: "send_announcements",
+    routes: ["GET /admin/announcements", "POST /admin/announcements", "POST /admin/announcements/:id/approve", "POST /admin/announcements/:id/withdraw"],
+    ready: true,
+  },
+  {
     path: "/services",
     label: "Services and countries",
     // Staff who can see the dashboard can see what is switched on; changing needs manage_countries.
