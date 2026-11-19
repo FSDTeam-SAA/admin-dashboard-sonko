@@ -159,6 +159,26 @@ On server branch `agent-cash-out` (and merged into `notification-feed`):
   `test/customersTickets.test.js` (not run here). Check the figures against
   a few real fees on staging before trusting them.
 
+- Sales team (19 Nov). New page "Sales team" (`view_sales`; a salesperson's
+  own login with `view_own_sales` sees only their row; `manage_sales` adds
+  and stops salespeople and sets the minimum). Server: `SalesRep` (name, code
+  like AWA24, optional linked staff login; codes are never reused),
+  `SalesSettings` (the minimum, in GMD, default 700 GMD, about 10 US dollars
+  at the starting rates; every change kept with who and why). Sign-up
+  (`POST /auth/register`) takes an optional `referralCode`; an unknown or
+  stopped code is refused with a clear message; the code is saved on the
+  customer as `referral` (immutable). Report per salesperson for a period
+  (by sign-up date): signed up, passed the ID check (`kyc.identityVerifiedAt`),
+  and of those, made one successful payment (`SPEND_TYPES`) of at least the
+  minimum, other currencies converted to GMD at the rates in force when the
+  report is opened. Routes: `GET /admin/sales`, `GET /admin/sales/mine`,
+  `GET/PUT /admin/sales/settings`, `POST /admin/sales/reps`,
+  `POST /admin/sales/reps/:id/stop`. Changing the minimum is one person with
+  PIN and reason (it changes counts, it moves no money); make it two people if
+  salespeople are paid on it. Unit test `test/sales.rules.test.js` (passes);
+  database test `test/sales.test.js` (not run here). App: the sign-up screen
+  needs a "Sales code (optional)" field that sends `referralCode`.
+
 ## Before it goes live
 
 1. Create the Render static site from `render.yaml` and set
@@ -178,9 +198,8 @@ On server branch `agent-cash-out` (and merged into `notification-feed`):
 
 1. Ticket file attachments (needs a place to keep the files and the same
    upload rules as other pictures: size limit, type check).
-2. Analytics: a sales-team view of their own sign-ups (needs each customer
-   to record who signed them up; decide how first, e.g. a referral code).
-   Revenue is done (19 Nov).
+2. Analytics: revenue and the sales-team view are done (19 Nov). A
+   share link that fills in the sales code (instead of typing it) is not built.
 3. The app screen for customers to set their security questions, announcements,
    the per-user language setting.
 

@@ -8,6 +8,8 @@ export type NavItem = {
   /** The server routes this page will use, for the developer. */
   routes: string[];
   ready: boolean;
+  /** Also shown to staff who have any of these instead. */
+  alsoFor?: string[];
 };
 
 export const NAV: NavItem[] = [
@@ -141,6 +143,14 @@ export const NAV: NavItem[] = [
     ready: true,
   },
   {
+    path: "/sales",
+    label: "Sales team",
+    permission: "view_sales",
+    alsoFor: ["view_own_sales"],
+    routes: ["GET /admin/sales", "GET /admin/sales/mine", "GET/PUT /admin/sales/settings", "POST /admin/sales/reps", "POST /admin/sales/reps/:id/stop"],
+    ready: true,
+  },
+  {
     path: "/bills",
     label: "Bills and top-ups",
     permission: "review_purchases",
@@ -196,5 +206,7 @@ export const NAV: NavItem[] = [
 ];
 
 export function visibleNav(permissions: readonly string[]): NavItem[] {
-  return NAV.filter((item) => item.permission === null || permissions.includes(item.permission));
+  return NAV.filter(
+    (item) => item.permission === null || permissions.includes(item.permission) || Boolean(item.alsoFor?.some((p) => permissions.includes(p))),
+  );
 }

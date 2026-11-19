@@ -1016,3 +1016,42 @@ export function backupStatus() {
 export function recordRestoreTest(body: { outcome: "worked" | "failed"; note: string }, key: string) {
   return api("/admin/backups/restore-tests", { method: "POST", body, idempotencyKey: key });
 }
+
+// ---- Sales team ----
+
+export type SalesRow = { id: string; name: string; code: string; active: boolean; signedUp: number; idChecked: number; qualified: number };
+export type SalesReport = { from: string; until: string; minimumGmdMinor: number; salespeople: SalesRow[] };
+export type SalesSettings = {
+  minimumGmdMinor: number;
+  changes: { fromGmdMinor: number; toGmdMinor: number; reason: string; by: string; at: string }[];
+};
+
+function periodQuery(period?: { from: string; to: string }) {
+  return period ? `?from=${encodeURIComponent(period.from)}&to=${encodeURIComponent(period.to)}` : "";
+}
+
+/** Every salesperson (view_sales). No period means this month so far. */
+export function salesReport(period?: { from: string; to: string }) {
+  return api<SalesReport>(`/admin/sales${periodQuery(period)}`);
+}
+
+/** Only the salesperson linked to this staff login (view_own_sales). */
+export function mySales(period?: { from: string; to: string }) {
+  return api<SalesReport>(`/admin/sales/mine${periodQuery(period)}`);
+}
+
+export function salesSettings() {
+  return api<SalesSettings>(`/admin/sales/settings`);
+}
+
+export function changeSalesMinimum(minimumGmd: number, reason: string, pin: string, key: string) {
+  return api<SalesSettings>(`/admin/sales/settings`, { method: "PUT", body: { minimumGmd, reason, pin }, idempotencyKey: key });
+}
+
+export function addSalesRep(rep: { name: string; code: string; staffUserId?: string }, pin: string, key: string) {
+  return api<{ id: string; code: string }>(`/admin/sales/reps`, { method: "POST", body: { ...rep, pin }, idempotencyKey: key });
+}
+
+export function stopSalesRep(id: string, pin: string) {
+  return api<null>(`/admin/sales/reps/${encodeURIComponent(id)}/stop`, { method: "POST", body: { pin } });
+}
