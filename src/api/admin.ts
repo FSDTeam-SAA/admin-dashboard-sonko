@@ -662,6 +662,15 @@ export type Analytics = {
   activeCustomersLast30Days: number;
   months: { month: string; signups: number; volume: { currency: string; count: number; amountMinor: number }[] }[];
   usageLast90Days: { type: string; count: number }[];
+  /** From the ledger. Older servers send nothing here. */
+  revenue?: Revenue;
+};
+
+export type RevenueCell = { currency: string; feesMinor: number; commissionMinor: number; netMinor: number };
+
+export type Revenue = {
+  months: { month: string; currencies: RevenueCell[] }[];
+  sourcesLast12Months: { currency: string; source: string; amountMinor: number; count: number }[];
 };
 
 export function analytics() {

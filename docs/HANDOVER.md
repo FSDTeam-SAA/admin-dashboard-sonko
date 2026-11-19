@@ -146,6 +146,19 @@ On server branch `agent-cash-out` (and merged into `notification-feed`):
   `test/customerCare.test.js` (not run here); unit test
   `test/customerCare.rules.test.js`.
 
+- Revenue (19 Nov). `GET /admin/analytics` now also sends `revenue`, read
+  from the ledger only: fees kept (every `fee_income` line, so already net of
+  refunds and staff reversals), agent commission (every `commission_expense`
+  line, turned positive; clawbacks lower it; the weekly payout is not counted
+  again) and net, per month and per currency, never added across currencies.
+  Also where the fees came from (transfers, services, cash out, refunds,
+  reversals). Not counted: any exchange-rate margin, which sits in
+  `fx_clearing` in two currencies. Server branch `agent-cash-out` (merged
+  into `notification-feed`), `utils/revenue.rules.js`. Unit test
+  `test/revenue.rules.test.js` (passes); database test added to
+  `test/customersTickets.test.js` (not run here). Check the figures against
+  a few real fees on staging before trusting them.
+
 ## Before it goes live
 
 1. Create the Render static site from `render.yaml` and set
@@ -165,9 +178,9 @@ On server branch `agent-cash-out` (and merged into `notification-feed`):
 
 1. Ticket file attachments (needs a place to keep the files and the same
    upload rules as other pictures: size limit, type check).
-2. Analytics: revenue (the fees Sunu Pay keeps, from the ledger), and a
-   sales-team view of their own sign-ups (needs each customer to record who
-   signed them up).
+2. Analytics: a sales-team view of their own sign-ups (needs each customer
+   to record who signed them up; decide how first, e.g. a referral code).
+   Revenue is done (19 Nov).
 3. The app screen for customers to set their security questions, announcements,
    the per-user language setting.
 

@@ -1,5 +1,5 @@
 import { getLanguage, useT } from "../i18n/language";
-import { analytics } from "../api/admin";
+import { analytics, type Revenue } from "../api/admin";
 import { LoadState, PageHeader } from "../components/common";
 import { money } from "../lib/format";
 import { useLoad } from "../lib/useLoad";
@@ -31,6 +31,103 @@ export function Bars({ rows }: { rows: { label: string; value: number; note?: st
   );
 }
 
+/** Where a fee came from, as the server names it. */
+export const FEE_SOURCE_LABEL: Record<string, string> = {
+  transfers: "Transfers",
+  services: "Airtime, bills and other services",
+  "cash-out": "Agent cash out",
+  refunds: "Refunds (given back)",
+  reversals: "Staff reversals (given back)",
+  other: "Other",
+};
+
+/** One table per currency, newest month first, months with nothing left out. */
+export function revenueByCurrency(revenue: Revenue) {
+  const currencies = [...new Set(revenue.months.flatMap((m) => m.currencies.map((c) => c.currency)))].sort();
+  return currencies.map((currency) => {
+    const rows = revenue.months
+      .map((m) => ({ month: m.month, cell: m.currencies.find((c) => c.currency === currency) }))
+      .filter((r) => r.cell)
+      .reverse()
+      .map((r) => ({ month: r.month, ...r.cell! }));
+    const total = rows.reduce(
+      (sum, r) => ({ feesMinor: sum.feesMinor + r.feesMinor, commissionMinor: sum.commissionMinor + r.commissionMinor, netMinor: sum.netMinor + r.netMinor }),
+      { feesMinor: 0, commissionMinor: 0, netMinor: 0 },
+    );
+    const sources = revenue.sourcesLast12Months.filter((s) => s.currency === currency);
+    return { currency, rows, total, sources };
+  });
+}
+
+function RevenueSection({ revenue }: { revenue?: Revenue }) {
+  const t = useT();
+  if (!revenue) return <p className="hint">{t("Revenue needs the newer server. It shows here once the server is updated.")}</p>;
+  const tables = revenueByCurrency(revenue);
+  return (
+    <>
+      <h2>{t("Revenue")}</h2>
+      <p className="hint">
+        {t("From the books (the ledger). Fees kept are after refunds and reversals. Agent commission is what Sunu Pay owes agents. Any exchange-rate margin is not counted. Currencies are never added together.")}
+      </p>
+      {tables.length === 0 && <p className="muted">{t("No fees taken yet.")}</p>}
+      {tables.map(({ currency, rows, total, sources }) => (
+        <div className="card panel" key={currency}>
+          <h2>{t("Revenue, {currency}", { currency })}</h2>
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>{t("Month")}</th>
+                  <th>{t("Fees kept")}</th>
+                  <th>{t("Agent commission")}</th>
+                  <th>{t("Net")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r) => (
+                  <tr key={r.month}>
+                    <td>{monthLabel(r.month)}</td>
+                    <td className="num">{money(r.feesMinor, currency)}</td>
+                    <td className="num">{money(r.commissionMinor, currency)}</td>
+                    <td className="num">
+                      <strong>{money(r.netMinor, currency)}</strong>
+                    </td>
+                  </tr>
+                ))}
+                <tr>
+                  <td>
+                    <strong>{t("Last 12 months")}</strong>
+                  </td>
+                  <td className="num">{money(total.feesMinor, currency)}</td>
+                  <td className="num">{money(total.commissionMinor, currency)}</td>
+                  <td className="num">
+                    <strong>{money(total.netMinor, currency)}</strong>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          {sources.length > 0 && (
+            <>
+              <h3>{t("Where the fees came from, last 12 months")}</h3>
+              <table className="mini">
+                <tbody>
+                  {sources.map((s) => (
+                    <tr key={s.source}>
+                      <td>{t(FEE_SOURCE_LABEL[s.source] ?? s.source)}</td>
+                      <td className="num">{money(s.amountMinor, currency)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
+          )}
+        </div>
+      ))}
+    </>
+  );
+}
+
 export function AnalyticsPage() {
   const t = useT();
   const { data, error, loading } = useLoad(analytics, []);
@@ -42,7 +139,7 @@ export function AnalyticsPage() {
 
   return (
     <section>
-      <PageHeader title="Analytics" intro="How the business is doing. Counts only, with no personal details. Ticket figures are on the Tickets page." />
+      <PageHeader title="Analytics" intro="How the business is doing: revenue, sign-ups and use. No personal details. Ticket figures are on the Tickets page." />
       <div className="grid stats">
         <div className="card tile">
           <span className="muted">{t("Customers")}</span>
@@ -63,6 +160,8 @@ export function AnalyticsPage() {
           {previous && <span className="muted small">{t("{n} last month", { n: previous.signups })}</span>}
         </div>
       </div>
+
+      <RevenueSection revenue={data.revenue} />
 
       <div className="card panel">
         <h2>{t("Sign-ups by month")}</h2>
@@ -93,7 +192,6 @@ export function AnalyticsPage() {
           <p className="muted">{t("Nothing yet.")}</p>
         )}
       </div>
-      <p className="hint">{t("Revenue (the fees Sunu Pay keeps) is not here yet. It needs its own report from the ledger.")}</p>
     </section>
   );
 }
