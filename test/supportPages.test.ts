@@ -93,3 +93,34 @@ describe("audit trail", () => {
     expect(resultOf({ kind: "action", status: 500 }).label).toBe("Error");
   });
 });
+
+import { cancelServiceOn, saveLicence, switchCountry, switchService } from "../src/api/admin";
+import { effectiveState } from "../src/pages/ServicesPage";
+
+describe("services and countries", () => {
+  it("call the right routes with PIN and reason", async () => {
+    await switchService("GM", "airtime", { state: "paused", reason: "Provider down", pin: "123456" });
+    await cancelServiceOn("ALL", "bills");
+    await switchCountry("ml", { enabled: true, reason: "Licence in place", pin: "123456" });
+    await saveLicence("ML", { status: "partner", holder: "Bank", reference: "B-1", note: "", pin: "123456" });
+    expect(calls.map((c) => `${c.init.method} ${path(c)}`)).toEqual([
+      "PUT /admin/services/GM/airtime",
+      "DELETE /admin/services/ALL/bills/switch-on",
+      "PATCH /admin/countries/ml",
+      "PUT /admin/countries/ML/licence",
+    ]);
+    expect(body(calls[0]!)).toEqual({ state: "paused", reason: "Provider down", pin: "123456" });
+  });
+  it("what customers get is the stricter of every-country and this country", () => {
+    const rows = [
+      { country: "ALL", service: "bills", state: "paused" },
+      { country: "GM", service: "bills", state: "off" },
+      { country: "SN", service: "airtime", state: "paused" },
+    ] as never;
+    expect(effectiveState(rows, "bills", "GM")).toBe("off");
+    expect(effectiveState(rows, "bills", "SN")).toBe("paused");
+    expect(effectiveState(rows, "airtime", "SN")).toBe("paused");
+    expect(effectiveState(rows, "airtime", "GM")).toBe("on");
+    expect(effectiveState(rows, "bills", "ALL")).toBe("paused");
+  });
+});

@@ -212,3 +212,4 @@ tr.clickable:hover td { background: var(--bg); }
 .bar-track { background: var(--line); border-radius: 6px; height: 12px; overflow: hidden; }
 .bar-fill { display: block; height: 100%; background: var(--accent); border-radius: 6px; }
 .bar-value { text-align: right; font-variant-numeric: tabular-nums; }
+.table-wrap + .hint { margin-top: 10px; }

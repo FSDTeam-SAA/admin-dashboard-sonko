@@ -15,6 +15,7 @@ import { StaffPage } from "./pages/StaffPage";
 import { AgentsPage } from "./pages/AgentsPage";
 import { CustomersPage } from "./pages/CustomersPage";
 import { TicketsPage } from "./pages/TicketsPage";
+import { ServicesPage } from "./pages/ServicesPage";
 import { AuditPage } from "./pages/AuditPage";
 import { AnalyticsPage } from "./pages/AnalyticsPage";
 import type { ComponentType } from "react";
@@ -32,6 +33,7 @@ const PAGES: Record<string, ComponentType> = {
   "/tickets": TicketsPage,
   "/analytics": AnalyticsPage,
   "/audit": AuditPage,
+  "/services": ServicesPage,
 };
 
 function Panel() {

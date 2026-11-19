@@ -580,3 +580,70 @@ export function auditTrail(kind: AuditKind | "all", staffId: string | null, page
   if (staffId) query.set("staff", staffId);
   return api<{ events: AuditEvent[]; pagination: Pagination }>(`/admin/audit?${query.toString()}`);
 }
+
+// ---- Services and countries ----
+
+export type SwitchState = "on" | "paused" | "off";
+export const SERVICE_NAMES = [
+  ["send_money", "Send money"],
+  ["request_money", "Payment requests"],
+  ["cash_in", "Cash in (agents)"],
+  ["cash_out", "Cash out (agents)"],
+  ["add_money", "Add money (card top-up)"],
+  ["airtime", "Airtime"],
+  ["data", "Data bundles"],
+  ["bills", "Bills (app and agent Pay Bills)"],
+  ["bank_transfer", "Bank transfer"],
+] as const;
+export type ServiceName = (typeof SERVICE_NAMES)[number][0];
+export type LicenceStatus = "none" | "own" | "partner";
+type StaffRef = { _id: string; name?: string; username?: string } | null;
+
+export type CountryRow = {
+  code: string;
+  name: string;
+  enabled: boolean;
+  licence: { status: LicenceStatus; holder: string; reference: string; note: string; recordedAt?: string; recordedBy?: StaffRef };
+  pendingOn: { requestedBy: StaffRef; requestedAt: string; reason: string } | null;
+  updatedAt: string | null;
+  history: { enabled: boolean; reason?: string; changedBy: StaffRef; requestedBy?: StaffRef; changedAt: string }[];
+};
+
+export type ServiceSwitchRow = {
+  country: string;
+  service: ServiceName;
+  state: SwitchState;
+  reason: string;
+  pendingOn: { requestedBy: string; requestedByName: string; requestedAt: string; reason: string } | null;
+  history: { state: SwitchState; reason: string; by: string; requestedBy: string; at: string }[];
+};
+
+export function countriesList() {
+  return api<CountryRow[]>(`/admin/countries`);
+}
+
+/** Off at once. On needs a licence and a different staff member to approve (the same call). */
+export function switchCountry(code: string, body: { enabled: boolean; reason: string; pin: string }) {
+  return api<CountryRow>(`/admin/countries/${id(code)}`, { method: "PATCH", body });
+}
+
+export function cancelCountryOn(code: string) {
+  return api(`/admin/countries/${id(code)}/switch-on`, { method: "DELETE" });
+}
+
+export function saveLicence(code: string, body: { status: LicenceStatus; holder: string; reference: string; note: string; pin: string }) {
+  return api<CountryRow>(`/admin/countries/${id(code)}/licence`, { method: "PUT", body });
+}
+
+export function serviceSwitches() {
+  return api<ServiceSwitchRow[]>(`/admin/services`);
+}
+
+/** Paused or off at once. On needs a different staff member to approve (the same call). */
+export function switchService(country: string, service: ServiceName, body: { state: SwitchState; reason: string; pin: string }) {
+  return api(`/admin/services/${id(country)}/${id(service)}`, { method: "PUT", body });
+}
+
+export function cancelServiceOn(country: string, service: ServiceName) {
+  return api(`/admin/services/${id(country)}/${id(service)}/switch-on`, { method: "DELETE" });
+}

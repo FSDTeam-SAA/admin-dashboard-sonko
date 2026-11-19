@@ -117,6 +117,22 @@ export const NAV: NavItem[] = [
     ready: true,
   },
   {
+    path: "/services",
+    label: "Services and countries",
+    // Staff who can see the dashboard can see what is switched on; changing needs manage_countries.
+    permission: "view_dashboard",
+    routes: [
+      "GET /admin/services",
+      "PUT /admin/services/:country/:service",
+      "DELETE /admin/services/:country/:service/switch-on",
+      "GET /admin/countries",
+      "PATCH /admin/countries/:code",
+      "DELETE /admin/countries/:code/switch-on",
+      "PUT /admin/countries/:code/licence",
+    ],
+    ready: true,
+  },
+  {
     path: "/audit",
     label: "Audit trail",
     permission: "view_audit",

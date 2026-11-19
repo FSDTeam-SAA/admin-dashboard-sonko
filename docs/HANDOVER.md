@@ -107,6 +107,24 @@ On server branch `agent-cash-out` (and merged into `notification-feed`):
   blocks the action; a failed write logs `AUDIT WRITE FAILED`. Database test:
   `test/audit.test.js` (not run here); unit test `test/audit.rules.test.js`.
   Not yet covered: staff reading files through routes outside `/admin`.
+- Services and countries (19 Nov). Each service (send money, requests, cash
+  in, cash out, add money, airtime, data, bills, bank transfer) is on,
+  paused or off, for every country (`ALL`) and per country; the stricter
+  wins. Model `ServiceSwitch`. Checked on the server where the money moves
+  (`assertServiceAvailable` in the wallet transfer, payment requests and
+  agent cash out; `requireService` on top-up, airtime, bills and bank
+  transfer). Paused answers 503, off 403, with a customer message (English
+  and French). Countries now carry a licence record and can only be switched
+  on with one. Switching anything ON needs two staff (the same call by a
+  different person within 24 hours); pausing or switching off is one person,
+  at once. All changes need the PIN and a reason. Guinea, Guinea-Bissau,
+  Sierra Leone and Mali are added and start OFF; the other countries keep
+  their current setting. `PATCH /admin/countries/:code` now needs
+  `reason` and `pin` (the old dashboard's switch stops working). The app can
+  read `GET /payments/services/availability` to grey out tiles; until it
+  does, customers see the server's message when they try. Database test:
+  `test/serviceSwitch.test.js` (not run here); unit test
+  `test/serviceSwitch.rules.test.js`.
 
 ## Before it goes live
 
@@ -130,7 +148,7 @@ On server branch `agent-cash-out` (and merged into `notification-feed`):
 2. Analytics: revenue (the fees Sunu Pay keeps, from the ledger), and a
    sales-team view of their own sign-ups (needs each customer to record who
    signed them up).
-3. Editing customer details, security questions for callers, Services and countries, announcements,
+3. Editing customer details, security questions for callers, announcements,
    the per-user language setting.
 
 ## Known gaps
