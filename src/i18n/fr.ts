@@ -1059,4 +1059,12 @@ export const FR: Record<string, string> = {
   "GB": "Go",
   "This ticket was wiped after six years. Its words are gone; only the figures stay. It can't be changed.": "Ce ticket a été effacé après six ans. Son texte a disparu ; seuls les chiffres restent. Il ne peut plus être modifié.",
   "The ticket's words were wiped automatically after six years.": "Le texte du ticket a été effacé automatiquement après six ans.",
+  "Phone (device)": "Téléphone (appareil)",
+  "Phones used": "Téléphones utilisés",
+  "last used {when}": "dernière utilisation {when}",
+  "Block this phone": "Bloquer ce téléphone",
+  "Block a phone": "Bloquer un téléphone",
+  "No phones yet. A phone shows here after the customer signs in with an up-to-date app.": "Aucun téléphone pour le moment. Un téléphone apparaît ici après une connexion du client avec une version à jour de l’application.",
+  "This stops sign-up, sign-in, sending and cash out from this phone, for every account on it. A second-hand phone can carry an old block, so check the customer's story first.": "Cela bloque l’inscription, la connexion, les envois et les retraits depuis ce téléphone, pour tous les comptes qui l’utilisent. Un téléphone d’occasion peut garder un ancien blocage : vérifiez d’abord ce que dit le client.",
+  "Reinstalling the app on an iPhone, or resetting an Android phone, gives it a new ID. This stops casual repeat sign-ups, not a determined person.": "Réinstaller l’application sur un iPhone, ou réinitialiser un téléphone Android, lui donne un nouvel identifiant. Cela arrête les réinscriptions faciles, pas une personne déterminée.",
 };

@@ -449,6 +449,8 @@ export type CustomerDetail = {
   tickets: { id: string; number: number; subject: string; priority: TicketPriority; status: TicketStatus; createdAt: string }[];
   edits: { field: string; from: string; to: string; reason: string; by: string; requestedBy: string; at: string }[];
   pendingPhoneChange: { phone: string; reason: string; requestedBy: string; requestedByName: string; requestedAt: string } | null;
+  /** The phones they used lately, newest first. Missing on an older server. */
+  devices?: CustomerDevice[];
   callerChecks: {
     questionsSet: boolean;
     questionsSetAt: string | null;
@@ -900,7 +902,9 @@ export function withdrawAnnouncement(announcementId: string, reason: string) {
 
 // ---- Blocklist ----
 
-export type BlockType = "phone" | "email" | "id_document" | "bank_account";
+export type BlockType = "phone" | "email" | "id_document" | "bank_account" | "device";
+/** One of the phones a customer used, from their file. [device] is a keyed hash, not the phone's ID. */
+export type CustomerDevice = { device: string; masked: string; lastSeenAt: string | null; blocked: boolean };
 export type BlockReason = "CONFIRMED_FRAUD" | "MONEY_MULE" | "STOLEN_IDENTITY" | "IMPERSONATION" | "OTHER";
 export type BlockState = "unconfirmed" | "blocked" | "expired" | "removed";
 export type BlockEntry = {
@@ -951,6 +955,15 @@ export function lookUpBlock(type: BlockType, value: string) {
 
 export function addBlock(entry: { type: BlockType; value: string; reason: BlockReason; note: string }, pin: string, key: string) {
   return api<{ id: string }>("/admin/blocklist", { method: "POST", body: { ...entry, pin }, idempotencyKey: key });
+}
+
+/** Blocks one of a customer's phones, picked from their file. Same 72-hour and two-person rules. */
+export function blockCustomerDevice(
+  entry: { customerId: string; device: string; reason: BlockReason; note: string },
+  pin: string,
+  key: string,
+) {
+  return api<{ id: string }>("/admin/blocklist", { method: "POST", body: { type: "device", ...entry, pin }, idempotencyKey: key });
 }
 
 export function confirmBlock(entryId: string, pin: string, key: string) {

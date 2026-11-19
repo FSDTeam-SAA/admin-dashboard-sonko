@@ -48,6 +48,10 @@ server.
   applicant). Put an agent on hold.
 - Every money and hold action asks for the staff member's own PIN and sends
   one idempotency key per dialog.
+- Blocking a phone (19 Nov): the customer file lists "Phones used" (masked)
+  with "Block this phone". It posts `type: "device"` with the customer and the
+  phone's keyed hash to `POST /admin/blocklist`; same 72-hour confirm and
+  two-person removal as other entries. Phone IDs can't be typed or looked up.
 
 ## Server changes this needs
 

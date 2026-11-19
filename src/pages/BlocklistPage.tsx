@@ -26,7 +26,10 @@ export const TYPE_LABEL: Record<BlockType, string> = {
   email: "Email",
   id_document: "ID document number",
   bank_account: "Bank account number",
+  device: "Phone (device)",
 };
+/** What staff can type in. A phone (device) is blocked from the customer's file instead. */
+export const TYPED_TYPES = Object.entries(TYPE_LABEL).filter(([k]) => k !== "device") as [BlockType, string][];
 export const REASON_LABEL: Record<BlockReason, string> = {
   CONFIRMED_FRAUD: "Confirmed fraud",
   MONEY_MULE: "Money mule",
@@ -236,7 +239,7 @@ function LookUp() {
         }}
       >
         <select aria-label={t("Type")} value={type} onChange={(ev) => setType(ev.target.value as BlockType)}>
-          {Object.entries(TYPE_LABEL).map(([k, label]) => (
+          {TYPED_TYPES.map(([k, label]) => (
             <option key={k} value={k}>
               {label}
             </option>
@@ -304,7 +307,7 @@ function AddDialog({ onClose, onDone }: { onClose: () => void; onDone: (m: strin
       <label>
         {t("What to block")}
         <select value={type} onChange={(e) => setType(e.target.value as BlockType)}>
-          {Object.entries(TYPE_LABEL).map(([k, label]) => (
+          {TYPED_TYPES.map(([k, label]) => (
             <option key={k} value={k}>
               {t(label)}
             </option>

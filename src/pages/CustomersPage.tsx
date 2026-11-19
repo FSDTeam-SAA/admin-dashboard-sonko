@@ -1,14 +1,20 @@
-import { useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { can } from "../api/staff";
 import {
+  blockCustomerDevice,
   cancelCustomerPhoneChange,
   customer,
   customers,
   type CustomerFilter,
   type CustomerRow,
+  type BlockReason,
+  type CustomerDevice,
 } from "../api/admin";
+import { ConfirmWithPin } from "../components/ConfirmWithPin";
+import { newIdempotencyKey } from "../lib/idempotency";
+import { REASON_LABEL } from "./BlocklistPage";
 import {
   CallerCheckDialog,
   ChangePhoneDialog,
@@ -20,6 +26,8 @@ import {
   PageHeader,
   Pager,
   Tabs,
+  TextArea,
+  okLength,
 } from "../components/common";
 import { PlaceHoldDialog, SCOPE_LABEL } from "../components/dialogs";
 import { money, personLabel, when } from "../lib/format";
@@ -203,6 +211,7 @@ function CustomerView({
     null,
   );
   const [done, setDone] = useState<string | null>(null);
+  const [blocking, setBlocking] = useState<CustomerDevice | null>(null);
   const { data, error, loading, reload } = useLoad(
     () => customer(customerId),
     [customerId],
@@ -514,6 +523,40 @@ function CustomerView({
       </div>
 
       <div className="card panel">
+        <h2>{t("Phones used")}</h2>
+        {data.devices?.length ? (
+          <ul className="plain-list">
+            {data.devices.map((d) => (
+              <li key={d.device} className="small">
+                <strong>{d.masked}</strong>{" "}
+                {d.blocked && <Badge tone="danger">Blocked</Badge>}{" "}
+                <span className="muted">{t("last used {when}", { when: when(d.lastSeenAt) })}</span>{" "}
+                {!d.blocked && can(staff, "add_to_blocklist") && (
+                  <button className="link" onClick={() => setBlocking(d)}>
+                    {t("Block this phone")}
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="muted">{t("No phones yet. A phone shows here after the customer signs in with an up-to-date app.")}</p>
+        )}
+      </div>
+      {blocking && (
+        <BlockDeviceDialog
+          customerId={customerId}
+          device={blocking}
+          onClose={() => setBlocking(null)}
+          onDone={(m) => {
+            setBlocking(null);
+            setDone(m);
+            reload();
+          }}
+        />
+      )}
+
+      <div className="card panel">
         <h2>{t("Who has opened this file")}</h2>
         <ul className="plain-list">
           {data.recentlyOpenedBy.map((o, i) => (
@@ -576,5 +619,52 @@ function CustomerView({
         />
       )}
     </section>
+  );
+}
+
+function BlockDeviceDialog({
+  customerId,
+  device,
+  onClose,
+  onDone,
+}: {
+  customerId: string;
+  device: CustomerDevice;
+  onClose: () => void;
+  onDone: (message: string) => void;
+}) {
+  const t = useT();
+  const [reason, setReason] = useState<BlockReason>("CONFIRMED_FRAUD");
+  const [note, setNote] = useState("");
+  const key = useMemo(newIdempotencyKey, []);
+  return (
+    <ConfirmWithPin
+      title="Block a phone"
+      confirmLabel="Block now"
+      danger
+      canConfirm={okLength(note, 10, 300)}
+      onClose={onClose}
+      onConfirm={async (pin) => {
+        await blockCustomerDevice({ customerId, device: device.device, reason, note: note.trim() }, pin, key);
+        onDone("Added. It blocks now for 72 hours. A different staff member must confirm it to keep it.");
+      }}
+    >
+      <p>
+        <strong>{device.masked}</strong>
+      </p>
+      <p>{t("This stops sign-up, sign-in, sending and cash out from this phone, for every account on it. A second-hand phone can carry an old block, so check the customer's story first.")}</p>
+      <p className="hint">{t("Reinstalling the app on an iPhone, or resetting an Android phone, gives it a new ID. This stops casual repeat sign-ups, not a determined person.")}</p>
+      <label>
+        {t("Reason")}
+        <select value={reason} onChange={(e) => setReason(e.target.value as BlockReason)}>
+          {Object.entries(REASON_LABEL).map(([k, label]) => (
+            <option key={k} value={k}>
+              {t(label)}
+            </option>
+          ))}
+        </select>
+      </label>
+      <TextArea label="What happened (staff only)" value={note} onChange={setNote} min={10} max={300} />
+    </ConfirmWithPin>
   );
 }

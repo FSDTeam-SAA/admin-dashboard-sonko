@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
-import { addBlock, lookUpBlock, type BlockEntry } from "../src/api/admin";
+import { addBlock, blockCustomerDevice, lookUpBlock, type BlockEntry } from "../src/api/admin";
 import { setTokens } from "../src/api/session";
-import { hoursLeft, removeAction, STATE_LABEL } from "../src/pages/BlocklistPage";
+import { hoursLeft, removeAction, STATE_LABEL, TYPED_TYPES } from "../src/pages/BlocklistPage";
 import { NAV } from "../src/lib/nav";
 import { PERMISSION_GROUPS } from "../src/lib/permissions";
 
@@ -73,6 +73,22 @@ describe("blocklist calls", () => {
       expect(c.init.method).toBe("POST");
     }
     expect(new Headers(calls[1]!.init.headers).get("Idempotency-Key")).toBe("key-1234567890abcdef");
+    vi.unstubAllGlobals();
+  });
+
+  it("a phone (device) can't be typed in: it is blocked from the customer's file, by its hash", async () => {
+    expect(TYPED_TYPES.map(([k]) => k)).not.toContain("device");
+    const calls: { url: string; init: RequestInit }[] = [];
+    setTokens({ access: "A", refresh: "R" });
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init: RequestInit) => {
+      calls.push({ url, init });
+      return new Response(JSON.stringify({ success: true, data: { id: "e9" } }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+    const hash = "f".repeat(64);
+    await blockCustomerDevice({ customerId: "a".repeat(24), device: hash, reason: "CONFIRMED_FRAUD", note: "Seen on two fraud accounts" }, "482915", "key-1234567890abcdef");
+    const body = JSON.parse(String(calls[0]!.init.body));
+    expect(body).toMatchObject({ type: "device", customerId: "a".repeat(24), device: hash, pin: "482915" });
+    expect(calls[0]!.url).not.toContain(hash);
     vi.unstubAllGlobals();
   });
 });
