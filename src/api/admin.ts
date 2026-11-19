@@ -801,3 +801,79 @@ export function approveAnnouncement(announcementId: string, pin: string, key: st
 export function withdrawAnnouncement(announcementId: string, reason: string) {
   return api(`/admin/announcements/${id(announcementId)}/withdraw`, { method: "POST", body: { reason } });
 }
+
+// ---- Blocklist ----
+
+export type BlockType = "phone" | "email" | "id_document" | "bank_account";
+export type BlockReason = "CONFIRMED_FRAUD" | "MONEY_MULE" | "STOLEN_IDENTITY" | "IMPERSONATION" | "OTHER";
+export type BlockState = "unconfirmed" | "blocked" | "expired" | "removed";
+export type BlockEntry = {
+  id: string;
+  type: BlockType;
+  masked: string;
+  reason: BlockReason;
+  note: string;
+  state: BlockState;
+  addedBy: string;
+  addedByName: string;
+  addedAt: string;
+  unconfirmedUntil: string | null;
+  confirmedByName: string;
+  confirmedAt: string | null;
+  removeAsk: { requestedBy: string; requestedByName: string; requestedAt: string; reason: string } | null;
+  removedByName: string;
+  removedAt: string | null;
+  removeReason: string;
+  matches: number;
+  lastMatchAt: string | null;
+  lastMatchPlace: string;
+};
+export type BlockMatch = {
+  id: string;
+  entryId: string;
+  type: BlockType | "";
+  masked: string;
+  matches: number;
+  places: string[];
+  customer: string | null;
+  firstAt: string;
+  lastAt: string;
+};
+
+export function blocklist(all: boolean, page = 1) {
+  return api<{ entries: BlockEntry[]; pagination: Pagination }>(`/admin/blocklist?all=${all ? "true" : "false"}&page=${page}`);
+}
+
+export function blocklistMatches() {
+  return api<BlockMatch[]>("/admin/blocklist/matches");
+}
+
+/** POST, so the value is never in a web address or a log. */
+export function lookUpBlock(type: BlockType, value: string) {
+  return api<{ masked: string; entries: BlockEntry[] }>("/admin/blocklist/look-up", { method: "POST", body: { type, value } });
+}
+
+export function addBlock(entry: { type: BlockType; value: string; reason: BlockReason; note: string }, pin: string, key: string) {
+  return api<{ id: string }>("/admin/blocklist", { method: "POST", body: { ...entry, pin }, idempotencyKey: key });
+}
+
+export function confirmBlock(entryId: string, pin: string, key: string) {
+  return api(`/admin/blocklist/${id(entryId)}/confirm`, { method: "POST", body: { pin }, idempotencyKey: key });
+}
+
+/** Returns { asked: true } when a second person must approve. */
+export function removeBlock(entryId: string, reason: string, pin: string, key: string) {
+  return api<{ asked?: boolean; removed?: boolean }>(`/admin/blocklist/${id(entryId)}/remove`, {
+    method: "POST",
+    body: { reason, pin },
+    idempotencyKey: key,
+  });
+}
+
+export function cancelBlockRemoveAsk(entryId: string) {
+  return api(`/admin/blocklist/${id(entryId)}/remove`, { method: "DELETE" });
+}
+
+export function closeBlockMatch(caseId: string, note: string) {
+  return api(`/admin/blocklist/matches/${id(caseId)}/close`, { method: "POST", body: { note } });
+}

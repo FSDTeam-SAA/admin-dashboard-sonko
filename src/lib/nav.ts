@@ -141,6 +141,22 @@ export const NAV: NavItem[] = [
     ready: true,
   },
   {
+    path: "/blocklist",
+    label: "Blocklist",
+    permission: "view_blocklist",
+    routes: [
+      "GET /admin/blocklist",
+      "GET /admin/blocklist/matches",
+      "POST /admin/blocklist/look-up",
+      "POST /admin/blocklist",
+      "POST /admin/blocklist/:id/confirm",
+      "POST /admin/blocklist/:id/remove",
+      "DELETE /admin/blocklist/:id/remove",
+      "POST /admin/blocklist/matches/:id/close",
+    ],
+    ready: true,
+  },
+  {
     path: "/services",
     label: "Services and countries",
     // Staff who can see the dashboard can see what is switched on; changing needs manage_countries.

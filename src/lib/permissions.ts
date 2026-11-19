@@ -37,6 +37,9 @@ export const PERMISSION_GROUPS: { title: string; items: [string, string][] }[] =
       ["view_holds", "See account holds"],
       ["place_hold", "Put an account on hold"],
       ["lift_hold", "Ask to lift or approve lifting a hold"],
+      ["view_blocklist", "See the blocklist and look a value up"],
+      ["add_to_blocklist", "Add to the blocklist (blocks for 72 hours until a second person confirms)"],
+      ["manage_blocklist", "Confirm blocklist entries and remove them (removing needs two people)"],
     ],
   },
   {
