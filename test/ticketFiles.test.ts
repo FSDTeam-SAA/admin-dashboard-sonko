@@ -52,3 +52,27 @@ describe("ticket files", () => {
     expect(PERMISSION_GROUPS.flatMap((g) => g.items.map(([p]) => p))).toContain("ticket_files");
   });
 });
+
+import { changeKeepTicketFiles, keepTicketFiles } from "../src/api/admin";
+
+describe("keeping ticket files longer", () => {
+  it("sends the date, reason and PIN with an idempotency key", async () => {
+    setTokens({ access: "A", refresh: "R" });
+    const sent: { url: string; body: unknown; key: string | null }[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init: RequestInit) => {
+      sent.push({ url, body: JSON.parse(String(init.body)), key: new Headers(init.headers).get("Idempotency-Key") });
+      return new Response(JSON.stringify({ success: true, data: { asked: true } }), { status: 202 });
+    }));
+    await keepTicketFiles("t1", { until: "2030-01-01T23:59:59.000Z", reason: "Police reference 123", pin: "482915" }, "k-1234567890abcdef");
+    const r = await changeKeepTicketFiles("t1", { action: "end", reason: "Case closed by police", pin: "482915" }, "k-abcdef1234567890");
+    expect(sent[0]!.url).toMatch(/\/admin\/tickets\/t1\/keep$/);
+    expect(sent[1]!.url).toMatch(/\/admin\/tickets\/t1\/keep\/change$/);
+    expect(sent.every((s) => s.key)).toBe(true);
+    expect(r).toEqual({ asked: true });
+    vi.unstubAllGlobals();
+  });
+
+  it("the Staff page lists keep_ticket_files", () => {
+    expect(PERMISSION_GROUPS.flatMap((g) => g.items.map(([p]) => p))).toContain("keep_ticket_files");
+  });
+});

@@ -4,6 +4,9 @@ import { useAuth } from "../auth/AuthContext";
 import { can } from "../api/staff";
 import {
   addTicketNote,
+  cancelKeepAsk,
+  changeKeepTicketFiles,
+  keepTicketFiles,
   attachTicketFile,
   removeTicketFile,
   ticketFile,
@@ -422,6 +425,7 @@ function TicketView({ ticketId, onBack }: { ticketId: string; onBack: () => void
       </div>
 
       <TicketFiles ticket={data} mayManage={mayManage} onChanged={reload} />
+      <TicketKeepBox ticket={data} onChanged={reload} />
 
       <div className="card panel">
         <h2>{t("History")}</h2>
@@ -430,10 +434,18 @@ function TicketView({ ticketId, onBack }: { ticketId: string; onBack: () => void
             {data.history.map((h, i) => (
               <li key={i} className="small">
                 {when(h.at)} ·{" "}
-                {h.field === "file"
-                  ? t("{name} attached a file: {file}", { name: h.by?.name || t("Staff"), file: h.to })
+                {h.field === "file_expired"
+                  ? t("A file was deleted automatically after six years.")
+                  : h.field === "keep"
+                    ? h.to && !h.from
+                      ? t("{name} kept the files until {date}", { name: h.by?.name || t("Staff"), date: h.to })
+                      : h.to
+                        ? t("{name} changed the keep date: {from} → {to}", { name: h.by?.name || t("Staff"), from: h.from, to: h.to })
+                        : t("{name} ended keeping the files longer", { name: h.by?.name || t("Staff") })
+                    : h.field === "file"
+                  ? t("{name} attached a file: {file}", { name: h.by?.name || t("Staff"), file: h.to || t("deleted") })
                   : h.field === "file_removed"
-                    ? t("{name} took off a file: {file}", { name: h.by?.name || t("Staff"), file: h.from })
+                    ? t("{name} took off a file: {file}", { name: h.by?.name || t("Staff"), file: h.from || t("deleted") })
                     : `${t("{name} changed {field}", { name: h.by?.name || t("Staff"), field: t(FIELD_LABEL[h.field] ?? h.field) })}${h.field === "assignedTo" ? "" : `: ${nice(h.field, h.from, t.language)} → ${nice(h.field, h.to, t.language)}`}`}
               </li>
             ))}
@@ -669,7 +681,7 @@ function TicketFiles({ ticket: data, mayManage, onChanged }: { ticket: TicketDet
           {data.files.map((f) =>
             f.removed ? (
               <li key={f.id} className="muted small">
-                {t("A file was taken off by {name}, {when}.", { name: f.by?.name || t("Staff"), when: when(f.removedAt) })}
+                {f.expired ? t("A file was deleted after six years, {when}.", { when: when(f.removedAt) }) : t("A file was taken off by {name}, {when}.", { name: f.by?.name || t("Staff"), when: when(f.removedAt) })}
               </li>
             ) : (
               <li key={f.id}>
@@ -759,5 +771,161 @@ function TicketFiles({ ticket: data, mayManage, onChanged }: { ticket: TicketDet
         </ConfirmWithPin>
       )}
     </div>
+  );
+}
+
+const day = (iso: string | null | undefined) => (iso ? iso.slice(0, 10) : "");
+
+/**
+ * Keep a ticket's files past the six years (fraud, police, a dispute).
+ * One person sets it; changing the date or ending it needs a second person.
+ */
+function TicketKeepBox({ ticket: data, onChanged }: { ticket: TicketDetail; onChanged: () => void }) {
+  const { staff } = useAuth();
+  const t = useT();
+  const mayKeep = can(staff, "keep_ticket_files") && can(staff, "view_tickets");
+  const [open, setOpen] = useState<null | "set" | "change" | "end" | "approve">(null);
+  const [until, setUntil] = useState("");
+  const [reason, setReason] = useState("");
+  const [done, setDone] = useState<string | null>(null);
+  const key = useMemo(newIdempotencyKey, [open, data.keep?.until, data.keep?.ask?.at]);
+  const keep = data.keep;
+  if (!keep && (!mayKeep || !data.fileCount)) return null;
+  const ask = keep?.ask ?? null;
+  const askMine = ask?.by?.id === staff?._id;
+  const reasonOk = reason.trim().length >= 10 && reason.trim().length <= 300;
+  const close = () => {
+    setOpen(null);
+    setUntil("");
+    setReason("");
+  };
+  const finish = (message: string) => {
+    close();
+    setDone(message);
+    onChanged();
+  };
+
+  return (
+    <div className="card panel">
+      <h2>{t("Keep files longer")}</h2>
+      {done && <p className="notice">{t(done)}</p>}
+      {!keep ? (
+        <p className="muted">{t("Files are deleted six years after the ticket is finished and the customer has stopped using SunuPay. For fraud, the police or a dispute, keep them longer.")}</p>
+      ) : (
+        <>
+          <p>
+            <Badge tone="warn">{t("Kept until {date}", { date: day(keep.until) })}</Badge> {keep.reason}
+          </p>
+          <p className="muted small">{t("Set by {name}, {when}", { name: keep.by?.name || t("Staff"), when: when(keep.at) })}</p>
+          {ask && (
+            <p className="notice">
+              {ask.action === "end"
+                ? t("{name} asked to end this: {reason}", { name: ask.by?.name || t("Staff"), reason: ask.reason })
+                : t("{name} asked to change the date to {date}: {reason}", { name: ask.by?.name || t("Staff"), date: day(ask.until), reason: ask.reason })}
+            </p>
+          )}
+        </>
+      )}
+      {mayKeep && (
+        <div className="row-start">
+          {!keep && <button onClick={() => setOpen("set")}>{t("Keep these files longer")}</button>}
+          {keep && !ask && (
+            <>
+              <button onClick={() => setOpen("change")}>{t("Change the date")}</button>
+              <button className="danger" onClick={() => setOpen("end")}>
+                {t("End it")}
+              </button>
+            </>
+          )}
+          {ask && !askMine && (
+            <button className="primary" onClick={() => setOpen("approve")}>
+              {t("Review and approve")}
+            </button>
+          )}
+          {ask && askMine && (
+            <button
+              onClick={async () => {
+                await cancelKeepAsk(data.id).catch(() => undefined);
+                finish("Request cancelled.");
+              }}
+            >
+              {t("Cancel my request")}
+            </button>
+          )}
+        </div>
+      )}
+      {open === "set" && (
+        <ConfirmWithPin
+          title="Keep these files longer"
+          confirmLabel="Keep"
+          canConfirm={Boolean(until) && reasonOk}
+          onClose={close}
+          onConfirm={async (pin) => {
+            await keepTicketFiles(data.id, { until: new Date(`${until}T23:59:59Z`).toISOString(), reason: reason.trim(), pin }, key);
+            finish("These files are now kept until the date you chose.");
+          }}
+        >
+          <KeepFields until={until} setUntil={setUntil} reason={reason} setReason={setReason} />
+        </ConfirmWithPin>
+      )}
+      {(open === "change" || open === "end") && keep && (
+        <ConfirmWithPin
+          title={open === "end" ? "End keeping these files longer" : "Change the keep date"}
+          confirmLabel="Ask a second person"
+          danger={open === "end"}
+          canConfirm={(open === "end" || Boolean(until)) && reasonOk}
+          onClose={close}
+          onConfirm={async (pin) => {
+            await changeKeepTicketFiles(data.id, { action: open === "end" ? "end" : "change", until: open === "change" ? new Date(`${until}T23:59:59Z`).toISOString() : undefined, reason: reason.trim(), pin }, key);
+            finish("Asked. A different staff member must approve it within 24 hours.");
+          }}
+        >
+          {open === "end" && <p>{t("Once ended, files older than six years are deleted at the next nightly clean-up.")}</p>}
+          <KeepFields until={until} setUntil={setUntil} reason={reason} setReason={setReason} withDate={open === "change"} />
+        </ConfirmWithPin>
+      )}
+      {open === "approve" && ask && (
+        <ConfirmWithPin
+          title={ask.action === "end" ? "Approve ending this" : "Approve the new date"}
+          confirmLabel="Approve"
+          danger={ask.action === "end"}
+          onClose={close}
+          onConfirm={async (pin) => {
+            await changeKeepTicketFiles(data.id, { action: ask.action, until: ask.until ?? undefined, pin }, key);
+            finish("Approved. The change is made.");
+          }}
+        >
+          <p>
+            {ask.action === "end"
+              ? t("{name} asked to end this: {reason}", { name: ask.by?.name || t("Staff"), reason: ask.reason })
+              : t("{name} asked to change the date to {date}: {reason}", { name: ask.by?.name || t("Staff"), date: day(ask.until), reason: ask.reason })}
+          </p>
+          {ask.action === "end" && <p className="hint warn-text">{t("Once ended, files older than six years are deleted at the next nightly clean-up.")}</p>}
+        </ConfirmWithPin>
+      )}
+    </div>
+  );
+}
+
+function KeepFields({ until, setUntil, reason, setReason, withDate = true }: { until: string; setUntil: (v: string) => void; reason: string; setReason: (v: string) => void; withDate?: boolean }) {
+  const t = useT();
+  const today = new Date();
+  const min = new Date(today.getTime() + 2 * 864e5).toISOString().slice(0, 10);
+  const max = new Date(today.getTime() + 3650 * 864e5).toISOString().slice(0, 10);
+  return (
+    <>
+      {withDate && (
+        <label>
+          {t("Keep until")}
+          <input type="date" min={min} max={max} value={until} onChange={(e) => setUntil(e.target.value)} />
+          <span className="hint">{t("Ten years from today at most.")}</span>
+        </label>
+      )}
+      <label>
+        {t("Why")}
+        <textarea rows={3} maxLength={300} value={reason} onChange={(e) => setReason(e.target.value)} />
+        <span className="hint">{t("10 to 300 characters, for example the police reference.")}</span>
+      </label>
+    </>
   );
 }

@@ -512,7 +512,9 @@ export type TicketDetail = Omit<TicketRow, "customer" | "assignedTo"> & {
   createdBy: Mini;
   assignedTo: Mini;
   notes: { by: Mini; text: string; at: string }[];
-  history: { by: Mini; field: string; from: string; to: string; at: string }[];
+  history: { by: Mini; system?: boolean; field: string; from: string; to: string; at: string }[];
+  /** Files kept past the six years (fraud, police, a dispute). null if none, or not shown to this person. */
+  keep: TicketKeep | null;
   fileCount: number;
   /** null when this person may not see files (no ticket_files). */
   files: TicketFile[] | null;
@@ -528,9 +530,33 @@ export type TicketFile = {
   by: Mini;
   at: string;
   removed: boolean;
+  /** Deleted automatically after six years. */
+  expired?: boolean;
   removedAt: string | null;
   canRemove: boolean;
 };
+
+export type TicketKeep = {
+  until: string;
+  reason: string;
+  by: Mini;
+  at: string;
+  ask: { action: "change" | "end"; until: string | null; reason: string; by: Mini; at: string } | null;
+};
+
+/** One person: keep every file on the ticket until [until] (at most 10 years). */
+export function keepTicketFiles(ticketId: string, body: { until: string; reason: string; pin: string }, key: string) {
+  return api(`/admin/tickets/${id(ticketId)}/keep`, { method: "POST", body, idempotencyKey: key });
+}
+
+/** Two people: the first asks, a different one approves the same change. */
+export function changeKeepTicketFiles(ticketId: string, body: { action: "change" | "end"; until?: string; reason?: string; pin: string }, key: string) {
+  return api<{ asked: boolean }>(`/admin/tickets/${id(ticketId)}/keep/change`, { method: "POST", body, idempotencyKey: key });
+}
+
+export function cancelKeepAsk(ticketId: string) {
+  return api(`/admin/tickets/${id(ticketId)}/keep/change`, { method: "DELETE" });
+}
 
 export type TicketFilters = { status: TicketStatus | "active" | "all"; priority: TicketPriority | "all"; mine: boolean; search: string; customer?: string };
 
