@@ -137,3 +137,171 @@ export function approveReversal(reversalId: string, pin: string, key: string) {
 export function cancelReversal(reversalId: string, reason: string) {
   return api<Reversal>(`/admin/reversals/${id(reversalId)}/cancel`, { method: "POST", body: { reason } });
 }
+
+// ---- Agent commission payouts ----
+
+export type PayoutStatus = "in_review" | "held" | "approved" | "paid" | "cancelled";
+type Money = { amount: number; currency: string };
+
+export type Payout = {
+  id: string;
+  agent: { id: string; business_name: string };
+  country: string;
+  period_start: string;
+  period_end: string;
+  days_earned: number;
+  cashout_count: number;
+  cashin_count: number;
+  gross: Money;
+  clawbacks: Money;
+  net: Money;
+  status: PayoutStatus;
+  fraud_check: { status?: string; flags: string[] };
+  approved_by: { id: string; at: string }[];
+  history: { action: string; by: string; reason?: string; at: string }[];
+  paid_at: string | null;
+};
+
+export const APPROVALS_NEEDED = 2;
+
+export function payouts(status: PayoutStatus, page: number) {
+  return api<{ payouts: Payout[]; people: Record<string, Person>; pagination: Pagination }>(
+    `/admin/commission/payouts?status=${status}&page=${page}&limit=50`,
+  );
+}
+
+export function approvePayout(payoutId: string, pin: string, key: string) {
+  return api<Payout>(`/admin/commission/payouts/${id(payoutId)}/approve`, { method: "POST", body: { pin }, idempotencyKey: key });
+}
+
+export type BatchResult = { id: string; result: "paid" | "approved_once" | "refused"; message?: string };
+
+export function approvePayoutBatch(ids: string[], pin: string, key: string) {
+  return api<{ results: BatchResult[] }>(`/admin/commission/payouts/approve-batch`, { method: "POST", body: { ids, pin }, idempotencyKey: key });
+}
+
+export function holdPayout(payoutId: string, reason: string) {
+  return api<Payout>(`/admin/commission/payouts/${id(payoutId)}/hold`, { method: "POST", body: { reason } });
+}
+
+export function releasePayout(payoutId: string, reason: string) {
+  return api<Payout>(`/admin/commission/payouts/${id(payoutId)}/release`, { method: "POST", body: { reason } });
+}
+
+// ---- Cash out rates and fees (two-person changes) ----
+
+export type Tier = { minVolumeMinor: number; minCustomers: number; amountMinor: number };
+
+export type CashOutSettings = {
+  country: string;
+  currency: string;
+  version: number;
+  enabled: boolean;
+  customerFeeBps: number;
+  customerFeeFixedMinor: number;
+  commissionTiers: Tier[];
+  commissionTiersFromDay?: string | null;
+  maxPerCashOutMinor: number;
+  maxPerDayPerCustomerMinor: number;
+  agentDailyCashOutMinor: number;
+  maxPendingPerAgent: number;
+  codeTtlSeconds: number;
+  pendingTtlSeconds: number;
+};
+
+export const EDITABLE_FIELDS = [
+  "enabled",
+  "customerFeeBps",
+  "customerFeeFixedMinor",
+  "commissionTiers",
+  "maxPerCashOutMinor",
+  "maxPerDayPerCustomerMinor",
+  "agentDailyCashOutMinor",
+  "maxPendingPerAgent",
+  "codeTtlSeconds",
+  "pendingTtlSeconds",
+] as const;
+export type EditableField = (typeof EDITABLE_FIELDS)[number];
+export type SettingsSnapshot = Partial<Pick<CashOutSettings, EditableField>> & { version?: number };
+
+export type SettingsChange = {
+  id: string;
+  country: string;
+  status: "pending" | "approved" | "cancelled" | "expired" | "stale";
+  baseVersion: number;
+  changedFields: EditableField[];
+  before: SettingsSnapshot;
+  after: SettingsSnapshot;
+  reason: string;
+  requestedBy: string | null;
+  approvedBy: string | null;
+  approvedAt: string | null;
+  cancelledBy: string | null;
+  cancelReason: string | null;
+  expiresAt: string;
+  createdAt: string;
+};
+
+export function cashOutSettings(country: string) {
+  return api<{ settings: CashOutSettings; pendingChange: SettingsChange | null; people: Record<string, Person> }>(
+    `/admin/settings/cash-out/${id(country)}`,
+  );
+}
+
+export function settingsHistory(country: string, page: number) {
+  return api<{ changes: SettingsChange[]; total: number; page: number; limit: number; people: Record<string, Person> }>(
+    `/admin/settings/changes?country=${id(country)}&page=${page}&limit=25`,
+  );
+}
+
+export function proposeSettings(country: string, body: { version: number; change: SettingsSnapshot; reason: string; pin: string }, key: string) {
+  return api<SettingsChange>(`/admin/settings/cash-out/${id(country)}/changes`, { method: "POST", body, idempotencyKey: key });
+}
+
+export function approveSettings(changeId: string, pin: string, key: string) {
+  return api(`/admin/settings/changes/${id(changeId)}/approve`, { method: "POST", body: { pin }, idempotencyKey: key });
+}
+
+export function cancelSettings(changeId: string, reason: string) {
+  return api(`/admin/settings/changes/${id(changeId)}/cancel`, { method: "POST", body: { reason } });
+}
+
+// ---- Staff ----
+
+export type StaffRow = {
+  id: string;
+  name: string;
+  phone: string;
+  role: string;
+  fullAdmin: boolean;
+  permissions: string[];
+  twoStepSetUp: boolean;
+  pendingRoleChange: { role: string; requestedBy: string; requestedAt: string } | null;
+  pendingPermissionsChange: { full: boolean; permissions: string[]; requestedBy: string; requestedAt: string } | null;
+};
+
+export function staffList() {
+  return api<{ staff: StaffRow[]; people: Record<string, Person> }>(`/admin/staff`);
+}
+
+/** Same call to ask and (by a different person) to approve. */
+export function changeRole(userId: string, role: "user" | "agent" | "admin", pin: string) {
+  return api(`/admin/users/${id(userId)}/role`, { method: "PATCH", body: { role, pin } });
+}
+
+export function cancelRoleChange(userId: string) {
+  return api(`/admin/users/${id(userId)}/role-change`, { method: "DELETE" });
+}
+
+/** Same call to ask and (by a different person) to approve. */
+export function changePermissions(userId: string, change: { full: true } | { permissions: string[] }, pin: string, key: string) {
+  return api(`/admin/users/${id(userId)}/permissions`, { method: "PUT", body: { ...change, pin }, idempotencyKey: key });
+}
+
+export function cancelPermissionsChange(userId: string) {
+  return api(`/admin/users/${id(userId)}/permissions-change`, { method: "DELETE" });
+}
+
+export function resetTwoStep(userId: string, pin: string) {
+  return api(`/admin/users/${id(userId)}/2fa/reset`, { method: "POST", body: { pin } });
+}

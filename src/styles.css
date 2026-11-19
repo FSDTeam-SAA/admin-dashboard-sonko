@@ -171,3 +171,22 @@ td.actions button { margin-left: 6px; padding: 6px 12px; font-size: 13px; }
 .facts dd { margin: 0; }
 .hits { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .hit { width: 100%; display: flex; justify-content: space-between; text-align: left; font-weight: 500; }
+
+/* Payouts, settings, staff */
+.panel { padding: 18px 20px; margin-bottom: 16px; display: flex; flex-direction: column; gap: 12px; }
+.panel h2 { margin: 0; }
+.panel-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.small-title { font-size: 15px; }
+.facts.wide { grid-template-columns: minmax(180px, max-content) 1fr; }
+table.mini { width: auto; font-size: 13px; }
+table.mini th, table.mini td { padding: 6px 10px; }
+table.mini.edit input { width: 110px; padding: 6px 8px; }
+table.diff th, table.diff td { padding: 8px 10px; }
+td.changed { color: var(--primary); font-weight: 600; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.dialog:has(.form-grid), .dialog:has(.perm-groups) { max-width: 680px; }
+.perm-groups { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.staff-line { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+ul.flat { margin: 6px 0 0; padding-left: 18px; }
+td input[type="checkbox"] { width: 18px; height: 18px; }
+table.mini td { white-space: nowrap; }

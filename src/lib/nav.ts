@@ -57,7 +57,7 @@ export const NAV: NavItem[] = [
       "POST /admin/commission/payouts/:id/hold",
       "POST /admin/commission/payouts/:id/release",
     ],
-    ready: false,
+    ready: true,
   },
   {
     path: "/settings",
@@ -70,14 +70,14 @@ export const NAV: NavItem[] = [
       "POST /admin/settings/changes/:id/approve",
       "POST /admin/settings/changes/:id/cancel",
     ],
-    ready: false,
+    ready: true,
   },
   {
     path: "/staff",
     label: "Staff",
     permission: "manage_staff",
-    routes: ["GET /admin/users", "PATCH /admin/users/:userId/role", "DELETE /admin/users/:userId/role-change"],
-    ready: false,
+    routes: ["GET /admin/staff", "PATCH /admin/users/:userId/role", "PUT /admin/users/:userId/permissions", "POST /admin/users/:userId/2fa/reset"],
+    ready: true,
   },
   {
     path: "/customers",

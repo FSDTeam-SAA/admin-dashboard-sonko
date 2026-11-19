@@ -9,6 +9,9 @@ import { visibleNav } from "./lib/nav";
 import { ReportsPage } from "./pages/ReportsPage";
 import { HoldsPage } from "./pages/HoldsPage";
 import { ReversalsPage } from "./pages/ReversalsPage";
+import { PayoutsPage } from "./pages/PayoutsPage";
+import { SettingsPage } from "./pages/SettingsPage";
+import { StaffPage } from "./pages/StaffPage";
 import type { ComponentType } from "react";
 
 // Pages that are built. The rest show "being built" until they are.
@@ -16,6 +19,9 @@ const PAGES: Record<string, ComponentType> = {
   "/reports": ReportsPage,
   "/holds": HoldsPage,
   "/reversals": ReversalsPage,
+  "/payouts": PayoutsPage,
+  "/settings": SettingsPage,
+  "/staff": StaffPage,
 };
 
 function Panel() {

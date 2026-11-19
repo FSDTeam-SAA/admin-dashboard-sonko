@@ -26,6 +26,16 @@ server.
   widen to a full hold.
 - Refunds and reversals page: approve (not your own request), cancel with
   a reason, and ask to reverse a cash out or cash in by its record ID.
+- Agent payouts page: approve (two people; the second approval pays),
+  approve several clean payouts at once, hold and release with a reason,
+  retry a payment that failed. Payouts with fraud flags can't be batch
+  approved and show what was flagged in plain words.
+- Rates and fees page: what is in force, the waiting change with before
+  and after, approve (a different person), cancel, propose a change, and
+  the history. Money is typed in whole units and sent in the smallest unit.
+- Staff page: staff list, who has the authenticator set up, make someone
+  staff, remove someone, change permissions, reset a lost authenticator.
+  Every change except the reset needs two people; nobody changes their own.
 - Every money and hold action asks for the staff member's own PIN and sends
   one idempotency key per dialog.
 
@@ -50,6 +60,12 @@ On server branch `agent-cash-out` (and merged into `notification-feed`):
 - `GET /admin/holds` (with `?lift=asked`), names and phones on
   `GET /admin/reversals` (`people`), and `approve_old_reversal` in the
   permissions list. Database test: `test/holdList.test.js` (not run here).
+- `GET /admin/staff`, `PUT /admin/users/:userId/permissions` and
+  `DELETE /admin/users/:userId/permissions-change`: changing a staff
+  member's permissions needs two different staff members. New staff start
+  with `view_dashboard` only, never as full admins. Names (`people`) on
+  payouts and settings changes. Database test:
+  `test/staffPermissionsChange.test.js` (not run here).
 
 ## Before it goes live
 
@@ -63,14 +79,13 @@ On server branch `agent-cash-out` (and merged into `notification-feed`):
    `node --test test/staffTwoStepFlow.test.js` there.
 5. Each staff member logs in once to set up their authenticator app and
    saves their recovery codes. Do this for the owner account first.
+6. On the Staff page, give each staff member only the permissions their
+   job needs. Keep `manage_staff` to the owner and one trusted deputy.
 
 ## Next steps, in order
 
-1. Agent payouts page.
-2. Rates and fees page: propose, approve (two people).
-3. Staff page: role changes (two people), and resetting a lost authenticator app.
-4. Agents page with cash out and cash in records, linking to "Reverse".
-5. The rest of the agreed panel: customers, tickets, analytics, and so on.
+1. Agents page with cash out and cash in records, linking to "Reverse".
+2. The rest of the agreed panel: customers, tickets, analytics, and so on.
 
 ## Known gaps
 
