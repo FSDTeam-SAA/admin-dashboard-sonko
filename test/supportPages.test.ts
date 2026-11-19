@@ -73,3 +73,23 @@ describe("small labels", () => {
     expect(duration(72)).toBe("3 days");
   });
 });
+
+import { auditTrail } from "../src/api/admin";
+import { describeEvent, resultOf } from "../src/pages/AuditPage";
+
+describe("audit trail", () => {
+  it("asks for the filters that are set", async () => {
+    await auditTrail("all", null, 1);
+    await auditTrail("login_failed", "a".repeat(24), 2);
+    expect(path(calls[0]!)).toBe("/admin/audit?page=1&limit=50");
+    expect(path(calls[1]!)).toBe(`/admin/audit?page=2&limit=50&kind=login_failed&staff=${"a".repeat(24)}`);
+  });
+  it("lines read in plain words", () => {
+    expect(describeEvent({ kind: "login_failed", method: "POST", route: "/api/v1/auth/login" })).toBe("Wrong PIN");
+    expect(describeEvent({ kind: "action", method: "PATCH", route: "/api/v1/admin/tickets/:id" })).toBe("PATCH /admin/tickets/:id");
+    expect(resultOf({ kind: "action", status: 403 }).label).toBe("Not allowed");
+    expect(resultOf({ kind: "action", status: 200 }).label).toBe("Done");
+    expect(resultOf({ kind: "login_code_failed", status: null }).tone).toBe("danger");
+    expect(resultOf({ kind: "action", status: 500 }).label).toBe("Error");
+  });
+});

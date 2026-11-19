@@ -557,3 +557,26 @@ export type Analytics = {
 export function analytics() {
   return api<Analytics>(`/admin/analytics`);
 }
+
+// ---- Audit trail ----
+
+export type AuditKind = "login_pin" | "login_failed" | "login_complete" | "login_code_failed" | "action";
+
+export type AuditEvent = {
+  id: string;
+  staff: { id: string; name: string };
+  kind: AuditKind;
+  method: string;
+  route: string;
+  targets: string[];
+  status: number | null;
+  ip: string;
+  at: string;
+};
+
+export function auditTrail(kind: AuditKind | "all", staffId: string | null, page: number) {
+  const query = new URLSearchParams({ page: String(page), limit: "50" });
+  if (kind !== "all") query.set("kind", kind);
+  if (staffId) query.set("staff", staffId);
+  return api<{ events: AuditEvent[]; pagination: Pagination }>(`/admin/audit?${query.toString()}`);
+}

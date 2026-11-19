@@ -99,6 +99,14 @@ On server branch `agent-cash-out` (and merged into `notification-feed`):
   `GET /admin/users` no longer sends the agent ID number or `cash`.
   Database test: `test/customersTickets.test.js` (not run here); unit test
   `test/ticket.rules.test.js`.
+- Audit trail (19 Nov). `GET /admin/audit` (`view_audit`, senior). Model
+  `AuditEvent`, only ever added to. Every staff request under `/admin` is
+  saved after it is answered (who, method, route as written, ids, result,
+  address), plus the login steps (PIN ok, wrong PIN, code ok, wrong code).
+  Request bodies and query strings are never saved. Writing a line never
+  blocks the action; a failed write logs `AUDIT WRITE FAILED`. Database test:
+  `test/audit.test.js` (not run here); unit test `test/audit.rules.test.js`.
+  Not yet covered: staff reading files through routes outside `/admin`.
 
 ## Before it goes live
 
@@ -122,8 +130,7 @@ On server branch `agent-cash-out` (and merged into `notification-feed`):
 2. Analytics: revenue (the fees Sunu Pay keeps, from the ledger), and a
    sales-team view of their own sign-ups (needs each customer to record who
    signed them up).
-3. Editing customer details, security questions for callers, the full audit
-   trail (every login and action), Services and countries, announcements,
+3. Editing customer details, security questions for callers, Services and countries, announcements,
    the per-user language setting.
 
 ## Known gaps

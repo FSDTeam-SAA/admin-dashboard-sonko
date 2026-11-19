@@ -116,6 +116,13 @@ export const NAV: NavItem[] = [
     routes: ["GET /admin/analytics"],
     ready: true,
   },
+  {
+    path: "/audit",
+    label: "Audit trail",
+    permission: "view_audit",
+    routes: ["GET /admin/audit"],
+    ready: true,
+  },
 ];
 
 export function visibleNav(permissions: readonly string[]): NavItem[] {
