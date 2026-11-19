@@ -8,6 +8,8 @@ export type Staff = {
   role: string;
   permissions: string[];
   fullAdmin: boolean;
+  /** The panel language this person picked. */
+  language?: "en" | "fr";
 };
 
 export const NOT_STAFF = "This account is not a Sunu Pay staff account.";
@@ -93,4 +95,9 @@ export async function logout(reason: "logout" | "idle" = "logout"): Promise<void
 
 export function can(staff: Staff | null, permission: string): boolean {
   return Boolean(staff?.permissions.includes(permission));
+}
+
+/** Saves this staff member's own panel language on their account. */
+export function saveMyLanguage(language: "en" | "fr") {
+  return api("/admin/me/language", { method: "PUT", body: { language } });
 }

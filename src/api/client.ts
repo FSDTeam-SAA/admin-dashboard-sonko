@@ -1,3 +1,4 @@
+import { getLanguage } from "../i18n/language";
 import { API_BASE } from "./config";
 import { endSession, getTokens, setTokens } from "./session";
 
@@ -56,8 +57,9 @@ async function doRefresh(): Promise<boolean> {
 async function send<T>(path: string, options: RequestOptions, mayRefresh: boolean): Promise<T> {
   const headers: Record<string, string> = {
     Accept: "application/json",
-    // Per-staff language comes later; the server falls back to English.
-    "Accept-Language": "en",
+    // The staff member's panel language. The server answers in French where
+    // it has French, and in English otherwise.
+    "Accept-Language": getLanguage(),
   };
   if (options.body !== undefined) headers["Content-Type"] = "application/json";
   if (options.idempotencyKey) headers["Idempotency-Key"] = options.idempotencyKey;

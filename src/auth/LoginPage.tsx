@@ -3,6 +3,8 @@ import QRCode from "qrcode";
 import { useAuth } from "./AuthContext";
 import { ApiError } from "../api/client";
 import { finishLogin, startLogin, startSetup, type LoggedIn, type Staff } from "../api/staff";
+import { LanguagePicker } from "../components/LanguagePicker";
+import { translate, getLanguage, useT } from "../i18n/language";
 
 const ENDED: Record<string, string> = {
   idle: "You were logged out after 15 minutes without activity.",
@@ -19,12 +21,13 @@ type Step =
   | { name: "recovery"; staff: Staff; codes: string[] };
 
 const messageOf = (caught: unknown) =>
-  caught instanceof Error && caught.message ? caught.message : "Could not log in. Please try again.";
+  caught instanceof Error && caught.message ? caught.message : translate("Could not log in. Please try again.", getLanguage());
 
 const isTicketExpired = (caught: unknown) => caught instanceof ApiError && caught.message === TICKET_EXPIRED;
 
 export function LoginPage() {
   const { enter, endedBecause } = useAuth();
+  const t = useT();
   const [step, setStep] = useState<Step>({ name: "pin" });
   const [error, setError] = useState<string | null>(null);
 
@@ -42,7 +45,7 @@ export function LoginPage() {
     const left = result.recoveryCodesLeft;
     const note =
       left !== undefined && left <= FEW_CODES_LEFT
-        ? `You have ${left} recovery code${left === 1 ? "" : "s"} left. Ask another staff member to reset your authenticator app to get new ones.`
+        ? translate(left === 1 ? "You have 1 recovery code left. Ask another staff member to reset your authenticator app to get new ones." : "You have {n} recovery codes left. Ask another staff member to reset your authenticator app to get new ones.", getLanguage(), { n: left })
         : undefined;
     enter(result.staff, note);
   };
@@ -52,10 +55,11 @@ export function LoginPage() {
       <div className="card login-card">
         <img className="login-mark" src="/sp-mark.png" alt="" width={64} height={32} />
         <h1>Sunu Pay Admin</h1>
-        {step.name === "pin" && endedBecause && ENDED[endedBecause] && !error && <p className="notice">{ENDED[endedBecause]}</p>}
+        <LanguagePicker />
+        {step.name === "pin" && endedBecause && ENDED[endedBecause] && !error && <p className="notice">{t(ENDED[endedBecause])}</p>}
         {error && (
           <p className="error" role="alert">
-            {error}
+            {t(error)}
           </p>
         )}
         {step.name === "pin" && (
@@ -80,6 +84,7 @@ export function LoginPage() {
 }
 
 function PinStep({ onDone, onError }: { onDone: (next: { ticket: string; enrolled: boolean }) => void; onError: (m: string) => void }) {
+  const t = useT();
   const [phone, setPhone] = useState("");
   const [pin, setPin] = useState("");
   const [busy, setBusy] = useState(false);
@@ -103,14 +108,14 @@ function PinStep({ onDone, onError }: { onDone: (next: { ticket: string; enrolle
 
   return (
     <form className="stack" onSubmit={submit} noValidate>
-      <p className="muted">For Sunu Pay staff only.</p>
+      <p className="muted">{t("For Sunu Pay staff only.")}</p>
       <label>
-        Phone number
+        {t("Phone number")}
         <input type="tel" inputMode="tel" autoComplete="username" placeholder="+220 …" value={phone} onChange={(e) => setPhone(e.target.value)} />
       </label>
-      <span className="hint">Include the country code, for example +220 or +44.</span>
+      <span className="hint">{t("Include the country code, for example +220 or +44.")}</span>
       <label>
-        PIN
+        {t("PIN")}
         <input
           type="password"
           inputMode="numeric"
@@ -121,7 +126,7 @@ function PinStep({ onDone, onError }: { onDone: (next: { ticket: string; enrolle
         />
       </label>
       <button className="primary" type="submit" disabled={!phoneOk || !pinOk || busy}>
-        {busy ? "Checking…" : "Next"}
+        {busy ? t("Checking…") : t("Next")}
       </button>
     </form>
   );
@@ -153,9 +158,10 @@ function useCodeSubmit({ ticket, onDone, onError, onExpired }: CodeProps) {
 }
 
 function CodeInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const t = useT();
   return (
     <label>
-      6-digit code
+      {t("6-digit code")}
       <input
         type="text"
         inputMode="numeric"
@@ -174,6 +180,7 @@ function SetupStep(props: CodeProps) {
   const [setup, setSetup] = useState<{ secret: string; qr: string } | null>(null);
   const [code, setCode] = useState("");
   const { busy, send } = useCodeSubmit(props);
+  const t = useT();
 
   useEffect(() => {
     let live = true;
@@ -193,7 +200,7 @@ function SetupStep(props: CodeProps) {
     };
   }, [ticket]);
 
-  if (!setup) return <p className="muted">Getting your set-up code…</p>;
+  if (!setup) return <p className="muted">{t("Getting your set-up code…")}</p>;
   return (
     <form
       className="stack"
@@ -202,20 +209,20 @@ function SetupStep(props: CodeProps) {
         if (/^\d{6}$/.test(code)) void send({ code }, () => setCode(""));
       }}
     >
-      <h2>Set up your authenticator app</h2>
+      <h2>{t("Set up your authenticator app")}</h2>
       <ol className="steps">
-        <li>Install Google Authenticator or Microsoft Authenticator on your phone.</li>
-        <li>In the app, add an account and scan this code.</li>
-        <li>Type the 6-digit code the app shows.</li>
+        <li>{t("Install Google Authenticator or Microsoft Authenticator on your phone.")}</li>
+        <li>{t("In the app, add an account and scan this code.")}</li>
+        <li>{t("Type the 6-digit code the app shows.")}</li>
       </ol>
-      <img className="qr" src={setup.qr} alt="QR code for your authenticator app" width={200} height={200} />
+      <img className="qr" src={setup.qr} alt={t("QR code for your authenticator app")} width={200} height={200} />
       <details>
-        <summary>Can't scan? Type this key instead</summary>
+        <summary>{t("Can't scan? Type this key instead")}</summary>
         <code className="key">{setup.secret.match(/.{1,4}/g)?.join(" ")}</code>
       </details>
       <CodeInput value={code} onChange={setCode} />
       <button className="primary" type="submit" disabled={busy || !/^\d{6}$/.test(code)}>
-        {busy ? "Checking…" : "Finish setting up"}
+        {busy ? t("Checking…") : t("Finish setting up")}
       </button>
     </form>
   );
@@ -226,6 +233,7 @@ function CodeStep(props: CodeProps) {
   const [code, setCode] = useState("");
   const [recovery, setRecovery] = useState("");
   const { busy, send } = useCodeSubmit(props);
+  const t = useT();
   const recoveryOk = recovery.replace(/[^A-Za-z0-9]/g, "").length === 10;
 
   return (
@@ -243,23 +251,23 @@ function CodeStep(props: CodeProps) {
     >
       {useRecovery ? (
         <>
-          <p className="muted">Type one of the recovery codes you saved. Each one works once.</p>
+          <p className="muted">{t("Type one of the recovery codes you saved. Each one works once.")}</p>
           <label>
-            Recovery code
+            {t("Recovery code")}
             <input type="text" autoComplete="off" maxLength={11} value={recovery} onChange={(e) => setRecovery(e.target.value.toUpperCase())} autoFocus />
           </label>
         </>
       ) : (
         <>
-          <p className="muted">Open your authenticator app and type the code for Sunu Pay Admin.</p>
+          <p className="muted">{t("Open your authenticator app and type the code for Sunu Pay Admin.")}</p>
           <CodeInput value={code} onChange={setCode} />
         </>
       )}
       <button className="primary" type="submit" disabled={busy || (useRecovery ? !recoveryOk : !/^\d{6}$/.test(code))}>
-        {busy ? "Checking…" : "Log in"}
+        {busy ? t("Checking…") : t("Log in")}
       </button>
       <button type="button" className="link" onClick={() => setUseRecovery(!useRecovery)}>
-        {useRecovery ? "Use the code from my app" : "Lost your phone? Use a recovery code"}
+        {useRecovery ? t("Use the code from my app") : t("Lost your phone? Use a recovery code")}
       </button>
     </form>
   );
@@ -268,12 +276,12 @@ function CodeStep(props: CodeProps) {
 function RecoveryCodes({ codes, onDone }: { codes: string[]; onDone: () => void }) {
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState<ReactNode>(null);
+  const t = useT();
   return (
     <div className="stack">
-      <h2>Save your recovery codes</h2>
+      <h2>{t("Save your recovery codes")}</h2>
       <p className="muted">
-        If you lose your phone, each of these codes lets you log in once. Write them down or keep them in a password
-        manager. You will not see them again.
+        {t("If you lose your phone, each of these codes lets you log in once. Write them down or keep them in a password manager. You will not see them again.")}
       </p>
       <ul className="codes">
         {codes.map((code) => (
@@ -287,19 +295,19 @@ function RecoveryCodes({ codes, onDone }: { codes: string[]; onDone: () => void 
         onClick={() => {
           navigator.clipboard
             ?.writeText(codes.join("\n"))
-            .then(() => setCopied("Copied."))
-            .catch(() => setCopied("Could not copy. Please write them down."));
+            .then(() => setCopied(t("Copied.")))
+            .catch(() => setCopied(t("Could not copy. Please write them down.")));
         }}
       >
-        Copy codes
+        {t("Copy codes")}
       </button>
       {copied && <span className="hint">{copied}</span>}
       <label className="check">
         <input type="checkbox" checked={saved} onChange={(e) => setSaved(e.target.checked)} />
-        I have saved these codes somewhere safe
+        {t("I have saved these codes somewhere safe")}
       </label>
       <button className="primary" type="button" disabled={!saved} onClick={onDone}>
-        Continue
+        {t("Continue")}
       </button>
     </div>
   );

@@ -1,3 +1,4 @@
+import { getLanguage } from "../i18n/language";
 import { analytics } from "../api/admin";
 import { LoadState, PageHeader } from "../components/common";
 import { money } from "../lib/format";
@@ -8,7 +9,7 @@ import { TYPE_LABEL } from "./CustomersPage";
 export function monthLabel(key: string): string {
   const [year, month] = key.split("-").map(Number);
   if (!year || !month) return key;
-  return new Date(Date.UTC(year, month - 1, 1)).toLocaleString("en-GB", { month: "short", year: "numeric", timeZone: "UTC" });
+  return new Date(Date.UTC(year, month - 1, 1)).toLocaleString(getLanguage() === "fr" ? "fr-FR" : "en-GB", { month: "short", year: "numeric", timeZone: "UTC" });
 }
 
 /** A horizontal bar for each row, drawn as wide as its share of the biggest. */

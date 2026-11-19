@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { ConfirmWithPin } from "./ConfirmWithPin";
 import { TextArea, okLength } from "./common";
 import { newIdempotencyKey } from "../lib/idempotency";
+import { useT } from "../i18n/language";
 import {
   askReversal,
   NOTE_MAX,
@@ -32,6 +33,7 @@ type PlaceProps = {
 
 /** One staff member places a hold, at once. Lifting it later needs two. */
 export function PlaceHoldDialog({ customer, scopes = ["requests", "all"], paymentRequestId, onDone, onClose }: PlaceProps) {
+  const t = useT();
   const [scope, setScope] = useState<HoldScope>(scopes[0] ?? "requests");
   const [reason, setReason] = useState("");
   // One key for this dialog: a retry after a dropped connection is not done twice.
@@ -52,17 +54,16 @@ export function PlaceHoldDialog({ customer, scopes = ["requests", "all"], paymen
         <strong>{customer.label}</strong>
       </p>
       <fieldset className="choices">
-        <legend>What to stop</legend>
+        <legend>{t("What to stop")}</legend>
         {scopes.map((option) => (
           <label key={option} className="check">
             <input type="radio" name="scope" checked={scope === option} onChange={() => setScope(option)} />
-            {SCOPE_LABEL[option]}
+            {t(SCOPE_LABEL[option])}
           </label>
         ))}
       </fieldset>
       <p className="hint">
-        The customer is told only that their account is on hold and to contact support. They are never told the reason.
-        Lifting a hold needs two staff members.
+        {t("The customer is told only that their account is on hold and to contact support. They are never told the reason. Lifting a hold needs two staff members.")}
       </p>
       <TextArea label="Reason (staff only)" value={reason} onChange={setReason} min={HOLD_REASON_MIN} max={HOLD_REASON_MAX} />
     </ConfirmWithPin>
@@ -81,6 +82,7 @@ type AskProps = {
 
 /** One staff member asks for a refund or reversal; a different one approves. */
 export function AskReversalDialog({ kind, targetId, title, summary, defaultReason = "SCAM_REPORTED", onDone, onClose }: AskProps) {
+  const t = useT();
   const [reason, setReason] = useState<ReversalReason>(defaultReason);
   const [note, setNote] = useState("");
   const key = useMemo(newIdempotencyKey, []);
@@ -96,13 +98,13 @@ export function AskReversalDialog({ kind, targetId, title, summary, defaultReaso
       }}
     >
       <p>{summary}</p>
-      <p className="hint">No money moves yet. A different staff member must approve it on the Refunds and reversals page.</p>
+      <p className="hint">{t("No money moves yet. A different staff member must approve it on the Refunds and reversals page.")}</p>
       <label>
-        Reason
+        {t("Reason")}
         <select value={reason} onChange={(e) => setReason(e.target.value as ReversalReason)}>
           {REVERSAL_REASONS.map(([value, label]) => (
             <option key={value} value={value}>
-              {label}
+              {t(label)}
             </option>
           ))}
         </select>

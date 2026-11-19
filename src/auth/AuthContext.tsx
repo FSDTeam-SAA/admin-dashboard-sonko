@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { onSessionEnd, isIdle, IDLE_LIMIT_MS, type EndReason } from "../api/session";
 import { logout as apiLogout, type Staff } from "../api/staff";
+import { setLanguage } from "../i18n/language";
 
 type AuthState = {
   staff: Staff | null;
@@ -51,6 +52,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const enter = useCallback((me: Staff, note?: string) => {
     setEndedBecause(null);
     setNotice(note ?? null);
+    // The language saved on the account wins over this browser's.
+    if (me.language) setLanguage(me.language);
     setStaff(me);
   }, []);
 

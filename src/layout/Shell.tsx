@@ -2,10 +2,13 @@ import { useEffect, useState } from "react";
 import { NavLink, Outlet } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { visibleNav } from "../lib/nav";
+import { LanguagePicker } from "../components/LanguagePicker";
+import { useT } from "../i18n/language";
 import { applyTheme, loadTheme, saveTheme, type ThemeChoice } from "../lib/theme";
 
 export function Shell() {
   const { staff, logout } = useAuth();
+  const t = useT();
   const [theme, setTheme] = useState<ThemeChoice>(loadTheme);
   const items = visibleNav(staff?.permissions ?? []);
 
@@ -24,7 +27,7 @@ export function Shell() {
         <nav>
           {items.map((item) => (
             <NavLink key={item.path} to={item.path} end={item.path === "/"}>
-              {item.label}
+              {t(item.label)}
             </NavLink>
           ))}
         </nav>
@@ -33,12 +36,13 @@ export function Shell() {
         <header className="topbar">
           <span className="muted">{staff?.name || staff?.phone}</span>
           <div className="row-end">
-            <select aria-label="Theme" value={theme} onChange={(event) => setTheme(event.target.value as ThemeChoice)}>
-              <option value="system">System</option>
-              <option value="light">Light</option>
-              <option value="dark">Dark</option>
+            <LanguagePicker saveToAccount />
+            <select aria-label={t("Theme")} value={theme} onChange={(event) => setTheme(event.target.value as ThemeChoice)}>
+              <option value="system">{t("System")}</option>
+              <option value="light">{t("Light")}</option>
+              <option value="dark">{t("Dark")}</option>
             </select>
-            <button onClick={() => void logout()}>Log out</button>
+            <button onClick={() => void logout()}>{t("Log out")}</button>
           </div>
         </header>
         <main className="content">

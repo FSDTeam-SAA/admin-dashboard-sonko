@@ -1,3 +1,4 @@
+import { getLanguage } from "../i18n/language";
 // Money and dates the same way on every page.
 
 // Currencies with no smaller unit (the CFA franc). Everything else has 2.
@@ -24,7 +25,10 @@ export function when(value: string | null | undefined): string {
   if (!value) return "—";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "—";
-  return date.toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  // Dates follow the staff member's language. Money amounts do not: the
+  // same figure must read the same for everyone.
+  const locale = getLanguage() === "fr" ? "fr-FR" : "en-GB";
+  return date.toLocaleString(locale, { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
 export function personLabel(person: { name?: string; phone?: string } | null | undefined): string {

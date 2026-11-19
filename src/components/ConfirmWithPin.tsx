@@ -1,3 +1,4 @@
+import { useT } from "../i18n/language";
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 
 type Props = {
@@ -21,6 +22,7 @@ type Props = {
  * computer can't be used by someone else. The PIN is sent once and cleared.
  */
 export function ConfirmWithPin({ title, children, confirmLabel, canConfirm = true, needsPin = true, danger, onConfirm, onClose }: Props) {
+  const t = useT();
   const [pin, setPin] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -46,7 +48,7 @@ export function ConfirmWithPin({ title, children, confirmLabel, canConfirm = tru
     try {
       await onConfirm(pin);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Something went wrong. Please try again.");
+      setError(caught instanceof Error ? caught.message : t("Something went wrong. Please try again."));
     } finally {
       setPin("");
       setBusy(false);
@@ -56,18 +58,18 @@ export function ConfirmWithPin({ title, children, confirmLabel, canConfirm = tru
   return (
     <div className="overlay" role="presentation">
       <form className="card dialog" role="dialog" aria-modal="true" aria-labelledby="confirm-title" onSubmit={submit}>
-        <h2 id="confirm-title">{title}</h2>
+        <h2 id="confirm-title">{t(title)}</h2>
         <div className="dialog-body stack" ref={first}>
           {children}
         </div>
         {error && (
           <p className="error" role="alert">
-            {error}
+            {t(error)}
           </p>
         )}
         {needsPin && (
           <label>
-            Your PIN
+            {t("Your PIN")}
             <input
               type="password"
               inputMode="numeric"
@@ -80,10 +82,10 @@ export function ConfirmWithPin({ title, children, confirmLabel, canConfirm = tru
         )}
         <div className="row-end">
           <button type="button" onClick={onClose} disabled={busy}>
-            Cancel
+            {t("Cancel")}
           </button>
           <button className={danger ? "danger" : "primary"} type="submit" disabled={!ready}>
-            {busy ? "Working…" : confirmLabel}
+            {busy ? t("Working…") : t(confirmLabel)}
           </button>
         </div>
       </form>

@@ -24,6 +24,7 @@ import {
 import { PlaceHoldDialog, SCOPE_LABEL } from "../components/dialogs";
 import { money, personLabel, when } from "../lib/format";
 import { useLoad } from "../lib/useLoad";
+import { useT } from "../i18n/language";
 
 export const TYPE_LABEL: Record<string, string> = {
   "send-money": "Money sent",
@@ -49,6 +50,7 @@ const FIELD_LABEL: Record<string, string> = {
 };
 
 export function CustomersPage() {
+  const t = useT();
   const [filter, setFilter] = useState<CustomerFilter | "all">("all");
   const [search, setSearch] = useState("");
   const [typed, setTyped] = useState("");
@@ -92,11 +94,11 @@ export function CustomersPage() {
       />
       <form className="row-start search" onSubmit={find}>
         <input
-          placeholder="Name, phone or email"
+          placeholder={t("Name, phone or email")}
           value={typed}
           onChange={(e) => setTyped(e.target.value)}
         />
-        <button type="submit">Search</button>
+        <button type="submit">{t("Search")}</button>
         {search && (
           <button
             type="button"
@@ -105,7 +107,7 @@ export function CustomersPage() {
               setTyped("");
             }}
           >
-            Clear
+            {t("Clear")}
           </button>
         )}
       </form>
@@ -119,12 +121,12 @@ export function CustomersPage() {
           <table>
             <thead>
               <tr>
-                <th>Name</th>
-                <th>Phone</th>
-                <th>ID check</th>
-                <th>Last login</th>
-                <th>Joined</th>
-                <th aria-label="Open" />
+                <th>{t("Name")}</th>
+                <th>{t("Phone")}</th>
+                <th>{t("ID check")}</th>
+                <th>{t("Last login")}</th>
+                <th>{t("Joined")}</th>
+                <th aria-label={t("Open file")} />
               </tr>
             </thead>
             <tbody>
@@ -137,7 +139,7 @@ export function CustomersPage() {
                   <td>
                     <strong>{row.name || "—"}</strong>
                     {row.role === "agent" && (
-                      <div className="muted small">Agent</div>
+                      <div className="muted small">{t("Agent")}</div>
                     )}
                     {row.onHold && (
                       <div>
@@ -162,7 +164,7 @@ export function CustomersPage() {
                         setOpenId(row.id);
                       }}
                     >
-                      Open
+                      {t("Open file")}
                     </button>
                   </td>
                 </tr>
@@ -177,9 +179,10 @@ export function CustomersPage() {
 }
 
 function Fact({ label, value }: { label: string; value: string }) {
+  const t = useT();
   return (
     <>
-      <dt>{label}</dt>
+      <dt>{t(label)}</dt>
       <dd>{value}</dd>
     </>
   );
@@ -193,6 +196,7 @@ function CustomerView({
   onBack: () => void;
 }) {
   const { staff } = useAuth();
+  const t = useT();
   const navigate = useNavigate();
   const [holding, setHolding] = useState(false);
   const [dialog, setDialog] = useState<"edit" | "phone" | "caller" | null>(
@@ -208,7 +212,7 @@ function CustomerView({
     return (
       <section>
         <button className="link" onClick={onBack}>
-          ← All customers
+          ← {t("All customers")}
         </button>
         <LoadState loading={loading} error={error} empty={false} />
       </section>
@@ -229,21 +233,21 @@ function CustomerView({
   return (
     <section>
       <button className="link" onClick={onBack}>
-        ← All customers
+        ← {t("All customers")}
       </button>
       <PageHeader
-        title={c.name || "Customer"}
-        intro={`${c.phone || "No phone"}${c.role === "agent" ? " · Agent" : ""}`}
+        title={c.name || t("Customer")}
+        intro={`${c.phone || t("No phone")}${c.role === "agent" ? ` · ${t("Agent")}` : ""}`}
         actions={
           <>
             {can(staff, "verify_callers") && (
-              <button onClick={() => setDialog("caller")}>Check caller</button>
+              <button onClick={() => setDialog("caller")}>{t("Check caller")}</button>
             )}
             {can(staff, "edit_customers") && (
-              <button onClick={() => setDialog("edit")}>Edit details</button>
+              <button onClick={() => setDialog("edit")}>{t("Edit details")}</button>
             )}
             {can(staff, "edit_customers") && (
-              <button onClick={() => setDialog("phone")}>Change phone</button>
+              <button onClick={() => setDialog("phone")}>{t("Change phone")}</button>
             )}
             {can(staff, "manage_tickets") && (
               <button
@@ -253,40 +257,39 @@ function CustomerView({
                   )
                 }
               >
-                Open a ticket
+                {t("Open a ticket")}
               </button>
             )}
             {can(staff, "place_hold") && c.hold?.scope !== "all" && (
               <button className="danger" onClick={() => setHolding(true)}>
-                Put on hold
+                {t("Put on hold")}
               </button>
             )}
           </>
         }
       />
-      {done && <p className="notice">{done}</p>}
+      {done && <p className="notice">{t(done)}</p>}
       {data.callerChecks.verifiedUntil ? (
         <p className="notice">
           {data.callerChecks.verifiedBy === staff?._id
-            ? `You checked this caller. Counts until ${when(data.callerChecks.verifiedUntil)}.`
-            : `Caller checked by ${data.callerChecks.verifiedByName || "another staff member"}, until ${when(data.callerChecks.verifiedUntil)}. Only they can change the phone or email. If you are on the call, check the caller yourself.`}
+            ? t("You checked this caller. Counts until {time}.", { time: when(data.callerChecks.verifiedUntil) })
+            : t("Caller checked by {name}, until {time}. Only they can change the phone or email. If you are on the call, check the caller yourself.", { name: data.callerChecks.verifiedByName || t("another staff member"), time: when(data.callerChecks.verifiedUntil) })}
         </p>
       ) : (
         <p className="muted small">
-          Caller not checked. Check who you are talking to before sharing
-          details or making changes.
+          {t("Caller not checked. Check who you are talking to before sharing details or making changes.")}
         </p>
       )}
       {data.pendingPhoneChange && (
         <p className="notice">
-          Phone change to <strong>{data.pendingPhoneChange.phone}</strong> asked
-          by {data.pendingPhoneChange.requestedByName || "staff"}{" "}
+          {t("Phone change to")} <strong>{data.pendingPhoneChange.phone}</strong>{" "}
+          {t("asked by {name}", { name: data.pendingPhoneChange.requestedByName || t("staff") })}{" "}
           {when(data.pendingPhoneChange.requestedAt)}:{" "}
           {data.pendingPhoneChange.reason}{" "}
           {can(staff, "edit_customers") &&
             data.pendingPhoneChange.requestedBy !== staff?._id && (
               <button className="link" onClick={() => setDialog("phone")}>
-                Review and approve
+                {t("Review and approve")}
               </button>
             )}{" "}
           <span className="muted"> · </span>
@@ -299,21 +302,21 @@ function CustomerView({
                 reload();
               }}
             >
-              Cancel it
+              {t("Cancel it")}
             </button>
           )}
         </p>
       )}
       {c.hold && (
         <p className="error">
-          On hold: {SCOPE_LABEL[c.hold.scope]}. {c.hold.reason} (since{" "}
-          {when(c.hold.placedAt)}). Lift it on the Account holds page.
+          {t("On hold: {scope}.", { scope: t(SCOPE_LABEL[c.hold.scope]) })} {c.hold.reason} ({t("since {time}", { time: when(c.hold.placedAt) })}).{" "}
+          {t("Lift it on the Account holds page.")}
         </p>
       )}
 
       <div className="two-col">
         <div className="card panel">
-          <h2>Profile</h2>
+          <h2>{t("Profile")}</h2>
           <div className="row-start">
             {c.profilePicture ? (
               <img
@@ -327,8 +330,7 @@ function CustomerView({
               <div className="avatar empty-avatar" aria-hidden />
             )}
             <p className="muted small">
-              The profile picture is only a picture they chose. It does not show
-              who they are.
+              {t("The profile picture is only a picture they chose. It does not show who they are.")}
             </p>
           </div>
           <dl className="facts">
@@ -341,14 +343,14 @@ function CustomerView({
           </dl>
         </div>
         <div className="card panel">
-          <h2>Verification</h2>
+          <h2>{t("Verification")}</h2>
           <dl className="facts">
             <Fact
               label="ID check"
               value={
                 v.identityVerifiedAt
-                  ? `Passed ${when(v.identityVerifiedAt)}`
-                  : "Not done"
+                  ? t("Passed {time}", { time: when(v.identityVerifiedAt) })
+                  : t("Not done")
               }
             />
             <Fact label="Name on the ID" value={v.nameOnId || "—"} />
@@ -357,125 +359,123 @@ function CustomerView({
               label="Address check"
               value={
                 v.addressVerifiedAt
-                  ? `Passed ${when(v.addressVerifiedAt)}`
-                  : "Not done"
+                  ? t("Passed {time}", { time: when(v.addressVerifiedAt) })
+                  : t("Not done")
               }
             />
           </dl>
           <p className="hint">
-            The ID photos and selfie stay with the ID check provider. The ID
-            number is not shown here.
+            {t("The ID photos and selfie stay with the ID check provider. The ID number is not shown here.")}
           </p>
         </div>
       </div>
 
       <div className="two-col">
         <div className="card panel">
-          <h2>Balance and spend</h2>
+          <h2>{t("Balance and spend")}</h2>
           <dl className="facts">
             {data.wallets.map((w) => (
               <Fact
                 key={w.currency}
-                label={`Balance (${w.currency})`}
+                label={t("Balance ({currency})", { currency: w.currency })}
                 value={money(w.balanceMinor, w.currency)}
               />
             ))}
             {!data.wallets.length && (
-              <Fact label="Balance" value="No wallet yet" />
+              <Fact label="Balance" value={t("No wallet yet")} />
             )}
             {data.spend.map((s) => (
               <Fact
                 key={s.currency}
-                label={`Spent (${s.currency})`}
-                value={`${money(s.amountMinor, s.currency)} in ${s.count}`}
+                label={t("Spent ({currency})", { currency: s.currency })}
+                value={t("{amount} in {count}", { amount: money(s.amountMinor, s.currency), count: s.count })}
               />
             ))}
-            {!data.spend.length && <Fact label="Spent" value="Nothing yet" />}
+            {!data.spend.length && <Fact label="Spent" value={t("Nothing yet")} />}
           </dl>
         </div>
         <div className="card panel">
-          <h2>Tickets</h2>
+          <h2>{t("Tickets")}</h2>
           {data.tickets.length ? (
             <ul className="hits">
-              {data.tickets.map((t) => (
-                <li key={t.id}>
+              {data.tickets.map((tk) => (
+                <li key={tk.id}>
                   <button
                     className="hit"
                     onClick={() =>
-                      navigate(`/tickets?open=${encodeURIComponent(t.id)}`)
+                      navigate(`/tickets?open=${encodeURIComponent(tk.id)}`)
                     }
                   >
                     <span>
-                      #{t.number} {t.subject}
+                      #{tk.number} {tk.subject}
                     </span>
                     <span className="muted small">
-                      {t.status.replace("_", " ")}
+                      {t(tk.status.replace("_", " "))}
                     </span>
                   </button>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="muted">No tickets.</p>
+            <p className="muted">{t("No tickets.")}</p>
           )}
         </div>
       </div>
 
       <div className="card panel">
-        <h2>Transaction history</h2>
+        <h2>{t("Transaction history")}</h2>
         {data.transactions.length ? (
           <div className="table-wrap">
             <table>
               <thead>
                 <tr>
-                  <th>When</th>
-                  <th>What</th>
-                  <th>With</th>
-                  <th>Amount</th>
-                  <th>Status</th>
+                  <th>{t("When")}</th>
+                  <th>{t("What")}</th>
+                  <th>{t("With")}</th>
+                  <th>{t("Amount")}</th>
+                  <th>{t("Status")}</th>
                 </tr>
               </thead>
               <tbody>
-                {data.transactions.map((t) => (
-                  <tr key={t.id}>
-                    <td>{when(t.at)}</td>
+                {data.transactions.map((tx) => (
+                  <tr key={tx.id}>
+                    <td>{when(tx.at)}</td>
                     <td>
-                      {TYPE_LABEL[t.type] ?? t.type}
-                      {t.txRef && <div className="muted small">{t.txRef}</div>}
+                      {t(TYPE_LABEL[tx.type] ?? tx.type)}
+                      {tx.txRef && <div className="muted small">{tx.txRef}</div>}
                     </td>
-                    <td>{t.otherParty ? personLabel(t.otherParty) : "—"}</td>
+                    <td>{tx.otherParty ? personLabel(tx.otherParty) : "—"}</td>
                     <td className="num">
-                      {t.direction === "in" ? "+" : "−"}
-                      {money(t.amountMinor, t.currency)}
+                      {tx.direction === "in" ? "+" : "−"}
+                      {money(tx.amountMinor, tx.currency)}
                     </td>
-                    <td>{t.status}</td>
+                    <td>{t(tx.status)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         ) : (
-          <p className="muted">No transactions yet.</p>
+          <p className="muted">{t("No transactions yet.")}</p>
         )}
         <p className="hint">
-          Showing the latest {data.transactions.length}. To reverse a payment,
-          use Refunds and reversals.
+          {t("Showing the latest {n}. To reverse a payment, use Refunds and reversals.", { n: data.transactions.length })}
         </p>
       </div>
 
       <div className="two-col">
         <div className="card panel">
-          <h2>Changes to their details</h2>
+          <h2>{t("Changes to their details")}</h2>
           {data.edits.length ? (
             <ul className="plain-list">
               {data.edits.map((e, i) => (
                 <li key={i} className="small">
-                  <strong>{FIELD_LABEL[e.field] ?? e.field}</strong>:{" "}
-                  {e.from || "empty"} → {e.to || "empty"}
+                  <strong>{t(FIELD_LABEL[e.field] ?? e.field)}</strong>:{" "}
+                  {e.from || t("empty")} → {e.to || t("empty")}
                   <div className="muted">
                     {when(e.at)} ·{" "}
                     {e.requestedBy
-                      ? `asked by ${e.requestedBy}, approved by ${e.by}`
+                      ? t("asked by {asker}, approved by {approver}", { asker: e.requestedBy, approver: e.by })
                       : e.by}{" "}
                     · {e.reason}
                   </div>
@@ -483,15 +483,15 @@ function CustomerView({
               ))}
             </ul>
           ) : (
-            <p className="muted">No changes by staff.</p>
+            <p className="muted">{t("No changes by staff.")}</p>
           )}
         </div>
         <div className="card panel">
-          <h2>Caller checks</h2>
+          <h2>{t("Caller checks")}</h2>
           <p className="small">
             {data.callerChecks.questionsSet
-              ? `Security questions set ${when(data.callerChecks.questionsSetAt)}.`
-              : "No security questions set yet."}
+              ? t("Security questions set {time}.", { time: when(data.callerChecks.questionsSetAt) })
+              : t("No security questions set yet.")}
           </p>
           {data.callerChecks.recent.length ? (
             <ul className="plain-list">
@@ -502,29 +502,29 @@ function CustomerView({
                   ) : (
                     <Badge tone="danger">Failed</Badge>
                   )}{" "}
-                  {r.method === "code" ? "Text code" : "Questions"} · {r.by} ·{" "}
+                  {r.method === "code" ? t("Text code") : t("Questions")} · {r.by} ·{" "}
                   {when(r.at)}
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="muted">No checks yet.</p>
+            <p className="muted">{t("No checks yet.")}</p>
           )}
         </div>
       </div>
 
       <div className="card panel">
-        <h2>Who has opened this file</h2>
+        <h2>{t("Who has opened this file")}</h2>
         <ul className="plain-list">
           {data.recentlyOpenedBy.map((o, i) => (
             <li key={i}>
-              {o.staff || "Staff"}{" "}
+              {o.staff || t("Staff")}{" "}
               <span className="muted small">{when(o.at)}</span>
             </li>
           ))}
         </ul>
         <p className="hint">
-          Opening a file is recorded, including yours just now.
+          {t("Opening a file is recorded, including yours just now.")}
         </p>
       </div>
 

@@ -21,6 +21,7 @@ import { Bars, monthLabel } from "./AnalyticsPage";
 import { newIdempotencyKey } from "../lib/idempotency";
 import { when } from "../lib/format";
 import { useLoad } from "../lib/useLoad";
+import { useT, type Language, translate } from "../i18n/language";
 
 export const PRIORITY_LABEL: Record<TicketPriority, string> = { high: "High", medium: "Medium", low: "Low" };
 const PRIORITY_TONE: Record<TicketPriority, "danger" | "warn" | "plain"> = { high: "danger", medium: "warn", low: "plain" };
@@ -30,6 +31,7 @@ const FIELD_LABEL: Record<string, string> = { priority: "Priority", status: "Sta
 
 export function TicketsPage() {
   const { staff } = useAuth();
+  const t = useT();
   const [params, setParams] = useSearchParams();
   const [filters, setFilters] = useState<TicketFilters>({ status: "active", priority: "all", mine: false, search: "" });
   const [typed, setTyped] = useState("");
@@ -89,10 +91,10 @@ export function TicketsPage() {
         intro="Customer problems, with notes so the next person sees what was done."
         actions={
           <>
-            <button onClick={() => setShowFigures(true)}>Figures</button>
+            <button onClick={() => setShowFigures(true)}>{t("Figures")}</button>
             {mayManage && (
               <button className="primary" onClick={() => setCreating(true)}>
-                New ticket
+                {t("New ticket")}
               </button>
             )}
           </>
@@ -109,20 +111,20 @@ export function TicketsPage() {
         onChange={(status) => set({ status })}
       />
       <div className="row-start search">
-        <select aria-label="Priority" value={filters.priority} onChange={(e) => set({ priority: e.target.value as TicketFilters["priority"] })}>
-          <option value="all">Any priority</option>
-          <option value="high">High</option>
-          <option value="medium">Medium</option>
-          <option value="low">Low</option>
+        <select aria-label={t("Priority")} value={filters.priority} onChange={(e) => set({ priority: e.target.value as TicketFilters["priority"] })}>
+          <option value="all">{t("Any priority")}</option>
+          <option value="high">{t("High")}</option>
+          <option value="medium">{t("Medium")}</option>
+          <option value="low">{t("Low")}</option>
         </select>
         <label className="check">
           <input type="checkbox" checked={filters.mine} onChange={(e) => set({ mine: e.target.checked })} />
-          Mine
+          {t("Mine")}
         </label>
       </div>
       <form className="row-start search" onSubmit={find}>
-        <input placeholder="Search the subject" value={typed} onChange={(e) => setTyped(e.target.value)} />
-        <button type="submit">Search</button>
+        <input placeholder={t("Search the subject")} value={typed} onChange={(e) => setTyped(e.target.value)} />
+        <button type="submit">{t("Search")}</button>
       </form>
       <LoadState loading={loading && !data} error={error} empty={!rows.length} />
       {rows.length > 0 && (
@@ -131,12 +133,12 @@ export function TicketsPage() {
             <thead>
               <tr>
                 <th>#</th>
-                <th>Subject</th>
-                <th>Priority</th>
-                <th>Status</th>
-                <th>Customer</th>
-                <th>Assigned</th>
-                <th>Opened</th>
+                <th>{t("Subject")}</th>
+                <th>{t("Priority")}</th>
+                <th>{t("Status")}</th>
+                <th>{t("Customer")}</th>
+                <th>{t("Assigned")}</th>
+                <th>{t("Opened")}</th>
               </tr>
             </thead>
             <tbody>
@@ -145,14 +147,14 @@ export function TicketsPage() {
                   <td>{row.number}</td>
                   <td>
                     <strong>{row.subject}</strong>
-                    <div className="muted small">{CATEGORY_LABEL[row.category]}</div>
+                    <div className="muted small">{t(CATEGORY_LABEL[row.category] ?? row.category)}</div>
                   </td>
                   <td>
                     <Badge tone={PRIORITY_TONE[row.priority]}>{PRIORITY_LABEL[row.priority]}</Badge>
                   </td>
-                  <td>{STATUS_LABEL[row.status]}</td>
+                  <td>{t(STATUS_LABEL[row.status])}</td>
                   <td>{row.customer?.name || "—"}</td>
-                  <td>{row.assignedTo?.name || "Nobody"}</td>
+                  <td>{row.assignedTo?.name || t("Nobody")}</td>
                   <td>{when(row.createdAt)}</td>
                 </tr>
               ))}
@@ -166,6 +168,7 @@ export function TicketsPage() {
 }
 
 function NewTicket({ customer, onBack, onDone }: { customer: { id: string; name: string } | null; onBack: () => void; onDone: (id: string) => void }) {
+  const t = useT();
   const [subject, setSubject] = useState("");
   const [detail, setDetail] = useState("");
   const [priority, setPriority] = useState<TicketPriority>("medium");
@@ -185,7 +188,7 @@ function NewTicket({ customer, onBack, onDone }: { customer: { id: string; name:
       const made = await openTicket({ subject: subject.trim(), detail: detail.trim(), priority, category, ...(customer ? { customer: customer.id } : {}) }, key);
       onDone(made.id);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not open the ticket.");
+      setError(caught instanceof Error ? caught.message : t("Could not open the ticket."));
       setBusy(false);
     }
   };
@@ -193,40 +196,40 @@ function NewTicket({ customer, onBack, onDone }: { customer: { id: string; name:
   return (
     <section className="subpage">
       <button className="link" onClick={onBack}>
-        ← All tickets
+        ← {t("All tickets")}
       </button>
-      <h1>New ticket</h1>
+      <h1>{t("New ticket")}</h1>
       <form className="card panel stack" onSubmit={submit}>
-        {customer && <p className="notice">For customer: {customer.name || customer.id}</p>}
+        {customer && <p className="notice">{t("For customer: {name}", { name: customer.name || customer.id })}</p>}
         <label>
-          Subject
+          {t("Subject")}
           <input value={subject} maxLength={120} onChange={(e) => setSubject(e.target.value)} />
         </label>
         <label>
-          What happened
+          {t("What happened")}
           <textarea rows={4} maxLength={2000} value={detail} onChange={(e) => setDetail(e.target.value)} />
         </label>
         <div className="form-grid">
           <label>
-            Priority
+            {t("Priority")}
             <select value={priority} onChange={(e) => setPriority(e.target.value as TicketPriority)}>
-              <option value="high">High</option>
-              <option value="medium">Medium</option>
-              <option value="low">Low</option>
+              <option value="high">{t("High")}</option>
+              <option value="medium">{t("Medium")}</option>
+              <option value="low">{t("Low")}</option>
             </select>
           </label>
           <label>
-            Topic
+            {t("Topic")}
             <select value={category} onChange={(e) => setCategory(e.target.value as TicketCategory)}>
               {TICKET_CATEGORIES.map(([value, label]) => (
                 <option key={value} value={value}>
-                  {label}
+                  {t(label)}
                 </option>
               ))}
             </select>
           </label>
         </div>
-        <p className="hint">Pick the topic that fits best. The analytics use it to show what causes the most tickets.</p>
+        <p className="hint">{t("Pick the topic that fits best. The analytics use it to show what causes the most tickets.")}</p>
         {error && (
           <p className="error" role="alert">
             {error}
@@ -234,10 +237,10 @@ function NewTicket({ customer, onBack, onDone }: { customer: { id: string; name:
         )}
         <div className="row-end">
           <button type="button" onClick={onBack}>
-            Cancel
+            {t("Cancel")}
           </button>
           <button className="primary" type="submit" disabled={!ok}>
-            Open ticket
+            {t("Open ticket")}
           </button>
         </div>
       </form>
@@ -247,6 +250,7 @@ function NewTicket({ customer, onBack, onDone }: { customer: { id: string; name:
 
 function TicketView({ ticketId, onBack }: { ticketId: string; onBack: () => void }) {
   const { staff } = useAuth();
+  const t = useT();
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
@@ -262,7 +266,7 @@ function TicketView({ ticketId, onBack }: { ticketId: string; onBack: () => void
       reload();
       return true;
     } catch (caught) {
-      setFailed(caught instanceof Error ? caught.message : "That did not work. Please try again.");
+      setFailed(caught instanceof Error ? caught.message : t("That did not work. Please try again."));
       return false;
     } finally {
       setBusy(false);
@@ -273,7 +277,7 @@ function TicketView({ ticketId, onBack }: { ticketId: string; onBack: () => void
     return (
       <section>
         <button className="link" onClick={onBack}>
-          ← All tickets
+          ← {t("All tickets")}
         </button>
         <LoadState loading={loading} error={error} empty={false} />
       </section>
@@ -285,59 +289,59 @@ function TicketView({ ticketId, onBack }: { ticketId: string; onBack: () => void
   return (
     <section>
       <button className="link" onClick={onBack}>
-        ← All tickets
+        ← {t("All tickets")}
       </button>
-      <PageHeader title={`#${data.number} ${data.subject}`} intro={`Opened ${when(data.createdAt)} by ${data.createdBy?.name || "staff"}`} />
+      <PageHeader title={`#${data.number} ${data.subject}`} intro={t("Opened {time} by {name}", { time: when(data.createdAt), name: data.createdBy?.name || t("staff") })} />
       {failed && (
         <p className="error" role="alert">
-          {failed}
+          {t(failed)}
         </p>
       )}
       <div className="two-col">
         <div className="card panel">
-          <h2>Details</h2>
+          <h2>{t("Details")}</h2>
           {data.detail && <p>{data.detail}</p>}
           <dl className="facts">
-            <dt>Customer</dt>
+            <dt>{t("Customer")}</dt>
             <dd>{data.customer ? `${data.customer.name} (${data.customer.phone})` : "—"}</dd>
-            <dt>Assigned to</dt>
-            <dd>{data.assignedTo?.name || "Nobody"}</dd>
+            <dt>{t("Assigned to")}</dt>
+            <dd>{data.assignedTo?.name || t("Nobody")}</dd>
             {data.resolvedAt && (
               <>
-                <dt>Resolved</dt>
+                <dt>{t("Resolved")}</dt>
                 <dd>{when(data.resolvedAt)}</dd>
               </>
             )}
           </dl>
         </div>
         <div className="card panel">
-          <h2>Handle</h2>
+          <h2>{t("Handle")}</h2>
           {mayManage ? (
             <div className="stack">
               <label>
-                Priority
+                {t("Priority")}
                 <select disabled={busy} value={data.priority} onChange={(e) => run(() => changeTicket(data.id, { priority: e.target.value as TicketPriority }))}>
-                  <option value="high">High</option>
-                  <option value="medium">Medium</option>
-                  <option value="low">Low</option>
+                  <option value="high">{t("High")}</option>
+                  <option value="medium">{t("Medium")}</option>
+                  <option value="low">{t("Low")}</option>
                 </select>
               </label>
               <label>
-                Status
+                {t("Status")}
                 <select disabled={busy} value={data.status} onChange={(e) => run(() => changeTicket(data.id, { status: e.target.value as TicketStatus }))}>
                   {Object.entries(STATUS_LABEL).map(([value, label]) => (
                     <option key={value} value={value}>
-                      {label}
+                      {t(label)}
                     </option>
                   ))}
                 </select>
               </label>
               <label>
-                Topic
+                {t("Topic")}
                 <select disabled={busy} value={data.category} onChange={(e) => run(() => changeTicket(data.id, { category: e.target.value as TicketCategory }))}>
                   {TICKET_CATEGORIES.map(([value, label]) => (
                     <option key={value} value={value}>
-                      {label}
+                      {t(label)}
                     </option>
                   ))}
                 </select>
@@ -345,42 +349,42 @@ function TicketView({ ticketId, onBack }: { ticketId: string; onBack: () => void
               <div className="row-start">
                 {!mine && staff && (
                   <button disabled={busy} onClick={() => run(() => changeTicket(data.id, { assignedTo: staff._id }))}>
-                    Take it
+                    {t("Take it")}
                   </button>
                 )}
                 {data.assignedTo && (
                   <button disabled={busy} onClick={() => run(() => changeTicket(data.id, { assignedTo: null }))}>
-                    Hand back
+                    {t("Hand back")}
                   </button>
                 )}
                 {!finished && (
                   <button className="primary" disabled={busy} onClick={() => run(() => changeTicket(data.id, { status: "resolved" }))}>
-                    Mark resolved
+                    {t("Mark resolved")}
                   </button>
                 )}
               </div>
             </div>
           ) : (
             <p className="muted">
-              {PRIORITY_LABEL[data.priority]} priority · {STATUS_LABEL[data.status]} · {CATEGORY_LABEL[data.category]}
+              {t("{priority} priority", { priority: t(PRIORITY_LABEL[data.priority]) })} · {t(STATUS_LABEL[data.status])} · {t(CATEGORY_LABEL[data.category] ?? data.category)}
             </p>
           )}
         </div>
       </div>
 
       <div className="card panel">
-        <h2>Notes</h2>
+        <h2>{t("Notes")}</h2>
         {data.notes.length ? (
           <ul className="plain-list">
             {data.notes.map((n, i) => (
               <li key={i}>
-                <strong>{n.by?.name || "Staff"}</strong> <span className="muted small">{when(n.at)}</span>
+                <strong>{n.by?.name || t("Staff")}</strong> <span className="muted small">{when(n.at)}</span>
                 <p>{n.text}</p>
               </li>
             ))}
           </ul>
         ) : (
-          <p className="muted">No notes yet.</p>
+          <p className="muted">{t("No notes yet.")}</p>
         )}
         {mayManage && (
           <form
@@ -392,13 +396,13 @@ function TicketView({ ticketId, onBack }: { ticketId: string; onBack: () => void
             }}
           >
             <label>
-              Add a note
+              {t("Add a note")}
               <textarea rows={3} maxLength={2000} value={note} onChange={(e) => setNote(e.target.value)} />
             </label>
-            <p className="hint">Notes can't be changed or removed once added. Don't write PINs, codes or full ID numbers here.</p>
+            <p className="hint">{t("Notes can't be changed or removed once added. Don't write PINs, codes or full ID numbers here.")}</p>
             <div className="row-end">
               <button className="primary" type="submit" disabled={!note.trim() || busy}>
-                Add note
+                {t("Add note")}
               </button>
             </div>
           </form>
@@ -406,44 +410,48 @@ function TicketView({ ticketId, onBack }: { ticketId: string; onBack: () => void
       </div>
 
       <div className="card panel">
-        <h2>History</h2>
+        <h2>{t("History")}</h2>
         {data.history.length ? (
           <ul className="plain-list">
             {data.history.map((h, i) => (
               <li key={i} className="small">
-                {when(h.at)} · {h.by?.name || "Staff"} changed {FIELD_LABEL[h.field] ?? h.field}
-                {h.field === "assignedTo" ? "" : `: ${nice(h.field, h.from)} → ${nice(h.field, h.to)}`}
+                {when(h.at)} · {t("{name} changed {field}", { name: h.by?.name || t("Staff"), field: t(FIELD_LABEL[h.field] ?? h.field) })}
+                {h.field === "assignedTo" ? "" : `: ${nice(h.field, h.from, t.language)} → ${nice(h.field, h.to, t.language)}`}
               </li>
             ))}
           </ul>
         ) : (
-          <p className="muted">No changes yet.</p>
+          <p className="muted">{t("No changes yet.")}</p>
         )}
       </div>
     </section>
   );
 }
 
-function nice(field: string, value: string): string {
-  if (!value) return "none";
-  if (field === "status") return STATUS_LABEL[value as TicketStatus] ?? value;
-  if (field === "priority") return PRIORITY_LABEL[value as TicketPriority] ?? value;
-  if (field === "category") return CATEGORY_LABEL[value] ?? value;
+function nice(field: string, value: string, language: Language = "en"): string {
+  const t = (text: string) => translate(text, language);
+  if (!value) return t("none");
+  if (field === "status") return t(STATUS_LABEL[value as TicketStatus] ?? value);
+  if (field === "priority") return t(PRIORITY_LABEL[value as TicketPriority] ?? value);
+  if (field === "category") return t(CATEGORY_LABEL[value] ?? value);
   return value;
 }
 
 /** "5.5 hours" or "2.1 days", whichever reads better. */
-export function duration(hours: number): string {
-  return hours < 48 ? `${hours} hours` : `${Math.round((hours / 24) * 10) / 10} days`;
+export function duration(hours: number, language: Language = "en"): string {
+  return hours < 48
+    ? translate("{n} hours", language, { n: hours })
+    : translate("{n} days", language, { n: Math.round((hours / 24) * 10) / 10 });
 }
 
 function Figures({ onBack }: { onBack: () => void }) {
+  const t = useT();
   const { data, error, loading } = useLoad(ticketStats, []);
   if (!data) {
     return (
       <section>
         <button className="link" onClick={onBack}>
-          ← All tickets
+          ← {t("All tickets")}
         </button>
         <LoadState loading={loading} error={error} empty={false} />
       </section>
@@ -455,47 +463,47 @@ function Figures({ onBack }: { onBack: () => void }) {
   const verdict =
     now && before
       ? now.averageHours < before.averageHours
-        ? "Quicker than last month."
+        ? t("Quicker than last month.")
         : now.averageHours > before.averageHours
-          ? "Slower than last month."
-          : "The same as last month."
-      : "Not enough tickets yet to compare with last month.";
+          ? t("Slower than last month.")
+          : t("The same as last month.")
+      : t("Not enough tickets yet to compare with last month.");
   return (
     <section>
       <button className="link" onClick={onBack}>
-        ← All tickets
+        ← {t("All tickets")}
       </button>
       <PageHeader title="Ticket figures" intro="How quickly tickets are handled, and what causes them." />
       <div className="grid stats">
         <div className="card tile">
-          <span className="muted">Average time to resolve, this month</span>
-          <strong className="big">{now ? duration(now.averageHours) : "—"}</strong>
-          <span className="muted small">{now ? `${now.handled} handled` : "None resolved yet"}</span>
+          <span className="muted">{t("Average time to resolve, this month")}</span>
+          <strong className="big">{now ? duration(now.averageHours, t.language) : "—"}</strong>
+          <span className="muted small">{now ? t("{n} handled", { n: now.handled }) : t("None resolved yet")}</span>
         </div>
         <div className="card tile">
-          <span className="muted">Last month</span>
-          <strong className="big">{before ? duration(before.averageHours) : "—"}</strong>
-          <span className="muted small">{before ? `${before.handled} handled` : "None resolved"}</span>
+          <span className="muted">{t("Last month")}</span>
+          <strong className="big">{before ? duration(before.averageHours, t.language) : "—"}</strong>
+          <span className="muted small">{before ? t("{n} handled", { n: before.handled }) : t("None resolved")}</span>
         </div>
       </div>
       <p className="notice">{verdict}</p>
       <div className="card panel">
-        <h2>Average time to resolve, by month</h2>
+        <h2>{t("Average time to resolve, by month")}</h2>
         {data.months.length ? (
-          <Bars rows={data.months.map((m) => ({ label: monthLabel(m.month), value: m.averageHours, note: `${duration(m.averageHours)} · ${m.handled}` }))} />
+          <Bars rows={data.months.map((m) => ({ label: monthLabel(m.month), value: m.averageHours, note: `${duration(m.averageHours, t.language)} · ${m.handled}` }))} />
         ) : (
-          <p className="muted">Nothing resolved yet.</p>
+          <p className="muted">{t("Nothing resolved yet.")}</p>
         )}
       </div>
       <div className="two-col">
         <div className="card panel">
-          <h2>What causes tickets (last 90 days)</h2>
-          {data.byCategory.length ? <Bars rows={data.byCategory.map((c) => ({ label: CATEGORY_LABEL[c.key] ?? c.key, value: c.count }))} /> : <p className="muted">None yet.</p>}
-          <p className="hint">The biggest bar is the best place to put effort to cut tickets.</p>
+          <h2>{t("What causes tickets (last 90 days)")}</h2>
+          {data.byCategory.length ? <Bars rows={data.byCategory.map((c) => ({ label: t(CATEGORY_LABEL[c.key] ?? c.key), value: c.count }))} /> : <p className="muted">{t("None yet.")}</p>}
+          <p className="hint">{t("The biggest bar is the best place to put effort to cut tickets.")}</p>
         </div>
         <div className="card panel">
-          <h2>Waiting now, by priority</h2>
-          {data.openByPriority.length ? <Bars rows={data.openByPriority.map((c) => ({ label: PRIORITY_LABEL[c.key], value: c.count }))} /> : <p className="muted">Nothing waiting.</p>}
+          <h2>{t("Waiting now, by priority")}</h2>
+          {data.openByPriority.length ? <Bars rows={data.openByPriority.map((c) => ({ label: t(PRIORITY_LABEL[c.key]), value: c.count }))} /> : <p className="muted">{t("Nothing waiting.")}</p>}
         </div>
       </div>
     </section>
