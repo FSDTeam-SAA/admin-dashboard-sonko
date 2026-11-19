@@ -124,3 +124,28 @@ describe("services and countries", () => {
     expect(effectiveState(rows, "bills", "ALL")).toBe("paused");
   });
 });
+
+import { askCallerQuestions, cancelCustomerPhoneChange, changeCustomerPhone, checkCallerAnswers, checkCallerCode, editCustomer, sendCallerCode } from "../src/api/admin";
+
+describe("customer editing and caller checks", () => {
+  it("call the right routes, and only send what is given", async () => {
+    await editCustomer("c1", { name: "Binta", reason: "Typo fix", pin: "123456" });
+    await changeCustomerPhone("c1", { phone: "+220861234567", reason: "Lost phone", pin: "123456" });
+    await cancelCustomerPhoneChange("c1");
+    await sendCallerCode("c1");
+    await checkCallerCode("c1", "123456");
+    await askCallerQuestions("c1");
+    await checkCallerAnswers("c1", "k/1", { q1: "x" });
+    expect(calls.map((c) => `${c.init.method} ${path(c)}`)).toEqual([
+      "PATCH /admin/customers/c1",
+      "PUT /admin/customers/c1/phone",
+      "DELETE /admin/customers/c1/phone-change",
+      "POST /admin/customers/c1/caller-check/code",
+      "POST /admin/customers/c1/caller-check/code/verify",
+      "POST /admin/customers/c1/caller-check/questions",
+      "POST /admin/customers/c1/caller-check/questions/k%2F1",
+    ]);
+    expect(body(calls[0]!)).toEqual({ name: "Binta", reason: "Typo fix", pin: "123456" });
+    expect(body(calls[6]!)).toEqual({ answers: { q1: "x" } });
+  });
+});

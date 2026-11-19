@@ -125,6 +125,22 @@ On server branch `agent-cash-out` (and merged into `notification-feed`):
   does, customers see the server's message when they try. Database test:
   `test/serviceSwitch.test.js` (not run here); unit test
   `test/serviceSwitch.rules.test.js`.
+- Editing customers and checking callers (19 Nov). `PATCH /admin/customers/:id`
+  (name, email, address; `edit_customers`, PIN and reason). The name on the
+  ID check is never edited. `PUT /admin/customers/:id/phone` needs two staff
+  (the same call by a different person within 24 hours) and signs the
+  customer out on every phone; `DELETE /admin/customers/:id/phone-change`
+  cancels. Every change is a `CustomerEdit` line. Caller checks
+  (`verify_callers`): a Twilio Verify text code to the customer's own phone
+  (`/caller-check/code`, `/caller-check/code/verify`), or 3 of the
+  customer's 5 security questions (`/caller-check/questions`,
+  `/caller-check/questions/:checkId`): all 3 must be right, staff are never
+  told which was wrong, each set is used once within 10 minutes, and 3
+  failed sets a day locks the questions. Answers are kept as salted scrypt
+  hashes only. App: `GET/PUT /user/security-questions` (5 answers and PIN);
+  the app screen for it is not built yet. Database test:
+  `test/customerCare.test.js` (not run here); unit test
+  `test/customerCare.rules.test.js`.
 
 ## Before it goes live
 
@@ -148,7 +164,7 @@ On server branch `agent-cash-out` (and merged into `notification-feed`):
 2. Analytics: revenue (the fees Sunu Pay keeps, from the ledger), and a
    sales-team view of their own sign-ups (needs each customer to record who
    signed them up).
-3. Editing customer details, security questions for callers, announcements,
+3. The app screen for customers to set their security questions, announcements,
    the per-user language setting.
 
 ## Known gaps

@@ -447,6 +447,15 @@ export type CustomerDetail = {
     at: string;
   }[];
   tickets: { id: string; number: number; subject: string; priority: TicketPriority; status: TicketStatus; createdAt: string }[];
+  edits: { field: string; from: string; to: string; reason: string; by: string; requestedBy: string; at: string }[];
+  pendingPhoneChange: { phone: string; reason: string; requestedBy: string; requestedByName: string; requestedAt: string } | null;
+  callerChecks: {
+    questionsSet: boolean;
+    questionsSetAt: string | null;
+    /** Set when a check passed in the last 30 minutes. */
+    verifiedUntil: string | null;
+    recent: { method: "code" | "questions"; passed: boolean; by: string; at: string }[];
+  };
   recentlyOpenedBy: { staff: string; at: string }[];
 };
 
@@ -646,4 +655,45 @@ export function switchService(country: string, service: ServiceName, body: { sta
 
 export function cancelServiceOn(country: string, service: ServiceName) {
   return api(`/admin/services/${id(country)}/${id(service)}/switch-on`, { method: "DELETE" });
+}
+
+// ---- Editing customers and checking callers ----
+
+export type CustomerEditBody = {
+  name?: string;
+  email?: string;
+  address?: { street?: string; city?: string; state?: string; zipCode?: string; country?: string };
+  reason: string;
+  pin: string;
+};
+
+export function editCustomer(customerId: string, body: CustomerEditBody) {
+  return api<{ changed: { field: string; from: string; to: string }[] }>(`/admin/customers/${id(customerId)}`, { method: "PATCH", body });
+}
+
+/** Two staff: the first call asks, the same call by someone else changes it. */
+export function changeCustomerPhone(customerId: string, body: { phone: string; reason: string; pin: string }) {
+  return api<{ asked?: boolean; done?: boolean }>(`/admin/customers/${id(customerId)}/phone`, { method: "PUT", body });
+}
+
+export function cancelCustomerPhoneChange(customerId: string) {
+  return api(`/admin/customers/${id(customerId)}/phone-change`, { method: "DELETE" });
+}
+
+export function sendCallerCode(customerId: string) {
+  return api<{ sentTo: string }>(`/admin/customers/${id(customerId)}/caller-check/code`, { method: "POST", body: {} });
+}
+
+export function checkCallerCode(customerId: string, code: string) {
+  return api<{ passed: boolean }>(`/admin/customers/${id(customerId)}/caller-check/code/verify`, { method: "POST", body: { code } });
+}
+
+export type SecurityQuestion = { id: string; en: string; fr: string };
+
+export function askCallerQuestions(customerId: string) {
+  return api<{ checkId: string; questions: SecurityQuestion[] }>(`/admin/customers/${id(customerId)}/caller-check/questions`, { method: "POST", body: {} });
+}
+
+export function checkCallerAnswers(customerId: string, checkId: string, answers: Record<string, string>) {
+  return api<{ passed: boolean }>(`/admin/customers/${id(customerId)}/caller-check/questions/${id(checkId)}`, { method: "POST", body: { answers } });
 }

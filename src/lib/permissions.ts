@@ -13,6 +13,8 @@ export const PERMISSION_GROUPS: { title: string; items: [string, string][] }[] =
   {
     title: "Tickets and analytics",
     items: [
+      ["edit_customers", "Edit customer details (phone changes need a second person)"],
+      ["verify_callers", "Check a caller is the customer (text code or questions)"],
       ["view_tickets", "See tickets and ticket figures"],
       ["manage_tickets", "Open tickets, write notes, change priority and status"],
       ["view_analytics", "See sales, usage and sign-up figures (senior)"],

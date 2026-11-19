@@ -92,7 +92,17 @@ export const NAV: NavItem[] = [
     path: "/customers",
     label: "Customers",
     permission: "view_customers",
-    routes: ["GET /admin/customers", "GET /admin/customers/:id"],
+    routes: [
+      "GET /admin/customers",
+      "GET /admin/customers/:id",
+      "PATCH /admin/customers/:id",
+      "PUT /admin/customers/:id/phone",
+      "DELETE /admin/customers/:id/phone-change",
+      "POST /admin/customers/:id/caller-check/code",
+      "POST /admin/customers/:id/caller-check/code/verify",
+      "POST /admin/customers/:id/caller-check/questions",
+      "POST /admin/customers/:id/caller-check/questions/:checkId",
+    ],
     ready: true,
   },
   {
