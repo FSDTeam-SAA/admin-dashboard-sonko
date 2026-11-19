@@ -38,6 +38,8 @@ export const PERMISSION_GROUPS: { title: string; items: [string, string][] }[] =
       ["view_reports", "See reported requests"],
       ["view_cases", "See debt and alert cases"],
       ["close_cases", "Close debt and alert cases with a note"],
+      ["view_backups", "See whether the database is being backed up"],
+      ["record_restore_tests", "Record that a backup was restored and checked"],
       ["view_holds", "See account holds"],
       ["place_hold", "Put an account on hold"],
       ["lift_hold", "Ask to lift or approve lifting a hold"],

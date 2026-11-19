@@ -27,6 +27,13 @@ export const NAV: NavItem[] = [
     ready: true,
   },
   {
+    path: "/backups",
+    label: "Backups",
+    permission: "view_backups",
+    routes: ["GET /admin/backups", "POST /admin/backups/restore-tests"],
+    ready: true,
+  },
+  {
     path: "/holds",
     label: "Account holds",
     permission: "view_holds",

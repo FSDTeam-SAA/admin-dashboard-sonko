@@ -971,3 +971,24 @@ export function cancelBlockRemoveAsk(entryId: string) {
 export function closeBlockMatch(caseId: string, note: string) {
   return api(`/admin/blocklist/matches/${id(caseId)}/close`, { method: "POST", body: { note } });
 }
+
+export type BackupCopy = { at: string; status: "completed" | "failed" | "inProgress" | "queued" | "unknown"; kind: "scheduled" | "on demand"; sizeBytes: number | null; expiresAt: string | null };
+export type BackupLevel = "ok" | "warning" | "alert";
+export type RestoreTestRow = { id: string; at: string; outcome: "worked" | "failed"; note: string; by: { name: string; phone: string; role: string } | null };
+export type BackupStatus = {
+  configured: boolean;
+  level: BackupLevel;
+  message: string;
+  checkedAt: string;
+  backups: { level: BackupLevel; message: string; newestAt: string | null; oldestAt: string | null; finishedCount: number; recent: BackupCopy[] } | null;
+  restoreTests: { level: BackupLevel; message: string; lastAt: string | null; lastWorkedAt: string | null; recent: RestoreTestRow[] };
+};
+
+/** Read only: the server asks Atlas for the list of backups. */
+export function backupStatus() {
+  return api<BackupStatus>("/admin/backups");
+}
+
+export function recordRestoreTest(body: { outcome: "worked" | "failed"; note: string }, key: string) {
+  return api("/admin/backups/restore-tests", { method: "POST", body, idempotencyKey: key });
+}
