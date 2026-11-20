@@ -1,32 +1,35 @@
-/* Colours follow the app (lib/src/core/theme/app_colors.dart). */
+
+/* Calm colours for long shifts (20 Nov): no pure white or pure black, deep
+   navy text, one muted brand blue. Orange only for small warnings. Checked
+   for readable contrast in both themes. */
 :root,
 [data-theme="light"] {
-  --bg: #f2f2f6;
-  --surface: #ffffff;
-  --text: #0e1b33;
-  --muted: #6a6a73;
-  --line: #e3e3ea;
-  --primary: #0f66ed;
+  --bg: #e8ebf1;
+  --surface: #f6f7fa;
+  --text: #1c2740;
+  --muted: #5a6478;
+  --line: #d3d8e2;
+  --primary: #2558bd;
   --primary-text: #ffffff;
-  --accent: #f24a0a;
-  --danger: #c62828;
-  --danger-bg: #fdecea;
-  --notice-bg: #e6eefc;
-  --shadow: 0 4px 12px rgba(10, 44, 102, 0.08);
+  --accent: #c9561f;
+  --danger: #b0372d;
+  --danger-bg: #f6e3e1;
+  --notice-bg: #dde6f6;
+  --shadow: 0 2px 8px rgba(28, 39, 64, 0.07);
   color-scheme: light;
 }
 [data-theme="dark"] {
-  --bg: #000000;
-  --surface: #1c1c1e;
-  --text: #ffffff;
-  --muted: #a3a3ad;
-  --line: #34353a;
-  --primary: #5ba8ff;
-  --primary-text: #04122a;
-  --accent: #f5922a;
-  --danger: #ff8a80;
-  --danger-bg: #3a1513;
-  --notice-bg: #14243d;
+  --bg: #141922;
+  --surface: #1d242f;
+  --text: #dfe4ec;
+  --muted: #9aa3b3;
+  --line: #2e3745;
+  --primary: #7aa9ee;
+  --primary-text: #0d1b33;
+  --accent: #e8914a;
+  --danger: #f0958c;
+  --danger-bg: #3a1f1f;
+  --notice-bg: #1c2b45;
   --shadow: none;
   color-scheme: dark;
 }
@@ -36,7 +39,7 @@ html, body, #root { height: 100%; margin: 0; }
 body {
   background: var(--bg);
   color: var(--text);
-  font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font: 15.5px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 h1 { font-size: 24px; margin: 0 0 6px; }
 h2 { font-size: 18px; margin: 0 0 12px; }
@@ -92,12 +95,12 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; padding: 0 8px 20px; }
 .brand img { width: 40px; height: auto; }
 .sidebar nav { display: flex; flex-direction: column; gap: 2px; }
-.sidebar a { color: var(--text); text-decoration: none; padding: 9px 12px; border-radius: 10px; }
+.sidebar a { color: var(--text); text-decoration: none; padding: 10px 12px; border-radius: 10px; }
 .sidebar a:hover { background: var(--bg); }
 .sidebar a.active { background: var(--notice-bg); color: var(--primary); font-weight: 600; }
 .main { display: flex; flex-direction: column; min-width: 0; }
 .topbar { display: flex; justify-content: space-between; align-items: center; padding: 12px 24px; border-bottom: 1px solid var(--line); background: var(--surface); }
-.content { padding: 24px; max-width: 1200px; width: 100%; }
+.content { padding: 28px; max-width: 1200px; width: 100%; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; margin-top: 20px; }
 .tile { padding: 18px; display: flex; flex-direction: column; gap: 4px; color: var(--text); text-decoration: none; }
 .tile:hover { border-color: var(--primary); }
@@ -152,9 +155,9 @@ td.actions button { margin-left: 6px; padding: 6px 12px; font-size: 13px; }
 
 .badge { display: inline-block; font-size: 12px; font-weight: 600; padding: 3px 8px; border-radius: 999px; margin-top: 4px; }
 .badge.danger { background: var(--danger-bg); color: var(--danger); }
-.badge.warn { background: #fff1e6; color: #b23c00; }
+.badge.warn { background: #f4e6da; color: #9a4417; }
 [data-theme="dark"] .badge.warn { background: #3a2410; color: var(--accent); }
-.badge.ok { background: #e7f6ec; color: #1b7a3d; }
+.badge.ok { background: #dcebe1; color: #1d6a38; }
 [data-theme="dark"] .badge.ok { background: #0f2d1a; color: #7fd69a; }
 .badge.plain { background: var(--bg); color: var(--muted); }
 
