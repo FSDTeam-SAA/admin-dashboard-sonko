@@ -543,7 +543,7 @@ export type TicketFile = {
   canRemove: boolean;
 };
 
-export type CaseType = "agent_debt" | "customer_debt" | "reversal_alert";
+export type CaseType = "agent_debt" | "customer_debt" | "reversal_alert" | "safeguarding_shortfall" | "safeguarding_mismatch";
 export type ComplianceCaseRow = {
   id: string;
   type: CaseType | "blocklist_match";
@@ -1080,4 +1080,55 @@ export function closeCustomerAccount(id: string, reason: string, pin: string) {
 /** Open a closed account again. You must have checked the caller in the last 30 minutes. */
 export function reopenCustomerAccount(id: string, reason: string, pin: string) {
   return api<{ reopened: boolean }>(`/admin/customers/${encodeURIComponent(id)}/reopen`, { method: "POST", body: { reason, pin } });
+}
+
+export type SafeguardingEntry = {
+  id: string;
+  currency: string;
+  asAt: string;
+  owedMinor: number;
+  /** Hidden (null) from everyone but the person who typed it until confirmed. */
+  bankMinor: number | null;
+  differenceMinor: number | null;
+  short: boolean | null;
+  note: string;
+  status: "open" | "confirmed" | "mismatch" | "withdrawn";
+  enteredBy: Mini;
+  enteredAt: string;
+  decidedBy: Mini;
+  decidedAt: string | null;
+  decisionNote: string;
+  confirmTries: number;
+  mine: boolean;
+};
+export type SafeguardingCurrency = {
+  currency: string;
+  level: "ok" | "warning" | "alert";
+  paused: boolean;
+  why: "open_shortfall" | "confirmed_shortfall" | null;
+  owedNowMinor: number;
+  latestConfirmed: SafeguardingEntry | null;
+  open: SafeguardingEntry | null;
+};
+export type SafeguardingStatus = {
+  checkedAt: string;
+  ledger: { ok: boolean; checkedAt: string; walletsChecked: number; mismatches: number; unbalancedPostings: number; negativeWallets: number };
+  currencies: SafeguardingCurrency[];
+  history: SafeguardingEntry[];
+};
+
+export function safeguardingStatus() {
+  return api<SafeguardingStatus>("/admin/safeguarding");
+}
+
+export function recordSafeguardingCheck(body: { currency: string; asAt: string; bankAmount: string; note: string; pin: string }, key: string) {
+  return api<{ id: string; short: boolean; differenceMinor: number; owedMinor: number }>("/admin/safeguarding/checks", { method: "POST", body, idempotencyKey: key });
+}
+
+export function confirmSafeguardingCheck(id: string, body: { bankAmount: string; pin: string }, key: string) {
+  return api<{ confirmed: boolean; short: boolean }>(`/admin/safeguarding/checks/${encodeURIComponent(id)}/confirm`, { method: "POST", body, idempotencyKey: key });
+}
+
+export function withdrawSafeguardingCheck(id: string, body: { reason: string; pin: string }, key: string) {
+  return api(`/admin/safeguarding/checks/${encodeURIComponent(id)}/withdraw`, { method: "POST", body, idempotencyKey: key });
 }

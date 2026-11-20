@@ -41,6 +41,8 @@ export const PERMISSION_GROUPS: { title: string; items: [string, string][] }[] =
       ["view_reports", "See reported requests"],
       ["view_cases", "See debt and alert cases"],
       ["close_cases", "Close debt and alert cases with a note"],
+      ["view_safeguarding", "See the daily safeguarding check (senior staff only)"],
+      ["record_safeguarding", "Type or confirm the safeguarding bank balance"],
       ["view_backups", "See whether the database is being backed up"],
       ["record_restore_tests", "Record that a backup was restored and checked"],
       ["view_holds", "See account holds"],

@@ -29,6 +29,13 @@ export const NAV: NavItem[] = [
     ready: true,
   },
   {
+    path: "/safeguarding",
+    label: "Safeguarding",
+    permission: "view_safeguarding",
+    routes: ["GET /admin/safeguarding", "POST /admin/safeguarding/checks", "POST /admin/safeguarding/checks/:id/confirm", "POST /admin/safeguarding/checks/:id/withdraw"],
+    ready: true,
+  },
+  {
     path: "/backups",
     label: "Backups",
     permission: "view_backups",

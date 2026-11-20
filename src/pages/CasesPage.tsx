@@ -12,12 +12,16 @@ export const CASE_LABEL: Record<CaseType, string> = {
   agent_debt: "Agent couldn't pay back",
   customer_debt: "Customer couldn't pay back",
   reversal_alert: "Many reversals on one agent",
+  safeguarding_shortfall: "Safeguarding shortfall",
+  safeguarding_mismatch: "Safeguarding figures didn't match",
 };
 
 const WHAT_NEXT: Record<CaseType, string> = {
   agent_debt: "A reversal was refused because the agent's balance was too low. Sunu Pay never lends, so nothing was taken. Contact the agent, then close this with what was agreed.",
   customer_debt: "A reversal was refused because the customer's balance was too low. Sunu Pay never lends, so nothing was taken. Contact the customer, then close this with what was agreed.",
   reversal_alert: "Three or more reversals against this agent in 30 days. Look at their recent cash outs on the Agents page. Suspending them is your decision; nothing happens by itself.",
+  safeguarding_shortfall: "The safeguarding account held less than customers are owed, so money going out in this currency was paused. Top the account up from company money, then record and confirm a new balance on the Safeguarding page. Close this with what caused it and what was done.",
+  safeguarding_mismatch: "Two staff members typed different safeguarding balances three times. Someone senior should compare both with the bank statement and record a new check. Close this with what was found.",
 };
 
 /** Debt and reversal-alert cases. Closing one only records what was done; no money moves. */
