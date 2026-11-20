@@ -417,6 +417,7 @@ export type CustomerRow = {
   country: string;
   idChecked: boolean;
   onHold: boolean;
+  closed?: boolean;
   joinedAt: string;
   lastLoginAt: string | null;
 };
@@ -431,6 +432,8 @@ export type CustomerDetail = {
     profilePicture: string;
     verification: { identityVerifiedAt: string | null; addressVerifiedAt: string | null; nameOnId: string; country: string };
     hold: { scope: HoldScope; reason: string; placedAt: string | null } | null;
+    /** Set when the account is closed. Older servers send nothing. */
+    closed?: { at: string; via: "app" | "staff" | ""; reason: string; by: string } | null;
   };
   wallets: { currency: string; balanceMinor: number; amount: number }[];
   spend: { currency: string; count: number; amountMinor: number }[];
@@ -1065,4 +1068,16 @@ export function addSalesRep(rep: { name: string; code: string; staffUserId?: str
 
 export function stopSalesRep(id: string, pin: string) {
   return api<null>(`/admin/sales/reps/${encodeURIComponent(id)}/stop`, { method: "POST", body: { pin } });
+}
+
+// ---- Closing accounts ----
+
+/** Close an account the customer asked to close. Needs an empty wallet and nothing in progress. */
+export function closeCustomerAccount(id: string, reason: string, pin: string) {
+  return api<{ closed: boolean }>(`/admin/customers/${encodeURIComponent(id)}/close`, { method: "POST", body: { reason, pin } });
+}
+
+/** Open a closed account again. You must have checked the caller in the last 30 minutes. */
+export function reopenCustomerAccount(id: string, reason: string, pin: string) {
+  return api<{ reopened: boolean }>(`/admin/customers/${encodeURIComponent(id)}/reopen`, { method: "POST", body: { reason, pin } });
 }

@@ -1125,4 +1125,17 @@ export const FR: Record<string, string> = {
   "Withdraw": "Retirer",
   "Withdraw the waiting change": "Retirer la modification en attente",
   "You asked for this, so a different staff member must approve it.": "Vous avez fait cette demande : un autre membre du personnel doit l’approuver.",
+  // Closing accounts (20 Nov)
+  "Close account": "Clôturer le compte",
+  "Open account again": "Rouvrir le compte",
+  "Closed {time}, {how}.": "Clôturé le {time}, {how}.",
+  "by the customer in the app": "par le client dans l’application",
+  "by Sunu Pay staff": "par l’équipe Sunu Pay",
+  "They can't sign in, be found or receive money. Their records are kept as the law requires.": "Le client ne peut plus se connecter, être trouvé ni recevoir d’argent. Ses données sont conservées comme l’exige la loi.",
+  "Close this account": "Clôturer ce compte",
+  "Open this account again": "Rouvrir ce compte",
+  "Account closed. The customer has been told.": "Compte clôturé. Le client a été prévenu.",
+  "Account opened again. The customer has been told.": "Compte rouvert. Le client a été prévenu.",
+  "Only when the customer asked for it. The wallet must be empty and nothing in progress. They will be signed out, and won't be able to sign in, be found or receive money. Their records are kept for 5 years, as the law requires.": "Uniquement à la demande du client. Le portefeuille doit être vide et aucune opération en cours. Le client sera déconnecté et ne pourra plus se connecter, être trouvé ni recevoir d’argent. Ses données sont conservées 5 ans, comme l’exige la loi.",
+  "Check the caller first: you must have checked them in the last 30 minutes. They will be able to sign in and use money again.": "Vérifiez d’abord l’appelant : vous devez l’avoir vérifié dans les 30 dernières minutes. Le client pourra à nouveau se connecter et utiliser son argent.",
 };

@@ -181,6 +181,14 @@ On server branch `agent-cash-out` (and merged into `notification-feed`):
   database test `test/sales.test.js` (not run here). App: the sign-up screen
   needs a "Sales code (optional)" field that sends `referralCode`.
 
+- Closing accounts (20 Nov). Customer file: "Close account" (`edit_customers`,
+  PIN and reason; only when the customer asked, wallet empty, nothing in
+  progress) and "Open account again" (PIN, reason, and the staff member must
+  have checked the caller in the last 30 minutes). Closed accounts show a
+  "Closed" badge in the list and a red line on the file. Server:
+  `POST /admin/customers/:id/close`, `POST /admin/customers/:id/reopen`,
+  customer `POST /user/close-account`; `utils/accountClosure.service.js`.
+
 ## Before it goes live
 
 1. Create the Render static site from `render.yaml` and set

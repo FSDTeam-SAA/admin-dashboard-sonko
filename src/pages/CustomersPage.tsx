@@ -5,7 +5,9 @@ import { can } from "../api/staff";
 import {
   blockCustomerDevice,
   cancelCustomerPhoneChange,
+  closeCustomerAccount,
   customer,
+  reopenCustomerAccount,
   customers,
   type CustomerFilter,
   type CustomerRow,
@@ -154,6 +156,11 @@ export function CustomersPage() {
                         <Badge tone="danger">On hold</Badge>
                       </div>
                     )}
+                    {row.closed && (
+                      <div>
+                        <Badge tone="plain">Closed</Badge>
+                      </div>
+                    )}
                   </td>
                   <td>{row.phone || "—"}</td>
                   <td>
@@ -207,6 +214,7 @@ function CustomerView({
   const t = useT();
   const navigate = useNavigate();
   const [holding, setHolding] = useState(false);
+  const [closing, setClosing] = useState<"close" | "reopen" | null>(null);
   const [dialog, setDialog] = useState<"edit" | "phone" | "caller" | null>(
     null,
   );
@@ -269,6 +277,14 @@ function CustomerView({
                 {t("Open a ticket")}
               </button>
             )}
+            {can(staff, "edit_customers") && !c.closed && c.role !== "admin" && (
+              <button className="danger" onClick={() => setClosing("close")}>
+                {t("Close account")}
+              </button>
+            )}
+            {can(staff, "edit_customers") && c.closed && (
+              <button onClick={() => setClosing("reopen")}>{t("Open account again")}</button>
+            )}
             {can(staff, "place_hold") && c.hold?.scope !== "all" && (
               <button className="danger" onClick={() => setHolding(true)}>
                 {t("Put on hold")}
@@ -314,6 +330,16 @@ function CustomerView({
               {t("Cancel it")}
             </button>
           )}
+        </p>
+      )}
+      {c.closed && (
+        <p className="error">
+          {t("Closed {time}, {how}.", {
+            time: when(c.closed.at),
+            how: c.closed.via === "app" ? t("by the customer in the app") : t("by Sunu Pay staff"),
+          })}{" "}
+          {c.closed.reason}{" "}
+          {t("They can't sign in, be found or receive money. Their records are kept as the law requires.")}
         </p>
       )}
       {c.hold && (
@@ -606,6 +632,19 @@ function CustomerView({
           onDone={() => undefined}
         />
       )}
+      {closing && (
+        <CloseAccountDialog
+          mode={closing}
+          customerId={c.id}
+          label={`${c.name} (${c.phone})`}
+          onClose={() => setClosing(null)}
+          onDone={(message) => {
+            setClosing(null);
+            setDone(message);
+            reload();
+          }}
+        />
+      )}
       {holding && (
         <PlaceHoldDialog
           customer={{ id: c.id, label: `${c.name} (${c.phone})` }}
@@ -665,6 +704,56 @@ function BlockDeviceDialog({
         </select>
       </label>
       <TextArea label="What happened (staff only)" value={note} onChange={setNote} min={10} max={300} />
+    </ConfirmWithPin>
+  );
+}
+
+function CloseAccountDialog({
+  mode,
+  customerId,
+  label,
+  onClose,
+  onDone,
+}: {
+  mode: "close" | "reopen";
+  customerId: string;
+  label: string;
+  onClose: () => void;
+  onDone: (message: string) => void;
+}) {
+  const t = useT();
+  const [reason, setReason] = useState("");
+  const closing = mode === "close";
+  return (
+    <ConfirmWithPin
+      title={closing ? "Close this account" : "Open this account again"}
+      confirmLabel={closing ? "Close account" : "Open account again"}
+      danger={closing}
+      canConfirm={okLength(reason, 3, 300)}
+      onClose={onClose}
+      onConfirm={async (pin) => {
+        if (closing) {
+          await closeCustomerAccount(customerId, reason.trim(), pin);
+          onDone("Account closed. The customer has been told.");
+        } else {
+          await reopenCustomerAccount(customerId, reason.trim(), pin);
+          onDone("Account opened again. The customer has been told.");
+        }
+      }}
+    >
+      <p>
+        <strong>{label}</strong>
+      </p>
+      {closing ? (
+        <p>
+          {t(
+            "Only when the customer asked for it. The wallet must be empty and nothing in progress. They will be signed out, and won't be able to sign in, be found or receive money. Their records are kept for 5 years, as the law requires.",
+          )}
+        </p>
+      ) : (
+        <p>{t("Check the caller first: you must have checked them in the last 30 minutes. They will be able to sign in and use money again.")}</p>
+      )}
+      <TextArea label="Why" value={reason} onChange={setReason} min={3} max={300} />
     </ConfirmWithPin>
   );
 }
