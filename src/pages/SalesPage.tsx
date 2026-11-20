@@ -43,6 +43,14 @@ export function share(part: number, whole: number): string {
 
 export const CODE_PATTERN = /^[A-Z0-9]{4,12}$/;
 
+// The link a salesperson sends instead of asking people to type their code.
+// It opens a page on the Sunu Pay website, which must exist at this address
+// and show the code (and, once the app is in the stores, hand it to the app).
+export const SHARE_LINK_BASE = "https://www.sunupay.app/join";
+export function shareLink(code: string): string {
+  return `${SHARE_LINK_BASE}?code=${encodeURIComponent(code)}`;
+}
+
 /** Sign-ups credited to each salesperson by the code typed at sign-up. */
 export function SalesPage() {
   const { staff } = useAuth();
@@ -52,6 +60,13 @@ export function SalesPage() {
   const [kind, setKind] = useState<PeriodKind>("this-month");
   const [done, setDone] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const copyLink = (r: SalesRow) => {
+    navigator.clipboard
+      ?.writeText(shareLink(r.code))
+      .then(() => setCopiedId(r.id))
+      .catch(() => setDone("Could not copy. Please write the link down."));
+  };
   const [stopping, setStopping] = useState<SalesRow | null>(null);
   const [changing, setChanging] = useState<"new" | "approve" | null>(null);
   const [withdrawing, setWithdrawing] = useState(false);
@@ -100,6 +115,7 @@ export function SalesPage() {
                 <tr>
                   <th>{t("Salesperson")}</th>
                   <th>{t("Code")}</th>
+                  <th>{t("Share link")}</th>
                   <th>{t("Signed up")}</th>
                   <th>{t("Passed the ID check")}</th>
                   <th>{t("Paid {minimum} or more", { minimum })}</th>
@@ -114,6 +130,15 @@ export function SalesPage() {
                     </td>
                     <td>
                       <code>{r.code}</code>
+                    </td>
+                    <td>
+                      {r.active ? (
+                        <button type="button" title={shareLink(r.code)} onClick={() => copyLink(r)}>
+                          {copiedId === r.id ? t("Copied.") : t("Copy link")}
+                        </button>
+                      ) : (
+                        <span className="muted small">—</span>
+                      )}
                     </td>
                     <td className="num">{r.signedUp}</td>
                     <td className="num">
@@ -133,6 +158,9 @@ export function SalesPage() {
               "Counted by sign-up date. A customer counts in the last column once they have passed the ID check and made one successful payment of at least {minimum}. Payments in other currencies are converted at today's Sunu Pay rates.",
               { minimum },
             )}
+          </p>
+          <p className="hint">
+            {t("Send the share link instead of asking people to type the code. It opens {page}, which must show the code to type at sign-up until the app is in the stores.", { page: SHARE_LINK_BASE })}
           </p>
         </div>
       )}

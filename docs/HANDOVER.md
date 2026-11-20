@@ -215,7 +215,12 @@ On server branch `agent-cash-out` (and merged into `notification-feed`):
 1. Ticket file attachments (needs a place to keep the files and the same
    upload rules as other pictures: size limit, type check).
 2. Analytics: revenue and the sales-team view are done (19 Nov). A
-   share link that fills in the sales code (instead of typing it) is not built.
+   share link (20 Nov): each active salesperson has "Copy link" on the Sales
+   team page, giving `https://www.sunupay.app/join?code=CODE`
+   (`SHARE_LINK_BASE` in `src/pages/SalesPage.tsx`). Khady must make the
+   `/join` page on the website: it shows the code to type at sign-up. Once the
+   app is in the stores, that page (or app links) can open the app with the
+   code filled in; the app part is not built.
 3. The app screen for customers to set their security questions, announcements,
    the per-user language setting.
 

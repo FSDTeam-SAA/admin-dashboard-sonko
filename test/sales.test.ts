@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CODE_PATTERN, periodFor, share } from "../src/pages/SalesPage";
+import { CODE_PATTERN, periodFor, share, shareLink } from "../src/pages/SalesPage";
 import { visibleNav } from "../src/lib/nav";
 import { PERMISSION_GROUPS } from "../src/lib/permissions";
 import { FR } from "../src/i18n/fr";
@@ -16,6 +16,10 @@ describe("sales team page", () => {
   it("shows each step as a share of the one before", () => {
     expect(share(2, 5)).toBe("40%");
     expect(share(0, 0)).toBe("—");
+  });
+
+  it("builds the share link from the code", () => {
+    expect(shareLink("AWA24")).toBe("https://www.sunupay.app/join?code=AWA24");
   });
 
   it("checks codes the same way as the server", () => {

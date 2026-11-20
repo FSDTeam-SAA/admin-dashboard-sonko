@@ -1105,6 +1105,11 @@ export const FR: Record<string, string> = {
   "Signed up": "Inscrits",
   "Staff login (optional)": "Compte du personnel (facultatif)",
   "Stop code": "Arrêter le code",
+  "Share link": "Lien à partager",
+  "Copy link": "Copier le lien",
+  "Could not copy. Please write the link down.": "Impossible de copier. Notez le lien.",
+  "Send the share link instead of asking people to type the code. It opens {page}, which must show the code to type at sign-up until the app is in the stores.":
+    "Envoyez le lien à partager au lieu de demander de taper le code. Il ouvre {page}, qui doit afficher le code à taper à l’inscription tant que l’application n’est pas dans les stores.",
   "Stop this code": "Arrêter ce code",
   "Stopped": "Arrêté",
   "Stopped. The code no longer works for new sign-ups. Past sign-ups keep their credit.": "Arrêté. Le code ne fonctionne plus pour les nouvelles inscriptions. Les inscriptions passées restent attribuées.",
