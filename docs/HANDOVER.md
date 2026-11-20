@@ -110,7 +110,13 @@ On server branch `agent-cash-out` (and merged into `notification-feed`):
   Request bodies and query strings are never saved. Writing a line never
   blocks the action; a failed write logs `AUDIT WRITE FAILED`. Database test:
   `test/audit.test.js` (not run here); unit test `test/audit.rules.test.js`.
-  Not yet covered: staff reading files through routes outside `/admin`.
+  Staff calls outside `/admin` (20 Nov): saved too, by
+  `auditStaffOutsideAdmin` in `server.js` (path only, ids as `:id`, long
+  numbers as `:n`). Three gaps closed at the same time: `GET /transaction` no
+  longer gives staff every customer's payments (staff see only their own);
+  `/payments/verify` lets staff check someone else's payment only with
+  `view_transactions`; `GET /admin-setting` needs `manage_rates`. The panel
+  uses none of these. Unit test: `test/audit.rules.test.js`.
 - Services and countries (19 Nov). Each service (send money, requests, cash
   in, cash out, add money, airtime, data, bills, bank transfer) is on,
   paused or off, for every country (`ALL`) and per country; the stricter
