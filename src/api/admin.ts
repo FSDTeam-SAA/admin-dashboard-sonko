@@ -1195,3 +1195,51 @@ export function confirmSafeguardingCheck(id: string, body: { bankAmount: string;
 export function withdrawSafeguardingCheck(id: string, body: { reason: string; pin: string }, key: string) {
   return api(`/admin/safeguarding/checks/${encodeURIComponent(id)}/withdraw`, { method: "POST", body, idempotencyKey: key });
 }
+
+// ---- Complaints log (FCA DISP) ----
+export type ComplaintChannel = "app" | "email" | "phone" | "in_person" | "post" | "other";
+export type ComplaintCategory = "payment" | "emoney" | "fees" | "service" | "fraud" | "other";
+export type ComplaintCountry = "GB" | "GM" | "SN" | "OTHER";
+export type ComplaintOutcome = "upheld" | "partly_upheld" | "not_upheld" | "withdrawn";
+export type Complaint = {
+  id: string;
+  number: number;
+  status: "open" | "closed";
+  customer: { id: string; name: string; phone: string } | null;
+  complainantName: string;
+  contact: string;
+  channel: ComplaintChannel;
+  category: ComplaintCategory;
+  country: ComplaintCountry;
+  summary: string;
+  receivedAt: string;
+  loggedBy: string;
+  acknowledgedAt: string | null;
+  holdingAt: string | null;
+  finalPromisedFor: string | null;
+  closedAt: string | null;
+  outcome: ComplaintOutcome | null;
+  clock: { ackDue: string; finalDue: string; ackLate: boolean; finalLate: boolean; holdingLate: boolean; dueSoon: boolean; next: "ack" | "final" | null };
+  history: { kind: "logged" | "acknowledged" | "holding" | "closed"; by: string; at: string; note: string }[];
+};
+export type ComplaintFilter = "open" | "late" | "closed";
+export type ComplaintList = { complaints: Complaint[]; pagination: Pagination; counts: { open: number; late: number; dueSoon: number } };
+
+export function complaints(filter: ComplaintFilter, page: number) {
+  return api<ComplaintList>(`/admin/complaints?${new URLSearchParams({ filter, page: String(page), limit: "25" }).toString()}`);
+}
+export function logComplaint(
+  body: { summary: string; channel: ComplaintChannel; category: ComplaintCategory; country: ComplaintCountry; complainantName: string; contact: string; receivedAt?: string },
+  key: string,
+) {
+  return api<Complaint>("/admin/complaints", { method: "POST", body, idempotencyKey: key });
+}
+export function acknowledgeComplaint(complaintId: string, note: string, key: string) {
+  return api<Complaint>(`/admin/complaints/${id(complaintId)}/acknowledge`, { method: "POST", body: { note }, idempotencyKey: key });
+}
+export function holdingResponse(complaintId: string, reason: string, finalPromisedFor: string, key: string) {
+  return api<Complaint>(`/admin/complaints/${id(complaintId)}/holding`, { method: "POST", body: { reason, finalPromisedFor }, idempotencyKey: key });
+}
+export function closeComplaint(complaintId: string, body: { outcome: ComplaintOutcome; note: string; ombudsmanInformed: boolean; pin: string }, key: string) {
+  return api<Complaint>(`/admin/complaints/${id(complaintId)}/close`, { method: "POST", body, idempotencyKey: key });
+}

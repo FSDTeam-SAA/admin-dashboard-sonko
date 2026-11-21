@@ -17,6 +17,7 @@ export const PERMISSION_GROUPS: { title: string; items: [string, string][] }[] =
       ["verify_callers", "Check a caller is the customer (text code or questions)"],
       ["view_tickets", "See tickets and ticket figures"],
       ["manage_tickets", "Open tickets, write notes, change priority and status"],
+      ["close_complaints", "Send the final response and close a complaint (also see and log complaints with the ticket permissions)"],
       ["translate_notes", "Translate ticket notes (the note's text, without phone numbers or emails, is sent to Google)"],
       ["ticket_files", "Add and open files on tickets (ID documents and statements: give only to those who need it)"],
       ["keep_ticket_files", "Keep a ticket's files past the six years (fraud, police, a dispute); changing or ending it needs a second person"],

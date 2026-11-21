@@ -150,6 +150,20 @@ export const NAV: NavItem[] = [
     ready: true,
   },
   {
+    path: "/complaints",
+    label: "Complaints",
+    permission: "view_tickets",
+    routes: [
+      "GET /admin/complaints",
+      "GET /admin/complaints/:id",
+      "POST /admin/complaints",
+      "POST /admin/complaints/:id/acknowledge",
+      "POST /admin/complaints/:id/holding",
+      "POST /admin/complaints/:id/close",
+    ],
+    ready: true,
+  },
+  {
     path: "/analytics",
     label: "Analytics",
     permission: "view_analytics",
