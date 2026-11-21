@@ -1020,6 +1020,67 @@ export function recordRestoreTest(body: { outcome: "worked" | "failed"; note: st
   return api("/admin/backups/restore-tests", { method: "POST", body, idempotencyKey: key });
 }
 
+// ---- Regulatory headroom ----
+
+export type HeadroomLevel = "ok" | "warning" | "alert";
+export type HeadroomSettings = {
+  /** Countries left out of the payments count. Empty unless two people changed it. */
+  excludedCountries: string[];
+  /** A change one person asked for, waiting for a different person (24 hours). */
+  pending: { countries: string[]; reason: string; by: string; byId: string; at: string } | null;
+  changes: { from: string[]; to: string[]; reason: string; approveReason?: string; by: string; approvedBy: string; at: string }[];
+};
+export type Headroom = {
+  asAt: string;
+  level: HeadroomLevel;
+  emoney: {
+    limitEurMinor: number;
+    windowMonths: number;
+    daysCounted: number;
+    averageEurMinor: number;
+    ratio: number;
+    level: HeadroomLevel;
+    currentEurMinor: number;
+    highestDay: { day: string | null; eurMinor: number };
+    unpricedCurrencies: string[];
+    currencies: { currency: string; minor: number; eurMinor: number }[];
+  };
+  payments: {
+    limitEurMinor: number;
+    windowMonths: number;
+    activeMonths: number;
+    averageEurMinor: number;
+    averageIfNothingLeftOutEurMinor: number;
+    ratio: number;
+    level: HeadroomLevel;
+    highestMonth: { month: string | null; eurMinor: number };
+    unpricedPayments: number;
+    months: { month: string; eurMinor: number; allEurMinor: number; count: number }[];
+    countries: { country: string; eurMinor: number; count: number; excluded: boolean }[];
+    leftOut: string[];
+  };
+  countedTypes: string[];
+  settings: HeadroomSettings;
+};
+
+/** Senior staff only (view_headroom). Read only. */
+export function headroom() {
+  return api<Headroom>("/admin/headroom");
+}
+
+/** Same call to ask and (by a different person, same list) to approve. */
+export function changeHeadroomCountries(countries: string[], reason: string, pin: string, key: string) {
+  return api<{ asked?: boolean; done?: boolean; settings: HeadroomSettings }>("/admin/headroom/countries", {
+    method: "PUT",
+    body: { countries, reason, pin },
+    idempotencyKey: key,
+  });
+}
+
+export function cancelHeadroomCountriesChange() {
+  return api<null>("/admin/headroom/countries/change", { method: "DELETE" });
+}
+
 // ---- Sales team ----
 
 export type SalesRow = { id: string; name: string; code: string; active: boolean; signedUp: number; idChecked: number; qualified: number };

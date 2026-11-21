@@ -36,6 +36,13 @@ export const NAV: NavItem[] = [
     ready: true,
   },
   {
+    path: "/headroom",
+    label: "Regulatory headroom",
+    permission: "view_headroom",
+    routes: ["GET /admin/headroom", "PUT /admin/headroom/countries", "DELETE /admin/headroom/countries/change"],
+    ready: true,
+  },
+  {
     path: "/backups",
     label: "Backups",
     permission: "view_backups",

@@ -38,6 +38,7 @@ const TRANSLATED = [
   "src/components/RefundLimits.tsx",
   "src/pages/CasesPage.tsx",
   "src/pages/BackupsPage.tsx",
+  "src/pages/HeadroomPage.tsx",
   "src/pages/SalesPage.tsx",
 ];
 
