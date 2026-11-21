@@ -36,6 +36,8 @@ const TRANSLATED = [
   "src/pages/AnalyticsPage.tsx",
   "src/pages/BillsPage.tsx",
   "src/pages/AnnouncementsPage.tsx",
+  "src/pages/OfferCardsPage.tsx",
+  "src/pages/TicketEventsPage.tsx",
   "src/pages/ReportsPage.tsx",
   "src/pages/ReversalsPage.tsx",
   "src/pages/HoldsPage.tsx",

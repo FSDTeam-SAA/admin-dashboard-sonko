@@ -21,6 +21,8 @@ import { AuditPage } from "./pages/AuditPage";
 import { AnalyticsPage } from "./pages/AnalyticsPage";
 import { BillsPage } from "./pages/BillsPage";
 import { AnnouncementsPage } from "./pages/AnnouncementsPage";
+import { OfferCardsPage } from "./pages/OfferCardsPage";
+import { TicketEventsPage } from "./pages/TicketEventsPage";
 import { BlocklistPage } from "./pages/BlocklistPage";
 import { CasesPage } from "./pages/CasesPage";
 import { BackupsPage } from "./pages/BackupsPage";
@@ -49,6 +51,8 @@ const PAGES: Record<string, ComponentType> = {
   "/services": ServicesPage,
   "/bills": BillsPage,
   "/announcements": AnnouncementsPage,
+  "/offer-cards": OfferCardsPage,
+  "/events": TicketEventsPage,
   "/blocklist": BlocklistPage,
   "/cases": CasesPage,
   "/backups": BackupsPage,

@@ -1466,3 +1466,130 @@ export function complaintReturn(period: string) {
 export function complaintReturnCsv(period: string) {
   return api<Blob>(`/admin/complaints/return?period=${encodeURIComponent(period)}&format=csv`, { asFile: true });
 }
+
+// ---- Offer cards (the card at the end of Home in the app) ----
+
+export type OfferCardState = AnnouncementState;
+export type OfferCard = {
+  id: string;
+  titleEn: string;
+  titleFr: string;
+  bodyEn: string;
+  bodyFr: string;
+  sponsored: boolean;
+  sponsorName: string;
+  country: string;
+  art: "sunset" | "ocean" | "forest" | "night";
+  imageUrl: string;
+  eventDate: string | null;
+  action: "none" | "tickets";
+  eventId: string | null;
+  startsAt: string;
+  endsAt: string;
+  state: OfferCardState;
+  createdBy: string;
+  createdByName: string;
+  createdAt: string;
+  approvedByName: string;
+  withdrawnByName: string;
+  withdrawnAt: string | null;
+  withdrawReason: string;
+};
+export type OfferCardDraft = Pick<
+  OfferCard,
+  "titleEn" | "titleFr" | "bodyEn" | "bodyFr" | "sponsored" | "sponsorName" | "country" | "art" | "imageUrl" | "eventDate" | "action" | "eventId" | "startsAt" | "endsAt"
+>;
+
+export function offerCards() {
+  return api<OfferCard[]>("/admin/offer-cards");
+}
+
+/** Upload the card's picture (JPG, PNG or WebP, 5 MB at most). Returns its address. */
+export function uploadOfferPicture(file: File) {
+  const form = new FormData();
+  form.append("image", file);
+  return api<{ url: string }>("/admin/offer-cards/picture", { method: "POST", form });
+}
+
+export function makeOfferCard(draft: OfferCardDraft, pin: string, key: string) {
+  return api<{ id: string }>("/admin/offer-cards", { method: "POST", body: { ...draft, pin }, idempotencyKey: key });
+}
+
+export function approveOfferCard(cardId: string, pin: string, key: string) {
+  return api(`/admin/offer-cards/${id(cardId)}/approve`, { method: "POST", body: { pin }, idempotencyKey: key });
+}
+
+export function withdrawOfferCard(cardId: string, reason: string) {
+  return api(`/admin/offer-cards/${id(cardId)}/withdraw`, { method: "POST", body: { reason } });
+}
+
+// ---- Event tickets (sold only in the app) ----
+
+export type TicketEventState = "waiting" | "on_sale" | "sold_out" | "sales_closed" | "over" | "cancelled";
+export type TicketEvent = {
+  id: string;
+  titleEn: string;
+  titleFr: string;
+  aboutEn: string;
+  aboutFr: string;
+  venue: string;
+  country: string;
+  currency: string;
+  priceMinor: number;
+  feeMinor: number;
+  capacity: number;
+  sold: number;
+  checkedIn: number;
+  maxPerPerson: number;
+  startsAt: string;
+  salesEndAt: string;
+  state: TicketEventState;
+  organiserName: string;
+  organiserPhone: string;
+  gateStaff: { name: string; phone: string }[];
+  createdBy: string;
+  createdByName: string;
+  createdAt: string;
+  approvedByName: string;
+  cancelledByName: string;
+  cancelledAt: string | null;
+  cancelReason: string;
+  paidToOrganiserMinor: number;
+};
+export type TicketEventDraft = {
+  titleEn: string;
+  titleFr: string;
+  aboutEn: string;
+  aboutFr: string;
+  venue: string;
+  country: string;
+  currency: string;
+  priceMinor: number;
+  feeMinor: number;
+  capacity: number;
+  maxPerPerson: number;
+  startsAt: string;
+  salesEndAt: string;
+  organiserPhone: string;
+  gatePhones: string[];
+};
+
+export function ticketEvents() {
+  return api<TicketEvent[]>("/admin/ticket-events");
+}
+
+export function makeTicketEvent(draft: TicketEventDraft, pin: string, key: string) {
+  return api<{ id: string }>("/admin/ticket-events", { method: "POST", body: { ...draft, pin }, idempotencyKey: key });
+}
+
+export function approveTicketEvent(eventId: string, pin: string, key: string) {
+  return api(`/admin/ticket-events/${id(eventId)}/approve`, { method: "POST", body: { pin }, idempotencyKey: key });
+}
+
+export function cancelTicketEvent(eventId: string, reason: string, pin: string, key: string) {
+  return api(`/admin/ticket-events/${id(eventId)}/cancel`, { method: "POST", body: { reason, pin }, idempotencyKey: key });
+}
+
+export function setGateStaff(eventId: string, gatePhones: string[], pin: string) {
+  return api(`/admin/ticket-events/${id(eventId)}/gate-staff`, { method: "POST", body: { gatePhones, pin } });
+}

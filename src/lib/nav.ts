@@ -214,6 +214,20 @@ export const NAV: NavItem[] = [
     ready: true,
   },
   {
+    path: "/offer-cards",
+    label: "Offer cards",
+    permission: "manage_offer_cards",
+    routes: ["GET /admin/offer-cards", "POST /admin/offer-cards", "POST /admin/offer-cards/picture", "POST /admin/offer-cards/:id/approve", "POST /admin/offer-cards/:id/withdraw"],
+    ready: true,
+  },
+  {
+    path: "/events",
+    label: "Event tickets",
+    permission: "manage_ticket_events",
+    routes: ["GET /admin/ticket-events", "POST /admin/ticket-events", "POST /admin/ticket-events/:id/approve", "POST /admin/ticket-events/:id/cancel", "POST /admin/ticket-events/:id/gate-staff"],
+    ready: true,
+  },
+  {
     path: "/blocklist",
     label: "Blocklist",
     permission: "view_blocklist",

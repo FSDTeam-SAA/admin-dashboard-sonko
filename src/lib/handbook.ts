@@ -203,6 +203,28 @@ export const HANDBOOK: HandbookEntry[] = [
     },
   },
   {
+    path: "/offer-cards",
+    what: {
+      en: "The one card at the very end of Home in the app: our own offers and advertisers' promotions, such as a concert. One person makes it, another approves it.",
+      fr: "La carte tout en bas de l’accueil de l’application : nos offres et les promotions des annonceurs, comme un concert. Une personne la crée, une autre l’approuve.",
+    },
+    careful: {
+      en: "Check the advertiser is real and the words make no promise we can't keep. Advertiser cards always show Sponsored.",
+      fr: "Vérifiez que l’annonceur est réel et que le texte ne promet rien que nous ne pouvons tenir. Les cartes d’annonceurs affichent toujours Sponsorisé.",
+    },
+  },
+  {
+    path: "/events",
+    what: {
+      en: "Events whose tickets are sold only in the app. See sales and how many people are in. Set up gate staff, or cancel an event.",
+      fr: "Les événements dont les billets sont vendus uniquement dans l’application. Voyez les ventes et le nombre d’entrées. Choisissez le personnel à l’entrée ou annulez un événement.",
+    },
+    careful: {
+      en: "The ticket money goes to the organiser's account, so the approver must check it is the right person. Cancelling does not refund anyone automatically.",
+      fr: "L’argent des billets va sur le compte de l’organisateur : la personne qui approuve doit vérifier que c’est la bonne. Annuler ne rembourse personne automatiquement.",
+    },
+  },
+  {
     path: "/blocklist",
     what: {
       en: "People, phone numbers and details we will not do business with. Look someone up here, and review any matches.",
