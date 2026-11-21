@@ -39,6 +39,7 @@ const TRANSLATED = [
   "src/pages/CasesPage.tsx",
   "src/pages/BackupsPage.tsx",
   "src/pages/HeadroomPage.tsx",
+  "src/components/CustomerStatusStrip.tsx",
   "src/pages/SalesPage.tsx",
 ];
 

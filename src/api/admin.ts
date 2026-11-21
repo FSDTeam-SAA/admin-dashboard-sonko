@@ -452,6 +452,8 @@ export type CustomerDetail = {
   tickets: { id: string; number: number; subject: string; priority: TicketPriority; status: TicketStatus; createdAt: string }[];
   edits: { field: string; from: string; to: string; reason: string; by: string; requestedBy: string; at: string }[];
   pendingPhoneChange: { phone: string; reason: string; requestedBy: string; requestedByName: string; requestedAt: string } | null;
+  /** Facts for the warning strip. Missing on an older server. */
+  status?: { moneyOutPausedUntil: string | null; openCases: Partial<Record<"agent_debt" | "customer_debt" | "reversal_alert" | "blocklist_match", number>>; blockedPhones: number };
   /** The phones they used lately, newest first. Missing on an older server. */
   devices?: CustomerDevice[];
   callerChecks: {

@@ -32,6 +32,7 @@ import {
   okLength,
 } from "../components/common";
 import { PlaceHoldDialog, SCOPE_LABEL } from "../components/dialogs";
+import { CustomerStatusStrip } from "../components/CustomerStatusStrip";
 import { money, personLabel, when } from "../lib/format";
 import { useLoad } from "../lib/useLoad";
 import { useT } from "../i18n/language";
@@ -293,6 +294,7 @@ function CustomerView({
           </>
         }
       />
+      <CustomerStatusStrip detail={data} />
       {done && <p className="notice">{t(done)}</p>}
       {data.callerChecks.verifiedUntil ? (
         <p className="notice">

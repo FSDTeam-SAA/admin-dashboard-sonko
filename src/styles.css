@@ -223,3 +223,6 @@ tr.clickable:hover td { background: var(--bg); }
 .gauge-fill.warning { background: #c9861f; }
 .gauge-fill.alert { background: var(--danger); }
 .gauge-scale { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
+
+.status-strip { border: 1px solid var(--danger, #b42318); background: #fef3f2; color: #7a1a12; border-radius: 8px; padding: 10px 14px; margin: 8px 0 12px; }
+.status-strip ul { margin: 6px 0 0; padding-left: 18px; }
