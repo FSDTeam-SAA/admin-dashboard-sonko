@@ -735,6 +735,28 @@ export type CustomerGrowth = {
   workedOutAt: string;
 };
 
+export type CountryMoney = { currency: string; amountMinor: number };
+export type CountryCount = { country: string; count: number; money?: CountryMoney[] };
+
+/** Countries are ISO two-letter codes; "??" means not checked or not recorded. */
+export type Places = {
+  paymentDays: number;
+  failureDays: number;
+  customers: CountryCount[];
+  sentFrom: CountryCount[];
+  receivedIn: CountryCount[];
+  corridors: { total: number; more: number; top: { from: string; to: string; count: number; share: number | null; money: CountryMoney[] }[] };
+  failures: {
+    types: { type: string; successful: number; failed: number; pending: number; other: number; failureRate: number | null }[];
+    all: { successful: number; failed: number; pending: number; other: number; failureRate: number | null };
+  };
+  workedOutAt: string;
+};
+
+export function places() {
+  return api<Places>(`/admin/analytics/places`);
+}
+
 export function customerGrowth() {
   return api<CustomerGrowth>(`/admin/analytics/customers`);
 }

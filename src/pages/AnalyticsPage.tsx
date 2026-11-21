@@ -5,6 +5,7 @@ import { money } from "../lib/format";
 import { useLoad } from "../lib/useLoad";
 import { TYPE_LABEL } from "./CustomersPage";
 import { CustomerGrowthSection } from "./CustomerGrowth";
+import { PlacesSection } from "./PlacesSection";
 
 /** "2026-11" as "Nov 2026". */
 export function monthLabel(key: string): string {
@@ -140,7 +141,7 @@ export function AnalyticsPage() {
 
   return (
     <section>
-      <PageHeader title="Analytics" intro="How the business is doing: revenue, sign-ups, who pays and who comes back, and use. No personal details. Ticket figures are on the Tickets page." />
+      <PageHeader title="Analytics" intro="How the business is doing: revenue, sign-ups, who pays and who comes back, where the business is, and use. No personal details. Ticket figures are on the Tickets page." />
       <div className="grid stats">
         <div className="card tile">
           <span className="muted">{t("Customers")}</span>
@@ -165,6 +166,8 @@ export function AnalyticsPage() {
       <RevenueSection revenue={data.revenue} />
 
       <CustomerGrowthSection />
+
+      <PlacesSection />
 
       <div className="card panel">
         <h2>{t("Sign-ups by month")}</h2>

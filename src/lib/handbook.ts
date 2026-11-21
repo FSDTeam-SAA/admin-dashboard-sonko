@@ -173,8 +173,8 @@ export const HANDBOOK: HandbookEntry[] = [
   {
     path: "/analytics",
     what: {
-      en: "How the business is growing: revenue, sign-ups, how many new customers go on to pay, who keeps paying, and who has gone quiet.",
-      fr: "L’évolution de l’activité : revenus, inscriptions, combien de nouveaux clients finissent par payer, qui continue de payer et qui est devenu inactif.",
+      en: "How the business is growing: revenue, sign-ups, how many new customers go on to pay, who keeps paying, who has gone quiet, a map of where customers and payments are, the busiest corridors and which payment types fail most.",
+      fr: "L’évolution de l’activité : revenus, inscriptions, combien de nouveaux clients finissent par payer, qui continue de payer, qui est devenu inactif, une carte des clients et des paiements, les corridors les plus actifs et les types de paiement qui échouent le plus.",
     },
   },
   {
