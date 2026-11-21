@@ -28,14 +28,20 @@ import {
 } from "../api/admin";
 import { Badge, LoadState, PageHeader, Pager, Tabs } from "../components/common";
 import { ConfirmWithPin } from "../components/ConfirmWithPin";
+import { OverdueLimits } from "./TicketLimits";
 import { Bars, monthLabel } from "./AnalyticsPage";
 import { newIdempotencyKey } from "../lib/idempotency";
 import { when } from "../lib/format";
 import { useLoad } from "../lib/useLoad";
 import { useT, type Language, translate } from "../i18n/language";
 
-export const PRIORITY_LABEL: Record<TicketPriority, string> = { high: "High", medium: "Medium", low: "Low" };
-export const PRIORITY_TONE: Record<TicketPriority, "danger" | "warn" | "ok"> = { high: "danger", medium: "warn", low: "ok" };
+export const PRIORITY_LABEL: Record<TicketPriority, string> = { critical: "Critical", high: "High", medium: "Medium", low: "Low" };
+export const PRIORITY_TONE: Record<TicketPriority, "critical" | "danger" | "warn" | "ok"> = { critical: "critical", high: "danger", medium: "warn", low: "ok" };
+
+/** The priority choices. Critical is offered only to staff allowed to set it, or shown when the ticket already is critical. */
+export function priorityChoices(mayCritical: boolean, current?: TicketPriority): TicketPriority[] {
+  return mayCritical || current === "critical" ? ["critical", "high", "medium", "low"] : ["high", "medium", "low"];
+}
 export const STATUS_LABEL: Record<TicketStatus, string> = { open: "Open", in_progress: "In progress", resolved: "Resolved", closed: "Closed" };
 export const CATEGORY_LABEL: Record<string, string> = Object.fromEntries(TICKET_CATEGORIES);
 const FIELD_LABEL: Record<string, string> = { priority: "Priority", status: "Status", category: "Topic", assignedTo: "Assigned" };
@@ -124,6 +130,7 @@ export function TicketsPage() {
       <div className="row-start search">
         <select aria-label={t("Priority")} value={filters.priority} onChange={(e) => set({ priority: e.target.value as TicketFilters["priority"] })}>
           <option value="all">{t("Any priority")}</option>
+          <option value="critical">{t("Critical")}</option>
           <option value="high">{t("High")}</option>
           <option value="medium">{t("Medium")}</option>
           <option value="low">{t("Low")}</option>
@@ -189,6 +196,7 @@ export function TicketsPage() {
 }
 
 function NewTicket({ customer, onBack, onDone }: { customer: { id: string; name: string } | null; onBack: () => void; onDone: (id: string) => void }) {
+  const { staff } = useAuth();
   const t = useT();
   const [subject, setSubject] = useState("");
   const [detail, setDetail] = useState("");
@@ -234,10 +242,13 @@ function NewTicket({ customer, onBack, onDone }: { customer: { id: string; name:
           <label>
             {t("Priority")}
             <select value={priority} onChange={(e) => setPriority(e.target.value as TicketPriority)}>
-              <option value="high">{t("High")}</option>
-              <option value="medium">{t("Medium")}</option>
-              <option value="low">{t("Low")}</option>
+              {priorityChoices(can(staff, "set_critical")).map((p) => (
+                <option key={p} value={p}>
+                  {t(PRIORITY_LABEL[p])}
+                </option>
+              ))}
             </select>
+            {priority === "critical" && <span className="hint">{t("Critical is for emergencies only. Senior staff are texted straight away.")}</span>}
           </label>
           <label>
             {t("Topic")}
@@ -345,10 +356,20 @@ function TicketView({ ticketId, onBack }: { ticketId: string; onBack: () => void
             <div className="stack">
               <label>
                 {t("Priority")}
-                <select disabled={busy} value={data.priority} onChange={(e) => run(() => changeTicket(data.id, { priority: e.target.value as TicketPriority }))}>
-                  <option value="high">{t("High")}</option>
-                  <option value="medium">{t("Medium")}</option>
-                  <option value="low">{t("Low")}</option>
+                <select
+                  disabled={busy || (data.priority === "critical" && !can(staff, "set_critical"))}
+                  value={data.priority}
+                  onChange={(e) => {
+                    const to = e.target.value as TicketPriority;
+                    if (to === "critical" && !window.confirm(t("Make this ticket critical? Senior staff will be texted straight away."))) return;
+                    run(() => changeTicket(data.id, { priority: to }));
+                  }}
+                >
+                  {priorityChoices(can(staff, "set_critical"), data.priority).map((p) => (
+                    <option key={p} value={p}>
+                      {t(PRIORITY_LABEL[p])}
+                    </option>
+                  ))}
                 </select>
               </label>
               <label>
@@ -605,6 +626,7 @@ function Figures({ onBack }: { onBack: () => void }) {
           {data.openByPriority.length ? <Bars rows={data.openByPriority.map((c) => ({ label: t(PRIORITY_LABEL[c.key]), value: c.count }))} /> : <p className="muted">{t("Nothing waiting.")}</p>}
         </div>
       </div>
+      <OverdueLimits />
     </section>
   );
 }

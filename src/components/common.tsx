@@ -46,7 +46,7 @@ export function Tabs<T extends string>({ value, options, onChange }: { value: T;
   );
 }
 
-export function Badge({ tone, children }: { tone: "danger" | "warn" | "ok" | "plain"; children: ReactNode }) {
+export function Badge({ tone, children }: { tone: "critical" | "danger" | "warn" | "ok" | "plain"; children: ReactNode }) {
   const t = useT();
   return <span className={`badge ${tone}`}>{typeof children === "string" ? t(children) : children}</span>;
 }

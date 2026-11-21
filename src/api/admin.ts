@@ -483,7 +483,7 @@ export function customer(customerId: string) {
 
 // ---- Tickets ----
 
-export type TicketPriority = "high" | "medium" | "low";
+export type TicketPriority = "critical" | "high" | "medium" | "low";
 export type TicketStatus = "open" | "in_progress" | "resolved" | "closed";
 export const TICKET_CATEGORIES = [
   ["payment_failed", "Payment failed"],
@@ -1251,4 +1251,27 @@ export function holdingResponse(complaintId: string, reason: string, finalPromis
 }
 export function closeComplaint(complaintId: string, body: { outcome: ComplaintOutcome; note: string; ombudsmanInformed: boolean; pin: string }, key: string) {
   return api<Complaint>(`/admin/complaints/${id(complaintId)}/close`, { method: "POST", body, idempotencyKey: key });
+}
+
+// ---- Ticket overdue limits (two people) ----
+
+export type OverdueHours = Record<TicketPriority, number>;
+export type TicketSettings = {
+  overdueHours: OverdueHours;
+  defaults: OverdueHours;
+  max: OverdueHours;
+  pending: { hours: OverdueHours; reason: string; by: string; byId: string; at: string } | null;
+  changes: { from: OverdueHours | null; to: OverdueHours; reason: string; by: string; approvedBy: string; approveReason: string; at: string }[];
+};
+
+export function ticketSettings() {
+  return api<TicketSettings>("/admin/tickets/settings");
+}
+
+export function changeTicketLimits(hours: OverdueHours, reason: string, pin: string, key: string) {
+  return api<{ asked?: boolean; done?: boolean; settings: TicketSettings }>("/admin/tickets/settings/limits", { method: "PUT", body: { hours, reason, pin }, idempotencyKey: key });
+}
+
+export function cancelTicketLimitsChange() {
+  return api<null>("/admin/tickets/settings/limits/change", { method: "DELETE" });
 }

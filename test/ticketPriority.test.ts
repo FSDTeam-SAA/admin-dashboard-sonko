@@ -1,11 +1,24 @@
 import { describe, expect, it } from "vitest";
-import { PRIORITY_TONE } from "../src/pages/TicketsPage";
+import { PRIORITY_TONE, priorityChoices } from "../src/pages/TicketsPage";
+import { limitsProblem } from "../src/pages/TicketLimits";
 import { FR } from "../src/i18n/fr";
 import { tickets } from "../src/api/admin";
 
 describe("ticket priority colours and order", () => {
-  it("is red for high, orange for medium, green for low", () => {
-    expect(PRIORITY_TONE).toEqual({ high: "danger", medium: "warn", low: "ok" });
+  it("is dark red for critical, red for high, orange for medium, green for low", () => {
+    expect(PRIORITY_TONE).toEqual({ critical: "critical", high: "danger", medium: "warn", low: "ok" });
+  });
+  it("offers critical only to staff allowed to set it, or when the ticket already is critical", () => {
+    expect(priorityChoices(false)).toEqual(["high", "medium", "low"]);
+    expect(priorityChoices(true)[0]).toBe("critical");
+    expect(priorityChoices(false, "critical")[0]).toBe("critical");
+  });
+  it("checks typed overdue limits", () => {
+    const max = { critical: 24, high: 72, medium: 168, low: 336 };
+    expect(limitsProblem({ critical: 1, high: 4, medium: 24, low: 72 }, max)).toBeNull();
+    expect(limitsProblem({ critical: 5, high: 4, medium: 24, low: 72 }, max)).toMatch(/more urgent/);
+    expect(limitsProblem({ critical: 1, high: 4, medium: 24, low: 999 }, max)).toMatch(/whole number/);
+    expect(limitsProblem({ critical: 1, high: Number.NaN, medium: 24, low: 72 }, max)).toMatch(/whole number/);
   });
   it("has French for the order choices", () => {
     for (const text of ["Order", "Most urgent first", "Newest first", "Overdue", "No update since {time}"]) expect(FR[text], text).toBeTruthy();
