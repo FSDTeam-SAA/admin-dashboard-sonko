@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useSearchParams } from "react-router";
 import {
   acknowledgeComplaint,
   closeComplaint,
@@ -66,8 +67,11 @@ export function ComplaintsPage() {
   const [filter, setFilter] = useState<ComplaintFilter>("open");
   const [page, setPage] = useState(1);
   const [done, setDone] = useState<string | null>(null);
-  const [dialog, setDialog] = useState<{ kind: "log" } | { kind: "ack" | "holding" | "close"; c: Complaint } | null>(null);
-  const { data, error, loading, reload } = useLoad(() => complaints(filter, page), [filter, page]);
+  const [params, setParams] = useSearchParams();
+  // Opened from a customer's file: only that customer's complaints, and the log form is ready for them.
+  const customer = params.get("customer") ? { id: params.get("customer") as string, name: params.get("name") ?? "" } : null;
+  const [dialog, setDialog] = useState<{ kind: "log" } | { kind: "ack" | "holding" | "close"; c: Complaint } | null>(params.get("new") === "1" ? { kind: "log" } : null);
+  const { data, error, loading, reload } = useLoad(() => complaints(filter, page, customer?.id ?? ""), [filter, page, customer?.id]);
   const rows = data?.complaints ?? [];
   const mayLog = can(staff, "manage_tickets");
   const mayClose = can(staff, "close_complaints") && mayLog;
@@ -84,6 +88,12 @@ export function ComplaintsPage() {
         intro="Every complaint, from any country, with the clock the FCA sets. Send a written acknowledgement within 3 business days and a final response within 15 business days (35 only in exceptional cases, with a holding response by day 15). Weekends are skipped; bank holidays are not, so a date shown can be a day early but never late."
         actions={mayLog ? <button onClick={() => setDialog({ kind: "log" })}>{t("Log a complaint")}</button> : undefined}
       />
+      {customer && (
+        <p className="notice">
+          {t("Showing complaints from {name} only.", { name: customer.name || t("this customer") })}{" "}
+          <button className="link" onClick={() => setParams({})}>{t("Show all")}</button>
+        </p>
+      )}
       {data && (
         <p className="muted small">
           {t("{open} open, {late} late, {soon} due within 3 days", { open: data.counts.open, late: data.counts.late, soon: data.counts.dueSoon })}
@@ -150,7 +160,7 @@ export function ComplaintsPage() {
         );
       })}
       <Pager pagination={data?.pagination} onPage={setPage} />
-      {dialog?.kind === "log" && <LogDialog onClose={() => setDialog(null)} onDone={finish} />}
+      {dialog?.kind === "log" && <LogDialog customer={customer} onClose={() => setDialog(null)} onDone={finish} />}
       {dialog?.kind === "ack" && <AckDialog c={dialog.c} onClose={() => setDialog(null)} onDone={finish} />}
       {dialog?.kind === "holding" && <HoldingDialog c={dialog.c} onClose={() => setDialog(null)} onDone={finish} />}
       {dialog?.kind === "close" && <CloseDialog c={dialog.c} onClose={() => setDialog(null)} onDone={finish} />}
@@ -160,10 +170,10 @@ export function ComplaintsPage() {
 
 type DialogProps = { onClose: () => void; onDone: (message: string) => void };
 
-function LogDialog({ onClose, onDone }: DialogProps) {
+function LogDialog({ customer, onClose, onDone }: DialogProps & { customer: { id: string; name: string } | null }) {
   const t = useT();
   const key = useMemo(newIdempotencyKey, []);
-  const [name, setName] = useState("");
+  const [name, setName] = useState(customer?.name ?? "");
   const [contact, setContact] = useState("");
   const [channel, setChannel] = useState<ComplaintChannel>("phone");
   const [category, setCategory] = useState<ComplaintCategory>("payment");
@@ -175,14 +185,15 @@ function LogDialog({ onClose, onDone }: DialogProps) {
       title="Log a complaint"
       confirmLabel="Log it"
       needsPin={false}
-      canConfirm={name.trim().length > 1 && okLength(summary, 10, 2000)}
+      canConfirm={(customer !== null || name.trim().length > 1) && okLength(summary, 10, 2000)}
       onClose={onClose}
       onConfirm={async () => {
-        await logComplaint({ summary: summary.trim(), channel, category, country, complainantName: name.trim(), contact: contact.trim(), receivedAt: receivedAt ? new Date(receivedAt).toISOString() : undefined }, key);
+        await logComplaint({ summary: summary.trim(), channel, category, country, complainantName: name.trim(), contact: contact.trim(), receivedAt: receivedAt ? new Date(receivedAt).toISOString() : undefined, customerId: customer?.id }, key);
         onDone("Complaint logged. The clock started when it came in.");
       }}
     >
       <p>{t("Log it the moment it comes in, whatever way it arrives. The clock starts then.")}</p>
+      {customer && <p className="hint">{t("This complaint will be linked to {name}'s file.", { name: customer.name || t("this customer") })}</p>}
       <label>{t("Who is complaining")}<input type="text" value={name} maxLength={120} onChange={(e) => setName(e.target.value)} /></label>
       <label>{t("Phone or email to reply to (optional)")}<input type="text" value={contact} maxLength={160} onChange={(e) => setContact(e.target.value)} /></label>
       <label>{t("How it came in")}

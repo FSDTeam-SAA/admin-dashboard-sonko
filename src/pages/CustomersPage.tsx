@@ -278,6 +278,12 @@ function CustomerView({
                 {t("Open a ticket")}
               </button>
             )}
+            {can(staff, "manage_tickets") && (
+              <button onClick={() => navigate(`/complaints?customer=${encodeURIComponent(c.id)}&name=${encodeURIComponent(c.name)}&new=1`)}>{t("Log a complaint")}</button>
+            )}
+            {can(staff, "view_tickets") && data.status?.openComplaints?.open ? (
+              <button onClick={() => navigate(`/complaints?customer=${encodeURIComponent(c.id)}&name=${encodeURIComponent(c.name)}`)}>{t("Complaints")}</button>
+            ) : null}
             {can(staff, "edit_customers") && !c.closed && c.role !== "admin" && (
               <button className="danger" onClick={() => setClosing("close")}>
                 {t("Close account")}

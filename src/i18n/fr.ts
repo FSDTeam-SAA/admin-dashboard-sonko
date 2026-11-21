@@ -1319,4 +1319,12 @@ export const FR: Record<string, string> = {
   "Within time": "Dans les délais",
   "holding response sent": "réponse d’attente envoyée",
   "{open} open, {late} late, {soon} due within 3 days": "{open} ouvertes, {late} en retard, {soon} à rendre sous 3 jours",
+  "{n} complaint is late": "{n} réclamation est en retard",
+  "{n} complaints are late": "{n} réclamations sont en retard",
+  "{n} open complaint": "{n} réclamation ouverte",
+  "{n} open complaints": "{n} réclamations ouvertes",
+  "Showing complaints from {name} only.": "Seules les réclamations de {name} sont affichées.",
+  "Show all": "Tout afficher",
+  "this customer": "ce client",
+  "This complaint will be linked to {name}'s file.": "Cette réclamation sera liée au dossier de {name}.",
 };

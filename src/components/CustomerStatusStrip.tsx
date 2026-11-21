@@ -35,6 +35,9 @@ export function stripItems(d: CustomerDetail): StripItem[] {
     const text = (n === 1 ? CASE_TEXT : CASES_TEXT)[type];
     if (text) items.push({ key: `case-${type}`, text, vars: { n } });
   }
+  const complaints = d.status?.openComplaints;
+  if (complaints?.late) items.push({ key: "complaints-late", text: complaints.late === 1 ? "{n} complaint is late" : "{n} complaints are late", vars: { n: complaints.late } });
+  if (complaints?.open) items.push({ key: "complaints", text: complaints.open === 1 ? "{n} open complaint" : "{n} open complaints", vars: { n: complaints.open } });
   if (d.pendingPhoneChange) items.push({ key: "pending", text: "A phone number change is waiting for approval" });
   return items;
 }

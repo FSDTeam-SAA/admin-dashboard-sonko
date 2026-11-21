@@ -453,7 +453,7 @@ export type CustomerDetail = {
   edits: { field: string; from: string; to: string; reason: string; by: string; requestedBy: string; at: string }[];
   pendingPhoneChange: { phone: string; reason: string; requestedBy: string; requestedByName: string; requestedAt: string } | null;
   /** Facts for the warning strip. Missing on an older server. */
-  status?: { moneyOutPausedUntil: string | null; openCases: Partial<Record<"agent_debt" | "customer_debt" | "reversal_alert" | "blocklist_match", number>>; blockedPhones: number };
+  status?: { moneyOutPausedUntil: string | null; openCases: Partial<Record<"agent_debt" | "customer_debt" | "reversal_alert" | "blocklist_match", number>>; blockedPhones: number; openComplaints?: { open: number; late: number } };
   /** The phones they used lately, newest first. Missing on an older server. */
   devices?: CustomerDevice[];
   callerChecks: {
@@ -1225,11 +1225,13 @@ export type Complaint = {
 export type ComplaintFilter = "open" | "late" | "closed";
 export type ComplaintList = { complaints: Complaint[]; pagination: Pagination; counts: { open: number; late: number; dueSoon: number } };
 
-export function complaints(filter: ComplaintFilter, page: number) {
-  return api<ComplaintList>(`/admin/complaints?${new URLSearchParams({ filter, page: String(page), limit: "25" }).toString()}`);
+export function complaints(filter: ComplaintFilter, page: number, customerId = "") {
+  const query = new URLSearchParams({ filter, page: String(page), limit: "25" });
+  if (customerId) query.set("customer", id(customerId));
+  return api<ComplaintList>(`/admin/complaints?${query.toString()}`);
 }
 export function logComplaint(
-  body: { summary: string; channel: ComplaintChannel; category: ComplaintCategory; country: ComplaintCountry; complainantName: string; contact: string; receivedAt?: string },
+  body: { summary: string; channel: ComplaintChannel; category: ComplaintCategory; country: ComplaintCountry; complainantName: string; contact: string; receivedAt?: string; customerId?: string },
   key: string,
 ) {
   return api<Complaint>("/admin/complaints", { method: "POST", body, idempotencyKey: key });

@@ -37,3 +37,16 @@ describe("customer status strip", () => {
     for (const t of texts) expect(FR[t], t).toBeTruthy();
   });
 });
+
+describe("complaints in the strip", () => {
+  const d = (openComplaints: { open: number; late: number }) =>
+    ({ customer: { hold: null, closed: null }, pendingPhoneChange: null, status: { moneyOutPausedUntil: null, openCases: {}, blockedPhones: 0, openComplaints } }) as unknown as CustomerDetail;
+  it("shows open complaints, late ones first, and nothing at zero", () => {
+    expect(stripItems(d({ open: 0, late: 0 }))).toEqual([]);
+    expect(stripItems(d({ open: 1, late: 0 })).map((i) => i.text)).toEqual(["{n} open complaint"]);
+    expect(stripItems(d({ open: 3, late: 2 })).map((i) => i.text)).toEqual(["{n} complaints are late", "{n} open complaints"]);
+  });
+  it("has French", () => {
+    for (const t of ["{n} complaint is late", "{n} complaints are late", "{n} open complaint", "{n} open complaints"]) expect(FR[t], t).toBeTruthy();
+  });
+});
