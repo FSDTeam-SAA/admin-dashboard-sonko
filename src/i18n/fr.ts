@@ -1373,4 +1373,6 @@ export const FR: Record<string, string> = {
   "Processing": "En cours de traitement",
   "Reversed": "Annulé",
   "Payment": "Paiement",
+  "Unassigned": "Non attribués",
+  "Nobody has this": "Personne ne s’en occupe",
 };

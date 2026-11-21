@@ -40,3 +40,13 @@ describe("ticket priority colours and order", () => {
     expect(seen[1]).not.toContain("sort=");
   });
 });
+
+describe("ticket assignment helpers", () => {
+  it("only open and in-progress tickets count as active", async () => {
+    const { isActive } = await import("../src/pages/TicketsPage");
+    expect(isActive("open")).toBe(true);
+    expect(isActive("in_progress")).toBe(true);
+    expect(isActive("resolved")).toBe(false);
+    expect(isActive("closed")).toBe(false);
+  });
+});

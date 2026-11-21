@@ -44,6 +44,7 @@ export const PRIORITY_TONE: Record<TicketPriority, "critical" | "danger" | "warn
 export function priorityChoices(mayCritical: boolean, current?: TicketPriority): TicketPriority[] {
   return mayCritical || current === "critical" ? ["critical", "high", "medium", "low"] : ["high", "medium", "low"];
 }
+export const isActive = (status: TicketStatus) => status === "open" || status === "in_progress";
 export const STATUS_LABEL: Record<TicketStatus, string> = { open: "Open", in_progress: "In progress", resolved: "Resolved", closed: "Closed" };
 export const CATEGORY_LABEL: Record<string, string> = Object.fromEntries(TICKET_CATEGORIES);
 const FIELD_LABEL: Record<string, string> = { priority: "Priority", status: "Status", category: "Topic", assignedTo: "Assigned", transaction: "Payment" };
@@ -63,6 +64,16 @@ export function TicketsPage() {
   const mayManage = can(staff, "manage_tickets");
 
   const clearParams = () => setParams({}, { replace: true });
+  const [takeError, setTakeError] = useState<string | null>(null);
+  const takeTicket = async (ticketId: string, staffId: string) => {
+    setTakeError(null);
+    try {
+      await changeTicket(ticketId, { assignedTo: staffId });
+      reload();
+    } catch (caught) {
+      setTakeError(caught instanceof Error ? caught.message : "That did not work. Please try again.");
+    }
+  };
 
   if (openId) {
     return (
@@ -142,8 +153,12 @@ export function TicketsPage() {
           <option value="newest">{t("Newest first")}</option>
         </select>
         <label className="check">
-          <input type="checkbox" checked={filters.mine} onChange={(e) => set({ mine: e.target.checked })} />
+          <input type="checkbox" checked={filters.mine} onChange={(e) => set({ mine: e.target.checked, unassigned: e.target.checked ? false : filters.unassigned })} />
           {t("Mine")}
+        </label>
+        <label className="check">
+          <input type="checkbox" checked={Boolean(filters.unassigned)} onChange={(e) => set({ unassigned: e.target.checked, mine: e.target.checked ? false : filters.mine })} />
+          {t("Unassigned")}
         </label>
       </div>
       <form className="row-start search" onSubmit={find}>
@@ -151,6 +166,7 @@ export function TicketsPage() {
         <button type="submit">{t("Search")}</button>
       </form>
       <LoadState loading={loading && !data} error={error} empty={!rows.length} />
+      {takeError && <p className="error" role="alert">{t(takeError)}</p>}
       {rows.length > 0 && (
         <div className="table-wrap card">
           <table>
@@ -184,7 +200,27 @@ export function TicketsPage() {
                   </td>
                   <td>{t(STATUS_LABEL[row.status])}</td>
                   <td>{row.customer?.name || "—"}</td>
-                  <td>{row.assignedTo?.name || t("Nobody")}</td>
+                  <td>
+                    {row.assignedTo?.name || t("Nobody")}
+                    {isActive(row.status) && row.unassigned && (row.priority === "critical" || row.priority === "high") && (
+                      <div>
+                        <Badge tone="danger">Nobody has this</Badge>
+                      </div>
+                    )}
+                    {mayManage && staff && isActive(row.status) && row.assignedTo?.id !== staff._id && (
+                      <div>
+                        <button
+                          className="link"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            takeTicket(row.id, staff._id);
+                          }}
+                        >
+                          {t("Take it")}
+                        </button>
+                      </div>
+                    )}
+                  </td>
                   <td>{when(row.createdAt)}</td>
                 </tr>
               ))}
@@ -356,7 +392,10 @@ function TicketView({ ticketId, onBack }: { ticketId: string; onBack: () => void
             <dt>{t("Customer")}</dt>
             <dd>{data.customer ? `${data.customer.name} (${data.customer.phone})` : "—"}</dd>
             <dt>{t("Assigned to")}</dt>
-            <dd>{data.assignedTo?.name || t("Nobody")}</dd>
+            <dd>
+              {data.assignedTo ? <strong>{data.assignedTo.name}</strong> : isActive(data.status) ? <Badge tone="danger">Nobody has this</Badge> : t("Nobody")}
+              {data.assignedTo && data.assignedAt ? <span className="muted small"> {t("since {time}", { time: when(data.assignedAt) })}</span> : null}
+            </dd>
             {data.resolvedAt && (
               <>
                 <dt>{t("Resolved")}</dt>

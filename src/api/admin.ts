@@ -530,6 +530,7 @@ export type TicketRow = {
   resolvedAt: string | null;
   updatedAt?: string;
   overdue?: boolean;
+  unassigned?: boolean;
 };
 
 export type TicketDetail = Omit<TicketRow, "customer" | "assignedTo"> & {
@@ -538,6 +539,8 @@ export type TicketDetail = Omit<TicketRow, "customer" | "assignedTo"> & {
   erased?: boolean;
   customer: Mini;
   /** The payment it is about. paymentLinked says one is linked; payment is null if this person may not see payments. */
+  /** When it was given to the current person. */
+  assignedAt?: string | null;
   paymentLinked?: boolean;
   payment?: TicketPayment | null;
   createdBy: Mini;
@@ -616,13 +619,14 @@ export function cancelKeepAsk(ticketId: string) {
   return api(`/admin/tickets/${id(ticketId)}/keep/change`, { method: "DELETE" });
 }
 
-export type TicketFilters = { status: TicketStatus | "active" | "all"; priority: TicketPriority | "all"; mine: boolean; search: string; customer?: string; sort?: "urgent" | "newest" };
+export type TicketFilters = { status: TicketStatus | "active" | "all"; priority: TicketPriority | "all"; mine: boolean; search: string; customer?: string; sort?: "urgent" | "newest"; unassigned?: boolean };
 
 export function tickets(filters: TicketFilters, page: number) {
   const query = new URLSearchParams({ page: String(page), limit: "25" });
   if (filters.status !== "all") query.set("status", filters.status);
   if (filters.priority !== "all") query.set("priority", filters.priority);
   if (filters.mine) query.set("assignedTo", "me");
+  else if (filters.unassigned) query.set("assignedTo", "none");
   if (filters.search.trim()) query.set("search", filters.search.trim());
   if (filters.customer) query.set("customer", id(filters.customer));
   if (filters.sort === "urgent") query.set("sort", "urgent");
