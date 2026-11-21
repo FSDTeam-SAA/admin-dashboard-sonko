@@ -1058,8 +1058,10 @@ export type Headroom = {
     highestMonth: { month: string | null; eurMinor: number };
     unpricedPayments: number;
     months: { month: string; eurMinor: number; allEurMinor: number; count: number }[];
-    countries: { country: string; eurMinor: number; count: number; excluded: boolean }[];
+    countries: { country: string; eurMinor: number; count: number; excluded: boolean; noUkEndEurMinor?: number; noUkEndCount?: number }[];
     leftOut: string[];
+    /** Payments left out because neither end is in the UK. Missing on an older server. */
+    noUkEnd?: { eurMinor: number; count: number };
   };
   countedTypes: string[];
   settings: HeadroomSettings;

@@ -145,7 +145,7 @@ export function HeadroomPage() {
             <dl className="facts">
               <dt>{t("Average a month, over {n} months", { n: data.payments.activeMonths })}</dt>
               <dd>{money(data.payments.averageEurMinor, "EUR")}</dd>
-              {data.payments.leftOut.length > 0 && (
+              {(data.payments.leftOut.length > 0 || (data.payments.noUkEnd?.count ?? 0) > 0) && (
                 <>
                   <dt>{t("The same with nothing left out")}</dt>
                   <dd>{money(data.payments.averageIfNothingLeftOutEurMinor, "EUR")}</dd>
@@ -154,6 +154,14 @@ export function HeadroomPage() {
               <dt>{t("Highest month")}</dt>
               <dd>{data.payments.highestMonth.month ? `${money(data.payments.highestMonth.eurMinor, "EUR")} · ${data.payments.highestMonth.month}` : "—"}</dd>
             </dl>
+            {(data.payments.noUkEnd?.count ?? 0) > 0 && (
+              <p className="notice">
+                {t("Left out because neither end is in the UK: {n} payments, {amount} over 12 months.", { n: data.payments.noUkEnd?.count ?? 0, amount: money(data.payments.noUkEnd?.eurMinor ?? 0, "EUR") })}
+              </p>
+            )}
+            <p className="hint">
+              {t("Payments where the sender's country and the country the money went to are both outside the UK are not counted. This is the owner's decision and has not yet been confirmed by the compliance adviser: the FCA covers payment services provided from the UK, including payments with one end abroad. If either country is not known, the payment is counted.")}
+            </p>
             <p className="hint">
               {t("The rule looks at the monthly average of payments over 12 months. The limit is 3,000,000 euro a month. The average runs from the first month with payments, so a new business is not flattered by empty months. A month still in progress is counted as it stands.")}
             </p>
@@ -164,7 +172,7 @@ export function HeadroomPage() {
                   <th>{t("Month")}</th>
                   <th>{t("Payments")}</th>
                   <th>{t("Counted")}</th>
-                  {data.payments.leftOut.length > 0 && <th>{t("With nothing left out")}</th>}
+                  {(data.payments.leftOut.length > 0 || (data.payments.noUkEnd?.count ?? 0) > 0) && <th>{t("With nothing left out")}</th>}
                 </tr>
               </thead>
               <tbody>
@@ -173,7 +181,7 @@ export function HeadroomPage() {
                     <td>{m.month}</td>
                     <td>{m.count}</td>
                     <td>{money(m.eurMinor, "EUR")}</td>
-                    {data.payments.leftOut.length > 0 && <td>{money(m.allEurMinor, "EUR")}</td>}
+                    {(data.payments.leftOut.length > 0 || (data.payments.noUkEnd?.count ?? 0) > 0) && <td>{money(m.allEurMinor, "EUR")}</td>}
                   </tr>
                 ))}
               </tbody>
@@ -204,7 +212,12 @@ export function HeadroomPage() {
                       <td>{countryName(c.country, t)}</td>
                       <td>{c.count}</td>
                       <td>{money(c.eurMinor, "EUR")}</td>
-                      <td>{c.excluded ? <Badge tone="warn">Left out</Badge> : <Badge tone="plain">Counted</Badge>}</td>
+                      <td>
+                        {c.excluded ? <Badge tone="warn">Left out</Badge> : <Badge tone="plain">Counted</Badge>}
+                        {!c.excluded && (c.noUkEndCount ?? 0) > 0 && (
+                          <span className="muted small"> {t("{amount} left out (no UK end)", { amount: money(c.noUkEndEurMinor ?? 0, "EUR") })}</span>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

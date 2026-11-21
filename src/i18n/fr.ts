@@ -1328,4 +1328,7 @@ export const FR: Record<string, string> = {
   "this customer": "ce client",
   "This complaint will be linked to {name}'s file.": "Cette réclamation sera liée au dossier de {name}.",
   "Keep this record until at least {date}.": "Conservez ce dossier au moins jusqu’au {date}.",
+  "Left out because neither end is in the UK: {n} payments, {amount} over 12 months.": "Exclus car aucune des deux extrémités n’est au Royaume-Uni : {n} paiements, {amount} sur 12 mois.",
+  "Payments where the sender's country and the country the money went to are both outside the UK are not counted. This is the owner's decision and has not yet been confirmed by the compliance adviser: the FCA covers payment services provided from the UK, including payments with one end abroad. If either country is not known, the payment is counted.": "Les paiements dont le pays de l’expéditeur et le pays de destination sont tous deux hors du Royaume-Uni ne sont pas comptés. C’est la décision du propriétaire, pas encore confirmée par le conseiller en conformité : la FCA couvre les services de paiement fournis depuis le Royaume-Uni, y compris les paiements dont une extrémité est à l’étranger. Si l’un des deux pays est inconnu, le paiement est compté.",
+  "{amount} left out (no UK end)": "{amount} exclus (aucune extrémité au Royaume-Uni)",
 };
