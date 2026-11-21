@@ -511,6 +511,8 @@ export type TicketRow = {
   assignedTo: Named;
   createdAt: string;
   resolvedAt: string | null;
+  updatedAt?: string;
+  overdue?: boolean;
 };
 
 export type TicketDetail = Omit<TicketRow, "customer" | "assignedTo"> & {

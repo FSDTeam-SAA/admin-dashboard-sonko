@@ -1335,4 +1335,6 @@ export const FR: Record<string, string> = {
   "Order": "Ordre",
   "Most urgent first": "Les plus urgents d’abord",
   "Newest first": "Les plus récents d’abord",
+  "Overdue": "En retard",
+  "No update since {time}": "Aucune mise à jour depuis le {time}",
 };

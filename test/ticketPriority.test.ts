@@ -8,7 +8,7 @@ describe("ticket priority colours and order", () => {
     expect(PRIORITY_TONE).toEqual({ high: "danger", medium: "warn", low: "ok" });
   });
   it("has French for the order choices", () => {
-    for (const text of ["Order", "Most urgent first", "Newest first"]) expect(FR[text], text).toBeTruthy();
+    for (const text of ["Order", "Most urgent first", "Newest first", "Overdue", "No update since {time}"]) expect(FR[text], text).toBeTruthy();
   });
   it("asks the server for most urgent first", async () => {
     const seen: string[] = [];

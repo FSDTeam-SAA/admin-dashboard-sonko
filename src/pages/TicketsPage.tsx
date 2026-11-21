@@ -166,6 +166,12 @@ export function TicketsPage() {
                   </td>
                   <td>
                     <Badge tone={PRIORITY_TONE[row.priority]}>{PRIORITY_LABEL[row.priority]}</Badge>
+                    {row.overdue && (
+                      <div>
+                        <Badge tone="danger">Overdue</Badge>
+                        <div className="muted small">{t("No update since {time}").replace("{time}", when(row.updatedAt ?? row.createdAt))}</div>
+                      </div>
+                    )}
                   </td>
                   <td>{t(STATUS_LABEL[row.status])}</td>
                   <td>{row.customer?.name || "—"}</td>
