@@ -35,7 +35,7 @@ import { useLoad } from "../lib/useLoad";
 import { useT, type Language, translate } from "../i18n/language";
 
 export const PRIORITY_LABEL: Record<TicketPriority, string> = { high: "High", medium: "Medium", low: "Low" };
-const PRIORITY_TONE: Record<TicketPriority, "danger" | "warn" | "plain"> = { high: "danger", medium: "warn", low: "plain" };
+export const PRIORITY_TONE: Record<TicketPriority, "danger" | "warn" | "ok"> = { high: "danger", medium: "warn", low: "ok" };
 export const STATUS_LABEL: Record<TicketStatus, string> = { open: "Open", in_progress: "In progress", resolved: "Resolved", closed: "Closed" };
 export const CATEGORY_LABEL: Record<string, string> = Object.fromEntries(TICKET_CATEGORIES);
 const FIELD_LABEL: Record<string, string> = { priority: "Priority", status: "Status", category: "Topic", assignedTo: "Assigned" };
@@ -44,7 +44,7 @@ export function TicketsPage() {
   const { staff } = useAuth();
   const t = useT();
   const [params, setParams] = useSearchParams();
-  const [filters, setFilters] = useState<TicketFilters>({ status: "active", priority: "all", mine: false, search: "" });
+  const [filters, setFilters] = useState<TicketFilters>({ status: "active", priority: "all", mine: false, search: "", sort: "urgent" });
   const [typed, setTyped] = useState("");
   const [page, setPage] = useState(1);
   const [openId, setOpenId] = useState<string | null>(params.get("open"));
@@ -127,6 +127,10 @@ export function TicketsPage() {
           <option value="high">{t("High")}</option>
           <option value="medium">{t("Medium")}</option>
           <option value="low">{t("Low")}</option>
+        </select>
+        <select aria-label={t("Order")} value={filters.sort} onChange={(e) => set({ sort: e.target.value as TicketFilters["sort"] })}>
+          <option value="urgent">{t("Most urgent first")}</option>
+          <option value="newest">{t("Newest first")}</option>
         </select>
         <label className="check">
           <input type="checkbox" checked={filters.mine} onChange={(e) => set({ mine: e.target.checked })} />

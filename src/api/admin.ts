@@ -594,7 +594,7 @@ export function cancelKeepAsk(ticketId: string) {
   return api(`/admin/tickets/${id(ticketId)}/keep/change`, { method: "DELETE" });
 }
 
-export type TicketFilters = { status: TicketStatus | "active" | "all"; priority: TicketPriority | "all"; mine: boolean; search: string; customer?: string };
+export type TicketFilters = { status: TicketStatus | "active" | "all"; priority: TicketPriority | "all"; mine: boolean; search: string; customer?: string; sort?: "urgent" | "newest" };
 
 export function tickets(filters: TicketFilters, page: number) {
   const query = new URLSearchParams({ page: String(page), limit: "25" });
@@ -603,6 +603,7 @@ export function tickets(filters: TicketFilters, page: number) {
   if (filters.mine) query.set("assignedTo", "me");
   if (filters.search.trim()) query.set("search", filters.search.trim());
   if (filters.customer) query.set("customer", id(filters.customer));
+  if (filters.sort === "urgent") query.set("sort", "urgent");
   return api<{ tickets: TicketRow[]; pagination: Pagination }>(`/admin/tickets?${query.toString()}`);
 }
 
