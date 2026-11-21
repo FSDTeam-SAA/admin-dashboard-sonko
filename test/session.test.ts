@@ -41,11 +41,11 @@ describe("idempotency keys", () => {
 
 describe("pages", () => {
   it("shows only Home to a staff member with no permissions", () => {
-    expect(visibleNav([]).map((item) => item.path)).toEqual(["/"]);
+    expect(visibleNav([]).map((item) => item.path)).toEqual(["/", "/handbook"]);
   });
 
   it("shows a page when its permission is held", () => {
-    expect(visibleNav(["view_holds"]).map((item) => item.path)).toEqual(["/", "/holds"]);
+    expect(visibleNav(["view_holds"]).map((item) => item.path)).toEqual(["/", "/handbook", "/holds"]);
   });
 
   it("every page has a unique address", () => {

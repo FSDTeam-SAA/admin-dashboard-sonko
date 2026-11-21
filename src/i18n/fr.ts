@@ -2,6 +2,10 @@
 // DRAFT: written by Claude, not yet checked by a French speaker. A missing
 // entry is shown in English, never guessed.
 export const FR: Record<string, string> = {
+  "Staff handbook": "Guide du personnel",
+  "What each screen is for, and what to be careful about.": "À quoi sert chaque écran, et à quoi faire attention.",
+  "The rules for everyone": "Les règles pour tous",
+  "Be careful:": "Attention :",
   "Could not log in. Please try again.": "Connexion impossible. Veuillez réessayer.",
   "For Sunu Pay staff only.": "Réservé au personnel de Sunu Pay.",
   "Phone number": "Numéro de téléphone",
@@ -1496,3 +1500,6 @@ export const FR: Record<string, string> = {
   "Send one customer a text message from their file (no links or long numbers)": "Envoyer un SMS à un client depuis son dossier (sans liens ni longs numéros)",
   "See and download the FCA complaints return figures": "Voir et télécharger les chiffres de la déclaration des réclamations à la FCA",
 };
+
+import { handbookFrench } from "../lib/handbook";
+Object.assign(FR, handbookFrench());

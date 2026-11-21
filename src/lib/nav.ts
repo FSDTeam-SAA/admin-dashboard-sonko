@@ -15,6 +15,13 @@ export type NavItem = {
 export const NAV: NavItem[] = [
   { path: "/", label: "Home", permission: null, routes: ["GET /admin/me"], ready: true },
   {
+    path: "/handbook",
+    label: "Staff handbook",
+    permission: null,
+    routes: [],
+    ready: true,
+  },
+  {
     path: "/reports",
     label: "Reported requests",
     permission: "view_reports",
