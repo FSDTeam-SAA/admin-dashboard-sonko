@@ -1550,6 +1550,9 @@ export const FR: Record<string, string> = {
   "Send one customer a text message from their file (no links or long numbers)": "Envoyer un SMS à un client depuis son dossier (sans liens ni longs numéros)",
   "See and download the FCA complaints return figures": "Voir et télécharger les chiffres de la déclaration des réclamations à la FCA",
   // Ticket refunds and payouts (21 Nov)
+  "Paid by {name}": "Payé par {name}",
+  "Being sent": "En cours d’envoi",
+  "Customers can send tickets to each other; refunds always go to the person who paid. Check with your lawyer how held ticket money must be kept before the first real sale.": "Les clients peuvent s’envoyer des billets ; les remboursements vont toujours à la personne qui a payé. Vérifiez avec votre avocat comment l’argent des billets détenu doit être conservé avant la première vente réelle.",
   "Held by Sunu Pay": "Détenu par Sunu Pay",
   "Ready to pay the organiser": "Prêt à payer l’organisateur",
   "Organiser paid": "Organisateur payé",

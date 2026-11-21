@@ -1571,6 +1571,9 @@ export type EventTicketRow = {
   status: "valid" | "used" | "void" | "refunded";
   ownerName: string;
   ownerPhone: string;
+  buyerName: string;
+  buyerPhone: string;
+  beingSent: boolean;
   priceMinor: number;
   feeMinor: number;
   currency: string;

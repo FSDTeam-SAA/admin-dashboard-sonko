@@ -119,7 +119,7 @@ export function TicketEventsPage() {
           </button>
         }
       />
-      <p className="notice">{t("Not built yet: passing a ticket to someone else. Check with your lawyer how held ticket money must be kept before the first real sale.")}</p>
+      <p className="notice">{t("Customers can send tickets to each other; refunds always go to the person who paid. Check with your lawyer how held ticket money must be kept before the first real sale.")}</p>
       {done && <p className="notice">{t(done)}</p>}
       <LoadState loading={loading && !data} error={error} empty={!rows.length} />
       {rows.length > 0 && (
@@ -441,6 +441,18 @@ function TicketsDialog({ e, canRefund, onClose, onChanged }: { e: TicketEvent; c
                       {r.ownerName || "—"}
                       <br />
                       <span className="muted small">{r.ownerPhone}</span>
+                      {r.buyerPhone && r.buyerPhone !== r.ownerPhone && (
+                        <>
+                          <br />
+                          <span className="muted small">{t("Paid by {name}", { name: r.buyerName || r.buyerPhone })}</span>
+                        </>
+                      )}
+                      {r.beingSent && (
+                        <>
+                          <br />
+                          <Badge tone="plain">{t("Being sent")}</Badge>
+                        </>
+                      )}
                     </td>
                     <td>
                       {t(TICKET_STATUS[r.status])}
@@ -503,7 +515,7 @@ function RefundDialog({ ticket, onClose, onDone }: { ticket: EventTicketRow; onC
         onDone("Refunded to the buyer's wallet.");
       }}
     >
-      <p>{t("{amount} goes back to {name}'s wallet from the money Sunu Pay holds, and the ticket stops working.", { amount: money(amount, ticket.currency), name: ticket.ownerName || ticket.ownerPhone })}</p>
+      <p>{t("{amount} goes back to {name}'s wallet from the money Sunu Pay holds, and the ticket stops working.", { amount: money(amount, ticket.currency), name: ticket.buyerName || ticket.buyerPhone || ticket.ownerName })}</p>
       {ticket.feeMinor > 0 && (
         <label className="check">
           <input type="checkbox" checked={includeFee} onChange={(ev) => setIncludeFee(ev.target.checked)} /> {t("Refund the Sunu Pay fee too ({fee})", { fee: money(ticket.feeMinor, ticket.currency) })}
