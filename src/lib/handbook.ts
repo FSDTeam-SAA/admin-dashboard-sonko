@@ -173,8 +173,8 @@ export const HANDBOOK: HandbookEntry[] = [
   {
     path: "/analytics",
     what: {
-      en: "How the business is growing: customers, payments and countries.",
-      fr: "L’évolution de l’activité : clients, paiements et pays.",
+      en: "How the business is growing: revenue, sign-ups, how many new customers go on to pay, who keeps paying, and who has gone quiet.",
+      fr: "L’évolution de l’activité : revenus, inscriptions, combien de nouveaux clients finissent par payer, qui continue de payer et qui est devenu inactif.",
     },
   },
   {

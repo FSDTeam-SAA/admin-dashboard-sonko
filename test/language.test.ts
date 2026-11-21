@@ -50,6 +50,7 @@ const TRANSLATED = [
   "src/pages/ComplaintsPage.tsx",
   "src/pages/SalesPage.tsx",
   "src/pages/HandbookPage.tsx",
+  "src/pages/CustomerGrowth.tsx",
 ];
 
 describe("panel language", () => {

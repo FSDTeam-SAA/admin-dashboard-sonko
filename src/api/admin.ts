@@ -711,6 +711,34 @@ export function analytics() {
   return api<Analytics>(`/admin/analytics`);
 }
 
+type Rates = { phoneVerified: number | null; idChecked: number | null; paid: number | null; paidWithin7Days: number | null; repeat: number | null };
+type FunnelCounts = { signedUp: number; phoneVerified: number; idChecked: number; paid: number; paidWithin7Days: number; repeat: number };
+
+/** Percentages are 0 to 100 with one decimal, or null when there is nobody to count from. */
+export type CustomerGrowth = {
+  funnel: FunnelCounts & { rates: Rates; medianDaysToFirstPayment: number | null };
+  retention: {
+    thisMonth: string;
+    lastMonth: string;
+    activeThisMonth: number;
+    activeLastMonth: number;
+    kept: number;
+    keptRate: number | null;
+    everPaid: number;
+    repeatCustomers: number;
+    repeatRate: number | null;
+    dormant: number;
+    dormantDays: number;
+  };
+  cohorts: (FunnelCounts & { month: string; rates: Rates; retention: (number | null)[] })[];
+  retentionMonths: number;
+  workedOutAt: string;
+};
+
+export function customerGrowth() {
+  return api<CustomerGrowth>(`/admin/analytics/customers`);
+}
+
 // ---- Audit trail ----
 
 export type AuditKind = "login_pin" | "login_failed" | "login_complete" | "login_code_failed" | "action";
