@@ -23,9 +23,23 @@ export const NAV: NavItem[] = [
   },
   {
     path: "/cases",
-    label: "Debt and alert cases",
+    label: "Debt, fraud and alert cases",
     permission: "view_cases",
-    routes: ["GET /admin/compliance-cases", "POST /admin/compliance-cases/:id/close"],
+    routes: ["GET /admin/compliance-cases", "POST /admin/compliance-cases/:id/close", "GET /admin/fraud/settings", "PUT /admin/fraud/settings/limits", "DELETE /admin/fraud/settings/limits/change"],
+    ready: true,
+  },
+  {
+    path: "/finance",
+    label: "Finance overview",
+    permission: "view_finance",
+    routes: ["GET /admin/finance"],
+    ready: true,
+  },
+  {
+    path: "/transactions",
+    label: "Transactions",
+    permission: "view_transactions",
+    routes: ["GET /admin/transactions", "GET /admin/transactions/:id"],
     ready: true,
   },
   {

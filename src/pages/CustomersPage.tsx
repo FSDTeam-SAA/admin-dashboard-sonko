@@ -1,5 +1,5 @@
 import { useMemo, useState, type FormEvent } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { can } from "../api/staff";
 import {
@@ -35,6 +35,7 @@ import { PlaceHoldDialog, SCOPE_LABEL } from "../components/dialogs";
 import { CustomerStatusStrip } from "../components/CustomerStatusStrip";
 import { money, personLabel, when } from "../lib/format";
 import { useLoad } from "../lib/useLoad";
+import { CustomerMessages } from "./CustomerMessages";
 import { useT } from "../i18n/language";
 
 export const TYPE_LABEL: Record<string, string> = {
@@ -66,7 +67,9 @@ export function CustomersPage() {
   const [search, setSearch] = useState("");
   const [typed, setTyped] = useState("");
   const [page, setPage] = useState(1);
-  const [openId, setOpenId] = useState<string | null>(null);
+  // ?open=<id> opens a customer straight away (links from Transactions and Cases).
+  const [params] = useSearchParams();
+  const [openId, setOpenId] = useState<string | null>(() => (/^[a-f0-9]{24}$/i.test(params.get("open") ?? "") ? params.get("open") : null));
   const { data, error, loading } = useLoad(
     () => customers(filter, search, page),
     [filter, search, page],
@@ -464,6 +467,8 @@ function CustomerView({
           )}
         </div>
       </div>
+
+      <CustomerMessages customerId={customerId} />
 
       <div className="card panel">
         <h2>{t("Transaction history")}</h2>

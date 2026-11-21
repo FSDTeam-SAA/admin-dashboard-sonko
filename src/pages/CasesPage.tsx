@@ -7,6 +7,7 @@ import { ConfirmWithPin } from "../components/ConfirmWithPin";
 import { money, personLabel, when } from "../lib/format";
 import { useLoad } from "../lib/useLoad";
 import { useT } from "../i18n/language";
+import { FraudLimitsBox } from "./FraudLimits";
 
 export const CASE_LABEL: Record<CaseType, string> = {
   agent_debt: "Agent couldn't pay back",
@@ -14,6 +15,16 @@ export const CASE_LABEL: Record<CaseType, string> = {
   reversal_alert: "Many reversals on one agent",
   safeguarding_shortfall: "Safeguarding shortfall",
   safeguarding_mismatch: "Safeguarding figures didn't match",
+  fraud_alert: "Fraud alert",
+};
+
+/** What each fraud monitoring rule looks for. */
+export const RULE_LABEL: Record<string, string> = {
+  many_payments_hour: "Many payments in one hour",
+  big_day: "A lot of money out in one day",
+  new_account_big: "New account sending a lot",
+  many_recipients: "Many different people paid in one day",
+  many_failures: "Many failed payments in one hour",
 };
 
 const WHAT_NEXT: Record<CaseType, string> = {
@@ -22,6 +33,7 @@ const WHAT_NEXT: Record<CaseType, string> = {
   reversal_alert: "Three or more reversals against this agent in 30 days. Look at their recent cash outs on the Agents page. Suspending them is your decision; nothing happens by itself.",
   safeguarding_shortfall: "The safeguarding account held less than customers are owed, so money going out in this currency was paused. Top the account up from company money, then record and confirm a new balance on the Safeguarding page. Close this with what caused it and what was done.",
   safeguarding_mismatch: "Two staff members typed different safeguarding balances three times. Someone senior should compare both with the bank statement and record a new check. Close this with what was found.",
+  fraud_alert: "Fraud monitoring spotted unusual activity. Nothing was blocked. Open the customer's file and their recent payments, call them if needed, and decide. You can hold the account on the Account holds page. Close this with what you found.",
 };
 
 /** Debt and reversal-alert cases. Closing one only records what was done; no money moves. */
@@ -40,7 +52,7 @@ export function CasesPage() {
 
   return (
     <section>
-      <PageHeader title="Debt and alert cases" intro="Cases the system opened for staff to look into: reversals refused because a balance was too low, and agents with many reversals. Blocklist matches are on the Blocklist page." />
+      <PageHeader title="Debt and alert cases" intro="Cases the system opened for staff to look into: reversals refused because a balance was too low, agents with many reversals, fraud alerts and safeguarding problems. Blocklist matches are on the Blocklist page." />
       <Tabs
         value={status}
         options={[
@@ -59,6 +71,9 @@ export function CasesPage() {
           ["agent_debt", "Agent couldn't pay back"],
           ["customer_debt", "Customer couldn't pay back"],
           ["reversal_alert", "Many reversals on one agent"],
+          ["fraud_alert", "Fraud alert"],
+          ["safeguarding_shortfall", "Safeguarding shortfall"],
+          ["safeguarding_mismatch", "Safeguarding figures didn't match"],
         ] as const}
         onChange={(v) => {
           setType(v);
@@ -93,6 +108,12 @@ export function CasesPage() {
                   <dd>{money(c.amountMinor, c.currency)}</dd>
                 </>
               )}
+              {c.rule && (
+                <>
+                  <dt>{t("Rule")}</dt>
+                  <dd>{t(RULE_LABEL[c.rule] ?? c.rule)}</dd>
+                </>
+              )}
               {c.note && (
                 <>
                   <dt>{t("Note")}</dt>
@@ -109,6 +130,7 @@ export function CasesPage() {
         );
       })}
       <Pager pagination={data?.pagination} onPage={setPage} />
+      <FraudLimitsBox />
       {closing && (
         <ConfirmWithPin
           title="Close this case"

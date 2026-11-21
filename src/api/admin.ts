@@ -570,7 +570,7 @@ export type TicketFile = {
   canRemove: boolean;
 };
 
-export type CaseType = "agent_debt" | "customer_debt" | "reversal_alert" | "safeguarding_shortfall" | "safeguarding_mismatch";
+export type CaseType = "agent_debt" | "customer_debt" | "reversal_alert" | "safeguarding_shortfall" | "safeguarding_mismatch" | "fraud_alert";
 export type ComplianceCaseRow = {
   id: string;
   type: CaseType | "blocklist_match";
@@ -581,6 +581,8 @@ export type ComplianceCaseRow = {
   currency: string | null;
   amountMinor: number | null;
   note: string;
+  /** fraud_alert: which rule matched. */
+  rule?: string | null;
   createdAt: string;
   closedBy: Mini;
   closedAt: string | null;
@@ -1273,7 +1275,7 @@ export function acknowledgeComplaint(complaintId: string, note: string, key: str
 export function holdingResponse(complaintId: string, reason: string, finalPromisedFor: string, key: string) {
   return api<Complaint>(`/admin/complaints/${id(complaintId)}/holding`, { method: "POST", body: { reason, finalPromisedFor }, idempotencyKey: key });
 }
-export function closeComplaint(complaintId: string, body: { outcome: ComplaintOutcome; note: string; ombudsmanInformed: boolean; pin: string }, key: string) {
+export function closeComplaint(complaintId: string, body: { outcome: ComplaintOutcome; note: string; ombudsmanInformed: boolean; pin: string; redressMinor?: number; redressCurrency?: string }, key: string) {
   return api<Complaint>(`/admin/complaints/${id(complaintId)}/close`, { method: "POST", body, idempotencyKey: key });
 }
 
@@ -1298,4 +1300,119 @@ export function changeTicketLimits(hours: OverdueHours, reason: string, pin: str
 
 export function cancelTicketLimitsChange() {
   return api<null>("/admin/tickets/settings/limits/change", { method: "DELETE" });
+}
+
+// ---- Transactions (search every payment) ----
+
+export type TxPerson = { id: string; name: string; phone?: string } | null;
+export type TxRow = {
+  id: string;
+  txRef: string;
+  providerReference: string;
+  provider: string;
+  type: string;
+  status: string;
+  currency: string;
+  amountMinor: number;
+  description: string;
+  from: TxPerson;
+  to: TxPerson;
+  country: string;
+  senderCountry: string;
+  createdAt: string;
+  updatedAt: string;
+};
+export type TxDetail = TxRow & {
+  ledger: { purpose: string; account: string; currency: string; amountMinor: number; at: string }[];
+  tickets: { id: string; number: number; subject: string; status: string }[];
+};
+export type TxFilters = { type: string; status: string; currency: string; search: string; from: string; to: string; customer?: string };
+
+export function transactions(filters: TxFilters, page: number) {
+  const query = new URLSearchParams({ page: String(page), limit: "25" });
+  for (const key of ["type", "status", "currency", "search", "from", "to", "customer"] as const) {
+    const v = filters[key];
+    if (v) query.set(key, key === "customer" ? id(v) : v);
+  }
+  return api<{ transactions: TxRow[]; pagination: Pagination }>(`/admin/transactions?${query.toString()}`);
+}
+export function transaction(txId: string) {
+  return api<TxDetail>(`/admin/transactions/${id(txId)}`);
+}
+
+// ---- Finance overview ----
+
+export type FinanceMoneyDay = { day: string; inMinor: number; outMinor: number; refundsMinor: number; feesMinor: number; commissionMinor: number };
+export type Finance = {
+  asAt: string;
+  days: number;
+  money: { currency: string; totals: Omit<FinanceMoneyDay, "day">; days: FinanceMoneyDay[] }[];
+  payments: { days: { day: string; successful: number; failed: number; pending: number; other: number }[]; totals: { successful: number; failed: number; pending: number; other: number }; failureRate: number };
+  owed: { currency: string; owedMinor: number }[];
+  books: { ok: boolean; checkedAt: string; walletsChecked: number; mismatches: number; unbalancedPostings: number; negativeWallets: number };
+  safeguarding: { currency: string; asAt: string; bankMinor: number; owedMinor: number; differenceMinor: number }[] | null;
+  waiting: Partial<Record<"purchasesToCheck" | "openCases" | "reversalsWaiting" | "payoutsInReview" | "lateComplaints" | "stuckPayments", number>>;
+};
+export function finance(days: 7 | 30 | 90, fresh = false) {
+  return api<Finance>(`/admin/finance?days=${days}${fresh ? "&fresh=1" : ""}`);
+}
+
+// ---- Fraud monitoring limits (two people) ----
+
+export type FraudLimits = { paymentsPerHour: number; dayGbpMinor: number; newAccountDays: number; newAccountGbpMinor: number; recipientsPerDay: number; failuresPerHour: number };
+export type FraudSettings = {
+  limits: FraudLimits;
+  defaults: FraudLimits;
+  bounds: Record<keyof FraudLimits, [number, number]>;
+  lastRunAt: string | null;
+  pending: { limits: FraudLimits; reason: string; by: string; byId: string; at: string } | null;
+  changes: { from: FraudLimits | null; to: FraudLimits; reason: string; by: string; approvedBy: string; approveReason: string; at: string }[];
+};
+export function fraudSettings() {
+  return api<FraudSettings>("/admin/fraud/settings");
+}
+export function changeFraudLimits(limits: FraudLimits, reason: string, pin: string, key: string) {
+  return api<{ asked?: boolean; done?: boolean }>("/admin/fraud/settings/limits", { method: "PUT", body: { limits, reason, pin }, idempotencyKey: key });
+}
+export function cancelFraudLimitsChange() {
+  return api<null>("/admin/fraud/settings/limits/change", { method: "DELETE" });
+}
+
+// ---- Messages to one customer ----
+
+export type CustomerMessage = { id: string; text: string; lang: "en" | "fr"; by: string; at: string; ticket: string | null };
+export function customerMessages(customerId: string) {
+  return api<{ messages: CustomerMessage[] }>(`/admin/customers/${id(customerId)}/messages`);
+}
+export function sendCustomerMessage(customerId: string, body: { text: string; lang: "en" | "fr" }, key: string) {
+  return api<{ id: string }>(`/admin/customers/${id(customerId)}/messages`, { method: "POST", body, idempotencyKey: key });
+}
+
+// ---- FCA complaints return ----
+
+export type ComplaintReturn = {
+  period: string;
+  from: string;
+  to: string;
+  openAtStart: number;
+  received: number;
+  receivedByCategory: Record<string, number>;
+  receivedByCountry: Record<string, number>;
+  receivedByChannel: Record<string, number>;
+  closed: number;
+  closedByOutcome: Record<string, number>;
+  closedWithin: { "3": number; "15": number; "35": number; later: number };
+  upheldRate: number;
+  redress: Record<string, number>;
+  ombudsmanInformed: number;
+  fraudReceived: number;
+  fraudClosed: number;
+  openAtEnd: number;
+  rows: { number: number; received: string; closed: string; category: string; country: string; channel: string; outcome: string; businessDays: number | ""; redress: string }[];
+};
+export function complaintReturn(period: string) {
+  return api<ComplaintReturn>(`/admin/complaints/return?period=${encodeURIComponent(period)}`);
+}
+export function complaintReturnCsv(period: string) {
+  return api<Blob>(`/admin/complaints/return?period=${encodeURIComponent(period)}&format=csv`, { asFile: true });
 }

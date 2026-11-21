@@ -20,6 +20,7 @@ import { ConfirmWithPin } from "../components/ConfirmWithPin";
 import { when } from "../lib/format";
 import { newIdempotencyKey } from "../lib/idempotency";
 import { useLoad } from "../lib/useLoad";
+import { ComplaintReturnView } from "./ComplaintReturn";
 import { useT } from "../i18n/language";
 
 export const CHANNEL_LABEL: Record<ComplaintChannel, string> = {
@@ -75,6 +76,8 @@ export function ComplaintsPage() {
   const rows = data?.complaints ?? [];
   const mayLog = can(staff, "manage_tickets");
   const mayClose = can(staff, "close_complaints") && mayLog;
+  const mayReturn = can(staff, "view_complaint_return");
+  const [showReturn, setShowReturn] = useState(false);
   const finish = (message: string) => {
     setDialog(null);
     setDone(message);
@@ -86,8 +89,14 @@ export function ComplaintsPage() {
       <PageHeader
         title="Complaints"
         intro="Every complaint, from any country, with the clock the FCA sets. Send a written acknowledgement within 3 business days and a final response within 15 business days (35 only in exceptional cases, with a holding response by day 15). Weekends are skipped; bank holidays are not, so a date shown can be a day early but never late."
-        actions={mayLog ? <button onClick={() => setDialog({ kind: "log" })}>{t("Log a complaint")}</button> : undefined}
+        actions={
+          <>
+            {mayReturn && <button onClick={() => setShowReturn((v) => !v)}>{showReturn ? t("Back to complaints") : t("FCA return")}</button>}
+            {mayLog && <button onClick={() => setDialog({ kind: "log" })}>{t("Log a complaint")}</button>}
+          </>
+        }
       />
+      {showReturn && <ComplaintReturnView />}
       {customer && (
         <p className="notice">
           {t("Showing complaints from {name} only.", { name: customer.name || t("this customer") })}{" "}
@@ -270,14 +279,17 @@ function CloseDialog({ c, onClose, onDone }: DialogProps & { c: Complaint }) {
   const [outcome, setOutcome] = useState<ComplaintOutcome>("not_upheld");
   const [informed, setInformed] = useState(false);
   const [note, setNote] = useState("");
+  const [redress, setRedress] = useState("");
+  const [redressCurrency, setRedressCurrency] = useState("GBP");
+  const redressMinor = parseRedress(redress);
   return (
     <ConfirmWithPin
       title="Close with final response"
       confirmLabel="Close complaint"
-      canConfirm={informed && okLength(note, 10, 1000)}
+      canConfirm={informed && okLength(note, 10, 1000) && redressMinor !== null}
       onClose={onClose}
       onConfirm={async (pin) => {
-        await closeComplaint(c.id, { outcome, note: note.trim(), ombudsmanInformed: true, pin }, key);
+        await closeComplaint(c.id, { outcome, note: note.trim(), ombudsmanInformed: true, pin, ...(redressMinor ? { redressMinor, redressCurrency } : {}) }, key);
         onDone("Complaint closed.");
       }}
     >
@@ -291,6 +303,26 @@ function CloseDialog({ c, onClose, onDone }: DialogProps & { c: Complaint }) {
         <input type="checkbox" checked={informed} onChange={(e) => setInformed(e.target.checked)} /> {t("The final response tells the customer they can take the complaint to the Financial Ombudsman Service.")}
       </label>
       <TextArea label="What the final response said and how it was sent" value={note} onChange={setNote} min={10} max={1000} />
+      <label>
+        {t("Money paid or credited to put it right (leave empty if none)")}
+        <span className="row-start">
+          <input inputMode="decimal" value={redress} onChange={(e) => setRedress(e.target.value)} placeholder="0.00" />
+          <select value={redressCurrency} onChange={(e) => setRedressCurrency(e.target.value)}>
+            {/* Currencies with pence-style cents only, so the amount reads the same. */}
+            {["GBP", "EUR", "GMD"].map((x) => <option key={x} value={x}>{x}</option>)}
+          </select>
+        </span>
+      </label>
+      {redressMinor === null && <p className="error">{t("Enter the amount like 25 or 25.50.")}</p>}
     </ConfirmWithPin>
   );
+}
+
+/** "25.50" -> 2550; empty -> 0; anything else -> null. Two decimals at most. */
+export function parseRedress(text: string): number | null {
+  const s = text.trim();
+  if (!s) return 0;
+  if (!/^\d{1,7}(\.\d{1,2})?$/.test(s)) return null;
+  const [whole, frac = ""] = s.split(".");
+  return Number(whole) * 100 + Number(frac.padEnd(2, "0"));
 }

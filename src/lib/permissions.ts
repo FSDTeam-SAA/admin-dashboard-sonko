@@ -14,12 +14,14 @@ export const PERMISSION_GROUPS: { title: string; items: [string, string][] }[] =
     title: "Tickets and analytics",
     items: [
       ["edit_customers", "Edit customer details (phone changes need a second person)"],
+      ["message_customers", "Send one customer a text message from their file (no links or long numbers)"],
       ["verify_callers", "Check a caller is the customer (text code or questions)"],
       ["view_tickets", "See tickets and ticket figures"],
       ["manage_tickets", "Open tickets, write notes, change priority and status"],
       ["set_critical", "Make a ticket critical or take it off critical (emergencies only); also texted about new high and critical tickets (senior)"],
       ["manage_ticket_limits", "Change how long a ticket can wait before it is overdue (a second person must approve)"],
       ["close_complaints", "Send the final response and close a complaint (also see and log complaints with the ticket permissions)"],
+      ["view_complaint_return", "See and download the FCA complaints return figures"],
       ["translate_notes", "Translate ticket notes (the note's text, without phone numbers or emails, is sent to Google)"],
       ["ticket_files", "Add and open files on tickets (ID documents and statements: give only to those who need it)"],
       ["keep_ticket_files", "Keep a ticket's files past the six years (fraud, police, a dispute); changing or ending it needs a second person"],
@@ -44,6 +46,7 @@ export const PERMISSION_GROUPS: { title: string; items: [string, string][] }[] =
       ["view_reports", "See reported requests"],
       ["view_cases", "See debt and alert cases"],
       ["close_cases", "Close debt and alert cases with a note"],
+      ["manage_fraud_rules", "Change the fraud monitoring limits (a second person must approve)"],
       ["view_safeguarding", "See the daily safeguarding check (senior staff only)"],
       ["record_safeguarding", "Type or confirm the safeguarding bank balance"],
       ["view_headroom", "See how close Sunu Pay is to the small e-money limits (senior staff only)"],
@@ -61,6 +64,7 @@ export const PERMISSION_GROUPS: { title: string; items: [string, string][] }[] =
   {
     title: "Money",
     items: [
+      ["view_finance", "See the money picture: money in and out, fees, failed payments, the books check (senior)"],
       ["view_reversals", "See refunds and reversals"],
       ["request_reversal", "Ask for a refund or reversal"],
       ["approve_reversal", "Approve a refund or reversal"],
