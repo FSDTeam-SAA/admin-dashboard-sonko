@@ -1327,4 +1327,5 @@ export const FR: Record<string, string> = {
   "Show all": "Tout afficher",
   "this customer": "ce client",
   "This complaint will be linked to {name}'s file.": "Cette réclamation sera liée au dossier de {name}.",
+  "Keep this record until at least {date}.": "Conservez ce dossier au moins jusqu’au {date}.",
 };

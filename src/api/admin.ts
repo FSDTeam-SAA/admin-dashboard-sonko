@@ -1219,6 +1219,8 @@ export type Complaint = {
   finalPromisedFor: string | null;
   closedAt: string | null;
   outcome: ComplaintOutcome | null;
+  /** Records are kept at least three years from the day received (DISP 1.9.1R). */
+  retainUntil?: string;
   clock: { ackDue: string; finalDue: string; ackLate: boolean; finalLate: boolean; holdingLate: boolean; dueSoon: boolean; next: "ack" | "final" | null };
   history: { kind: "logged" | "acknowledged" | "holding" | "closed"; by: string; at: string; note: string }[];
 };

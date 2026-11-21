@@ -142,6 +142,7 @@ export function ComplaintsPage() {
               )}
             </dl>
             <p>{c.summary}</p>
+            {c.retainUntil && <p className="muted small">{t("Keep this record until at least {date}.", { date: when(c.retainUntil) })}</p>}
             <ul className="plain-list">
               {c.history.map((h, i) => (
                 <li key={i} className="small muted">
