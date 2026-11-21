@@ -20,6 +20,7 @@ import {
   tickets,
   ticketStats,
   TICKET_CATEGORIES,
+  PAYMENT_TOPICS,
   type TicketCategory,
   type TicketFilters,
   type TicketPriority,
@@ -29,6 +30,7 @@ import {
 import { Badge, LoadState, PageHeader, Pager, Tabs } from "../components/common";
 import { ConfirmWithPin } from "../components/ConfirmWithPin";
 import { OverdueLimits } from "./TicketLimits";
+import { CustomerSearch, PaymentCard, PaymentPicker } from "./TicketPayment";
 import { Bars, monthLabel } from "./AnalyticsPage";
 import { newIdempotencyKey } from "../lib/idempotency";
 import { when } from "../lib/format";
@@ -44,7 +46,7 @@ export function priorityChoices(mayCritical: boolean, current?: TicketPriority):
 }
 export const STATUS_LABEL: Record<TicketStatus, string> = { open: "Open", in_progress: "In progress", resolved: "Resolved", closed: "Closed" };
 export const CATEGORY_LABEL: Record<string, string> = Object.fromEntries(TICKET_CATEGORIES);
-const FIELD_LABEL: Record<string, string> = { priority: "Priority", status: "Status", category: "Topic", assignedTo: "Assigned" };
+const FIELD_LABEL: Record<string, string> = { priority: "Priority", status: "Status", category: "Topic", assignedTo: "Assigned", transaction: "Payment" };
 
 export function TicketsPage() {
   const { staff } = useAuth();
@@ -195,9 +197,11 @@ export function TicketsPage() {
   );
 }
 
-function NewTicket({ customer, onBack, onDone }: { customer: { id: string; name: string } | null; onBack: () => void; onDone: (id: string) => void }) {
+function NewTicket({ customer: given, onBack, onDone }: { customer: { id: string; name: string } | null; onBack: () => void; onDone: (id: string) => void }) {
   const { staff } = useAuth();
   const t = useT();
+  const [customer, setCustomer] = useState(given);
+  const [payment, setPayment] = useState<string | null>(null);
   const [subject, setSubject] = useState("");
   const [detail, setDetail] = useState("");
   const [priority, setPriority] = useState<TicketPriority>("medium");
@@ -206,7 +210,8 @@ function NewTicket({ customer, onBack, onDone }: { customer: { id: string; name:
   const [error, setError] = useState<string | null>(null);
   // One key per form, so pressing the button twice opens one ticket.
   const key = useMemo(newIdempotencyKey, []);
-  const ok = subject.trim().length >= 3 && !busy;
+  const needsPayment = PAYMENT_TOPICS.includes(category);
+  const ok = subject.trim().length >= 3 && !busy && (!needsPayment || (customer && payment));
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -214,7 +219,7 @@ function NewTicket({ customer, onBack, onDone }: { customer: { id: string; name:
     setBusy(true);
     setError(null);
     try {
-      const made = await openTicket({ subject: subject.trim(), detail: detail.trim(), priority, category, ...(customer ? { customer: customer.id } : {}) }, key);
+      const made = await openTicket({ subject: subject.trim(), detail: detail.trim(), priority, category, ...(customer ? { customer: customer.id } : {}), ...(customer && payment ? { transaction: payment } : {}) }, key);
       onDone(made.id);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : t("Could not open the ticket."));
@@ -229,7 +234,16 @@ function NewTicket({ customer, onBack, onDone }: { customer: { id: string; name:
       </button>
       <h1>{t("New ticket")}</h1>
       <form className="card panel stack" onSubmit={submit}>
-        {customer && <p className="notice">{t("For customer: {name}", { name: customer.name || customer.id })}</p>}
+        {customer && (
+          <p className="notice">
+            {t("For customer: {name}", { name: customer.name || customer.id })}
+            {!given && (
+              <button type="button" className="link" onClick={() => { setCustomer(null); setPayment(null); }}>
+                {" "}{t("Change")}
+              </button>
+            )}
+          </p>
+        )}
         <label>
           {t("Subject")}
           <input value={subject} maxLength={120} onChange={(e) => setSubject(e.target.value)} />
@@ -262,6 +276,9 @@ function NewTicket({ customer, onBack, onDone }: { customer: { id: string; name:
           </label>
         </div>
         <p className="hint">{t("Pick the topic that fits best. The analytics use it to show what causes the most tickets.")}</p>
+        {needsPayment && !customer && <CustomerSearch onPick={(c) => { setCustomer(c); setPayment(null); }} />}
+        {needsPayment && customer && <PaymentPicker customerId={customer.id} value={payment} onPick={(p) => setPayment(p.id)} />}
+        {needsPayment && !(customer && payment) && <p className="hint">{t("For this topic, pick the customer and the payment it is about.")}</p>}
         {error && (
           <p className="error" role="alert">
             {error}
@@ -347,6 +364,13 @@ function TicketView({ ticketId, onBack }: { ticketId: string; onBack: () => void
               </>
             )}
           </dl>
+          <PaymentCard payment={data.payment} linked={data.paymentLinked} />
+          {!data.paymentLinked && data.customer && mayManage && !data.erased && (can(staff, "view_customers") || can(staff, "view_transactions")) && (
+            <details>
+              <summary>{t("Link the payment it is about")}</summary>
+              <PaymentPicker customerId={data.customer.id} value={null} onPick={(p) => run(() => changeTicket(data.id, { transaction: p.id }))} />
+            </details>
+          )}
         </div>
         <div className="card panel">
           <h2>{t("Handle")}</h2>
@@ -481,7 +505,7 @@ function TicketView({ ticketId, onBack }: { ticketId: string; onBack: () => void
                   ? t("{name} attached a file: {file}", { name: h.by?.name || t("Staff"), file: h.to || t("deleted") })
                   : h.field === "file_removed"
                     ? t("{name} took off a file: {file}", { name: h.by?.name || t("Staff"), file: h.from || t("deleted") })
-                    : `${t("{name} changed {field}", { name: h.by?.name || t("Staff"), field: t(FIELD_LABEL[h.field] ?? h.field) })}${h.field === "assignedTo" ? "" : `: ${nice(h.field, h.from, t.language)} → ${nice(h.field, h.to, t.language)}`}`}
+                    : `${t("{name} changed {field}", { name: h.by?.name || t("Staff"), field: t(FIELD_LABEL[h.field] ?? h.field) })}${h.field === "assignedTo" || h.field === "transaction" ? "" : `: ${nice(h.field, h.from, t.language)} → ${nice(h.field, h.to, t.language)}`}`}
               </li>
             ))}
           </ul>

@@ -497,6 +497,23 @@ export const TICKET_CATEGORIES = [
   ["other", "Other"],
 ] as const;
 export type TicketCategory = (typeof TICKET_CATEGORIES)[number][0];
+/** Topics about one payment: the ticket must name the customer and the payment (the server checks too). */
+export const PAYMENT_TOPICS: readonly TicketCategory[] = ["payment_failed", "money_missing", "cash_out"];
+export type TicketPayment = {
+  id: string;
+  txRef: string;
+  type: string;
+  status: string;
+  currency: string;
+  amountMinor: number;
+  description: string;
+  direction: "in" | "out";
+  otherParty: { id: string; name: string } | null;
+  at: string;
+};
+export function ticketPayments(customerId: string) {
+  return api<{ payments: TicketPayment[]; days: number }>(`/admin/tickets/payments?customer=${encodeURIComponent(customerId)}`);
+}
 
 type Named = { id: string; name: string } | null;
 
@@ -520,6 +537,9 @@ export type TicketDetail = Omit<TicketRow, "customer" | "assignedTo"> & {
   /** Wiped after six years of quiet: words gone, figures stay. */
   erased?: boolean;
   customer: Mini;
+  /** The payment it is about. paymentLinked says one is linked; payment is null if this person may not see payments. */
+  paymentLinked?: boolean;
+  payment?: TicketPayment | null;
   createdBy: Mini;
   assignedTo: Mini;
   notes: { by: Mini; text: string; at: string }[];
@@ -613,7 +633,7 @@ export function ticket(ticketId: string) {
   return api<TicketDetail>(`/admin/tickets/${id(ticketId)}`);
 }
 
-export function openTicket(body: { subject: string; detail: string; priority: TicketPriority; category: TicketCategory; customer?: string }, key: string) {
+export function openTicket(body: { subject: string; detail: string; priority: TicketPriority; category: TicketCategory; customer?: string; transaction?: string }, key: string) {
   return api<{ id: string; number: number }>(`/admin/tickets`, { method: "POST", body, idempotencyKey: key });
 }
 
@@ -645,7 +665,7 @@ export function removeTicketFile(ticketId: string, fileId: string) {
   return api(`/admin/tickets/${id(ticketId)}/files/${id(fileId)}`, { method: "DELETE" });
 }
 
-export function changeTicket(ticketId: string, body: { priority?: TicketPriority; status?: TicketStatus; category?: TicketCategory; assignedTo?: string | null }) {
+export function changeTicket(ticketId: string, body: { priority?: TicketPriority; status?: TicketStatus; category?: TicketCategory; assignedTo?: string | null; transaction?: string }) {
   return api(`/admin/tickets/${id(ticketId)}`, { method: "PATCH", body });
 }
 
