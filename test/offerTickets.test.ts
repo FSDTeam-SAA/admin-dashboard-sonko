@@ -1,8 +1,8 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { approveOfferCard, approveTicketEvent, cancelTicketEvent, makeOfferCard, makeTicketEvent, offerCards, setGateStaff, ticketEvents, withdrawOfferCard } from "../src/api/admin";
+import { approveOfferCard, approveTicketEvent, cancelTicketEvent, eventTickets, makeOfferCard, makeTicketEvent, offerCards, payOrganiser, refundEventTicket, refundEveryone, setGateStaff, ticketEvents, withdrawOfferCard, type TicketEvent } from "../src/api/admin";
 import { clearTokens, setTokens } from "../src/api/session";
 import { offerProblems } from "../src/pages/OfferCardsPage";
-import { phoneList, toMinorUnits } from "../src/pages/TicketEventsPage";
+import { canPayOut, phoneList, toMinorUnits } from "../src/pages/TicketEventsPage";
 
 type Call = { url: string; init: RequestInit };
 let calls: Call[];
@@ -51,5 +51,24 @@ describe("offer cards and event tickets", () => {
     expect(toMinorUnits("3.505", "GMD")).toBeNull();
     expect(toMinorUnits("abc", "GMD")).toBeNull();
     expect(phoneList("+220861234567\n +220861234568, ,")).toEqual(["+220861234567", "+220861234568"]);
+  });
+
+  it("refunds and payout use the right routes, PIN and keys", async () => {
+    await eventTickets("e1", "T-AAAA-BBBB");
+    await refundEventTicket("t1", "Can't come", false, "482915", "k1");
+    await refundEveryone("e1", "Event cancelled", "482915", "k2");
+    await payOrganiser("e1", "482915", "k3");
+    expect(calls.map(path)).toEqual(["/admin/ticket-events/e1/tickets?search=T-AAAA-BBBB", "/admin/event-tickets/t1/refund", "/admin/ticket-events/e1/refund-all", "/admin/ticket-events/e1/pay-organiser"]);
+    expect(JSON.parse(calls[1]!.init.body as string)).toEqual({ reason: "Can't come", includeFee: false, pin: "482915" });
+    expect((calls[3]!.init.headers as Record<string, string>)["Idempotency-Key"]).toBe("k3");
+  });
+
+  it("shows Pay the organiser only when it is due, or a cancelled event has no refunds waiting", () => {
+    const base = { paidOutAt: null, state: "over", payoutState: "due", refundsWaiting: 0, heldPriceMinor: 70000, heldFeeMinor: 2000 } as unknown as TicketEvent;
+    expect(canPayOut(base)).toBe(true);
+    expect(canPayOut({ ...base, payoutState: "holding" })).toBe(false);
+    expect(canPayOut({ ...base, paidOutAt: "x" })).toBe(false);
+    expect(canPayOut({ ...base, state: "cancelled", payoutState: "holding", refundsWaiting: 2 })).toBe(false);
+    expect(canPayOut({ ...base, state: "cancelled", payoutState: "holding", heldPriceMinor: 0, heldFeeMinor: 500 })).toBe(true);
   });
 });

@@ -224,7 +224,7 @@ export const NAV: NavItem[] = [
     path: "/events",
     label: "Event tickets",
     permission: "manage_ticket_events",
-    routes: ["GET /admin/ticket-events", "POST /admin/ticket-events", "POST /admin/ticket-events/:id/approve", "POST /admin/ticket-events/:id/cancel", "POST /admin/ticket-events/:id/gate-staff"],
+    routes: ["GET /admin/ticket-events", "POST /admin/ticket-events", "POST /admin/ticket-events/:id/approve", "POST /admin/ticket-events/:id/cancel", "POST /admin/ticket-events/:id/gate-staff", "GET /admin/ticket-events/:id/tickets", "POST /admin/event-tickets/:ticketId/refund", "POST /admin/ticket-events/:id/refund-all", "POST /admin/ticket-events/:id/pay-organiser"],
     ready: true,
   },
   {

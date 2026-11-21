@@ -33,6 +33,7 @@ export const PERMISSION_GROUPS: { title: string; items: [string, string][] }[] =
       ["send_announcements", "Write announcements to customers (a second person approves)"],
       ["manage_offer_cards", "Make offer cards for the end of Home, including advertisers' (a second person approves)"],
       ["manage_ticket_events", "Set up events and sell tickets in the app (a second person approves the organiser account)"],
+      ["ticket_money", "Refund tickets from the money Sunu Pay holds, and pay organisers after the event"],
     ],
   },
   {

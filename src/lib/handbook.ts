@@ -220,8 +220,8 @@ export const HANDBOOK: HandbookEntry[] = [
       fr: "Les événements dont les billets sont vendus uniquement dans l’application. Voyez les ventes et le nombre d’entrées. Choisissez le personnel à l’entrée ou annulez un événement.",
     },
     careful: {
-      en: "The ticket money goes to the organiser's account, so the approver must check it is the right person. Cancelling does not refund anyone automatically.",
-      fr: "L’argent des billets va sur le compte de l’organisateur : la personne qui approuve doit vérifier que c’est la bonne. Annuler ne rembourse personne automatiquement.",
+      en: "Sunu Pay holds the ticket money until 3 days after the event; then it goes to the organiser's account, so the approver must check it is the right person. After a cancellation, a second person presses Refund everyone.",
+      fr: "Sunu Pay détient l’argent des billets jusqu’à 3 jours après l’événement ; ensuite il va sur le compte de l’organisateur, donc la personne qui approuve doit vérifier que c’est la bonne. Après une annulation, une seconde personne appuie sur Rembourser tout le monde.",
     },
   },
   {

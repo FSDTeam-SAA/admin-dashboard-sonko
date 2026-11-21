@@ -1554,7 +1554,32 @@ export type TicketEvent = {
   cancelledByName: string;
   cancelledAt: string | null;
   cancelReason: string;
-  paidToOrganiserMinor: number;
+  refunded: number;
+  refundsWaiting: number;
+  heldPriceMinor: number;
+  heldFeeMinor: number;
+  payoutState: "holding" | "due" | "paid";
+  payoutDueAt: string;
+  paidOutAt: string | null;
+  paidOutByName: string;
+  payoutPriceMinor: number | null;
+  payoutFeeMinor: number | null;
+};
+export type EventTicketRow = {
+  id: string;
+  number: string;
+  status: "valid" | "used" | "void" | "refunded";
+  ownerName: string;
+  ownerPhone: string;
+  priceMinor: number;
+  feeMinor: number;
+  currency: string;
+  boughtAt: string;
+  usedAt: string | null;
+  refundedAt: string | null;
+  refundedByName: string;
+  feeRefunded: boolean;
+  refundReason: string;
 };
 export type TicketEventDraft = {
   titleEn: string;
@@ -1592,4 +1617,20 @@ export function cancelTicketEvent(eventId: string, reason: string, pin: string, 
 
 export function setGateStaff(eventId: string, gatePhones: string[], pin: string) {
   return api(`/admin/ticket-events/${id(eventId)}/gate-staff`, { method: "POST", body: { gatePhones, pin } });
+}
+
+export function eventTickets(eventId: string, search = "") {
+  return api<EventTicketRow[]>(`/admin/ticket-events/${id(eventId)}/tickets${search ? `?search=${encodeURIComponent(search)}` : ""}`);
+}
+
+export function refundEventTicket(ticketId: string, reason: string, includeFee: boolean, pin: string, key: string) {
+  return api<{ amountMinor: number; currency: string }>(`/admin/event-tickets/${id(ticketId)}/refund`, { method: "POST", body: { reason, includeFee, pin }, idempotencyKey: key });
+}
+
+export function refundEveryone(eventId: string, reason: string, pin: string, key: string) {
+  return api<{ refunded: number; failed: { ticketId: string; message: string }[] }>(`/admin/ticket-events/${id(eventId)}/refund-all`, { method: "POST", body: { reason, pin }, idempotencyKey: key });
+}
+
+export function payOrganiser(eventId: string, pin: string, key: string) {
+  return api<{ priceMinor: number; feeMinor: number; currency: string }>(`/admin/ticket-events/${id(eventId)}/pay-organiser`, { method: "POST", body: { pin }, idempotencyKey: key });
 }

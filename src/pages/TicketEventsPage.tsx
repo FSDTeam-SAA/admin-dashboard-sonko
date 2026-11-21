@@ -2,14 +2,20 @@ import { useMemo, useState } from "react";
 import {
   approveTicketEvent,
   cancelTicketEvent,
+  eventTickets,
   makeTicketEvent,
+  payOrganiser,
+  refundEventTicket,
+  refundEveryone,
   setGateStaff,
   ticketEvents,
+  type EventTicketRow,
   type TicketEvent,
   type TicketEventDraft,
   type TicketEventState,
 } from "../api/admin";
 import { useAuth } from "../auth/AuthContext";
+import { can } from "../api/staff";
 import { Badge, LoadState, PageHeader } from "../components/common";
 import { ConfirmWithPin } from "../components/ConfirmWithPin";
 import { decimalsOf, money, when } from "../lib/format";
@@ -25,6 +31,26 @@ export const EVENT_STATE: Record<TicketEventState, { label: string; tone: "ok" |
   over: { label: "Over", tone: "plain" },
   cancelled: { label: "Cancelled", tone: "danger" },
 };
+
+export const PAYOUT_LABEL: Record<TicketEvent["payoutState"], { label: string; tone: "ok" | "warn" | "plain" }> = {
+  holding: { label: "Held by Sunu Pay", tone: "plain" },
+  due: { label: "Ready to pay the organiser", tone: "warn" },
+  paid: { label: "Organiser paid", tone: "ok" },
+};
+
+export const TICKET_STATUS: Record<EventTicketRow["status"], string> = {
+  valid: "Valid",
+  used: "Used",
+  void: "Cancelled, refund waiting",
+  refunded: "Refunded",
+};
+
+/** Whether the "Pay the organiser" button should show. The server checks again. */
+export function canPayOut(e: TicketEvent): boolean {
+  if (e.paidOutAt) return false;
+  if (e.state === "cancelled") return e.refundsWaiting === 0 && e.heldPriceMinor + e.heldFeeMinor > 0;
+  return e.payoutState === "due" && e.heldPriceMinor + e.heldFeeMinor > 0;
+}
 
 /** "350" or "350.50" typed by staff, in minor units; null if it isn't a price. */
 export function toMinorUnits(text: string, currency: string): number | null {
@@ -65,6 +91,10 @@ export function TicketEventsPage() {
   const [approving, setApproving] = useState<TicketEvent | null>(null);
   const [cancelling, setCancelling] = useState<TicketEvent | null>(null);
   const [gate, setGate] = useState<TicketEvent | null>(null);
+  const [list, setList] = useState<TicketEvent | null>(null);
+  const [refundAll, setRefundAll] = useState<TicketEvent | null>(null);
+  const [paying, setPaying] = useState<TicketEvent | null>(null);
+  const money_ = can(staff, "ticket_money");
   const [done, setDone] = useState<string | null>(null);
   const { data, error, loading } = useLoad(() => ticketEvents(), [reload]);
   const rows = data ?? [];
@@ -73,6 +103,8 @@ export function TicketEventsPage() {
     setApproving(null);
     setCancelling(null);
     setGate(null);
+    setRefundAll(null);
+    setPaying(null);
     setDone(message);
     setReload((n) => n + 1);
   };
@@ -80,14 +112,14 @@ export function TicketEventsPage() {
     <section>
       <PageHeader
         title="Event tickets"
-        intro="Tickets sold only in the app. Each ticket shows a code that changes every 30 seconds, so screenshots and copies don't work, and the gate lets each ticket in once. The price goes straight to the organiser's Sunu Pay wallet; the Sunu Pay fee is added on top for the buyer."
+        intro="Tickets sold only in the app. Each ticket shows a code that changes every 30 seconds, so screenshots and copies don't work, and the gate lets each ticket in once. Sunu Pay holds the ticket money until 3 days after the event, so refunds are always possible until then; then the organiser is paid their share and Sunu Pay keeps its fee."
         actions={
           <button className="primary" onClick={() => setMaking(true)}>
             {t("Set up an event")}
           </button>
         }
       />
-      <p className="notice">{t("Not built yet: refunds when an event is cancelled, and passing a ticket to someone else. Check the money side with your lawyer before the first real sale.")}</p>
+      <p className="notice">{t("Not built yet: passing a ticket to someone else. Check with your lawyer how held ticket money must be kept before the first real sale.")}</p>
       {done && <p className="notice">{t(done)}</p>}
       <LoadState loading={loading && !data} error={error} empty={!rows.length} />
       {rows.length > 0 && (
@@ -101,6 +133,7 @@ export function TicketEventsPage() {
                   <th>{t("Price")}</th>
                   <th>{t("Sold")}</th>
                   <th>{t("Checked in")}</th>
+                  <th>{t("Money")}</th>
                   <th>{t("Organiser")}</th>
                   <th />
                 </tr>
@@ -124,19 +157,43 @@ export function TicketEventsPage() {
                     </td>
                     <td className="num">
                       {e.sold} / {e.capacity}
-                      <br />
-                      <span className="muted small">{money(e.paidToOrganiserMinor, e.currency)}</span>
+                      {e.refunded > 0 && (
+                        <>
+                          <br />
+                          <span className="muted small">{t("{n} refunded", { n: e.refunded })}</span>
+                        </>
+                      )}
                     </td>
                     <td className="num">{e.checkedIn}</td>
+                    <td>
+                      <Badge tone={PAYOUT_LABEL[e.payoutState].tone}>{t(PAYOUT_LABEL[e.payoutState].label)}</Badge>
+                      <br />
+                      <span className="muted small">
+                        {e.paidOutAt
+                          ? t("{price} to the organiser, {fee} fees, {when}", { price: money(e.payoutPriceMinor ?? 0, e.currency), fee: money(e.payoutFeeMinor ?? 0, e.currency), when: when(e.paidOutAt) })
+                          : t("{price} for the organiser + {fee} fees, payable from {when}", { price: money(e.heldPriceMinor, e.currency), fee: money(e.heldFeeMinor, e.currency), when: when(e.payoutDueAt) })}
+                      </span>
+                    </td>
                     <td>
                       {e.organiserName || "—"}
                       <br />
                       <span className="muted small">{e.organiserPhone}</span>
                     </td>
                     <td className="actions">
+                      <button onClick={() => setList(e)}>{t("Tickets")}</button>
+                      {money_ && e.state === "cancelled" && e.refundsWaiting > 0 && !e.paidOutAt && (
+                        <button className="primary" onClick={() => setRefundAll(e)}>
+                          {t("Refund everyone")}
+                        </button>
+                      )}
+                      {money_ && canPayOut(e) && (
+                        <button className="primary" onClick={() => setPaying(e)}>
+                          {t("Pay the organiser")}
+                        </button>
+                      )}
                       {e.state === "waiting" && e.createdBy !== staff?._id && <button onClick={() => setApproving(e)}>{t("Review and approve")}</button>}
                       {e.state !== "cancelled" && e.state !== "over" && <button onClick={() => setGate(e)}>{t("Gate staff")}</button>}
-                      {e.state !== "cancelled" && e.state !== "over" && (
+                      {e.state !== "cancelled" && e.state !== "over" && !e.paidOutAt && (
                         <button className="danger" onClick={() => setCancelling(e)}>
                           {t("Cancel event")}
                         </button>
@@ -153,6 +210,9 @@ export function TicketEventsPage() {
       {approving && <ApproveDialog e={approving} onClose={() => setApproving(null)} onDone={finish} />}
       {cancelling && <CancelDialog e={cancelling} onClose={() => setCancelling(null)} onDone={finish} />}
       {gate && <GateDialog e={gate} onClose={() => setGate(null)} onDone={finish} />}
+      {list && <TicketsDialog e={list} canRefund={money_} onClose={() => setList(null)} onChanged={() => setReload((n) => n + 1)} />}
+      {refundAll && <RefundAllDialog e={refundAll} onClose={() => setRefundAll(null)} onDone={finish} />}
+      {paying && <PayDialog e={paying} onClose={() => setPaying(null)} onDone={finish} />}
     </section>
   );
 }
@@ -296,10 +356,10 @@ function CancelDialog({ e, onClose, onDone }: { e: TicketEvent; onClose: () => v
       onClose={onClose}
       onConfirm={async (pin) => {
         await cancelTicketEvent(e.id, reason.trim(), pin, key);
-        onDone("Cancelled. Sales stopped and unused tickets no longer work. Refunds are not automatic.");
+        onDone("Cancelled. Sales stopped and unused tickets no longer work. A different staff member can now refund everyone.");
       }}
     >
-      <p>{t("Sales stop at once and the {n} unused tickets stop working at the gate. Paying people back is not automatic: agree it with the organiser.", { n: e.sold - e.checkedIn })}</p>
+      <p>{t("Sales stop at once and the {n} unused tickets stop working at the gate. Then a different staff member presses Refund everyone: buyers get the price and the fee back from the money Sunu Pay holds.", { n: e.sold - e.checkedIn })}</p>
       <label>
         {t("Why")}
         <input value={reason} maxLength={300} onChange={(ev) => setReason(ev.target.value)} />
@@ -326,6 +386,175 @@ function GateDialog({ e, onClose, onDone }: { e: TicketEvent; onClose: () => voi
         {t("Numbers (one per line)")}
         <textarea rows={5} value={text} onChange={(ev) => setText(ev.target.value)} />
       </label>
+    </ConfirmWithPin>
+  );
+}
+
+function TicketsDialog({ e, canRefund, onClose, onChanged }: { e: TicketEvent; canRefund: boolean; onClose: () => void; onChanged: () => void }) {
+  const t = useT();
+  const [search, setSearch] = useState("");
+  const [query, setQuery] = useState("");
+  const [reload, setReload] = useState(0);
+  const [refunding, setRefunding] = useState<EventTicketRow | null>(null);
+  const [done, setDone] = useState<string | null>(null);
+  const { data, error, loading } = useLoad(() => eventTickets(e.id, query), [e.id, query, reload]);
+  const rows = data ?? [];
+  return (
+    <div className="overlay" role="presentation">
+      <div className="card dialog" role="dialog" aria-modal="true" aria-labelledby="tickets-title" style={{ maxWidth: 860 }}>
+        <h2 id="tickets-title">{t("Tickets for {title}", { title: e.titleEn })}</h2>
+        <form
+          className="stack"
+          onSubmit={(ev) => {
+            ev.preventDefault();
+            setQuery(search.trim());
+          }}
+        >
+          <label>
+            {t("Ticket number (for example T-7KQ2-M9XD)")}
+            <input value={search} onChange={(ev) => setSearch(ev.target.value.toUpperCase())} />
+          </label>
+        </form>
+        {done && <p className="notice">{t(done)}</p>}
+        <LoadState loading={loading && !data} error={error} empty={!rows.length} />
+        {rows.length > 0 && (
+          <div className="table-wrap" style={{ maxHeight: 420, overflow: "auto" }}>
+            <table>
+              <thead>
+                <tr>
+                  <th>{t("Ticket")}</th>
+                  <th>{t("Buyer")}</th>
+                  <th>{t("Status")}</th>
+                  <th>{t("Paid")}</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r) => (
+                  <tr key={r.id}>
+                    <td>
+                      <code>{r.number}</code>
+                      <br />
+                      <span className="muted small">{when(r.boughtAt)}</span>
+                    </td>
+                    <td>
+                      {r.ownerName || "—"}
+                      <br />
+                      <span className="muted small">{r.ownerPhone}</span>
+                    </td>
+                    <td>
+                      {t(TICKET_STATUS[r.status])}
+                      {r.refundedAt && (
+                        <>
+                          <br />
+                          <span className="muted small">
+                            {t("By {name}, {when}", { name: r.refundedByName || "—", when: when(r.refundedAt) })}
+                            {r.feeRefunded ? "" : ` · ${t("fee kept")}`}
+                          </span>
+                        </>
+                      )}
+                    </td>
+                    <td className="num">{money(r.priceMinor + r.feeMinor, r.currency)}</td>
+                    <td className="actions">
+                      {canRefund && !e.paidOutAt && (r.status === "valid" || r.status === "void") && <button onClick={() => setRefunding(r)}>{t("Refund")}</button>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <div className="row-end">
+          <button type="button" onClick={onClose}>
+            {t("Close")}
+          </button>
+        </div>
+      </div>
+      {refunding && (
+        <RefundDialog
+          ticket={refunding}
+          onClose={() => setRefunding(null)}
+          onDone={(m) => {
+            setRefunding(null);
+            setDone(m);
+            setReload((n) => n + 1);
+            onChanged();
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function RefundDialog({ ticket, onClose, onDone }: { ticket: EventTicketRow; onClose: () => void; onDone: (m: string) => void }) {
+  const t = useT();
+  const key = useMemo(newIdempotencyKey, []);
+  const [reason, setReason] = useState("");
+  const [includeFee, setIncludeFee] = useState(true);
+  const amount = ticket.priceMinor + (includeFee ? ticket.feeMinor : 0);
+  return (
+    <ConfirmWithPin
+      title="Refund this ticket"
+      confirmLabel="Refund"
+      canConfirm={reason.trim().length >= 5}
+      onClose={onClose}
+      onConfirm={async (pin) => {
+        await refundEventTicket(ticket.id, reason.trim(), includeFee, pin, key);
+        onDone("Refunded to the buyer's wallet.");
+      }}
+    >
+      <p>{t("{amount} goes back to {name}'s wallet from the money Sunu Pay holds, and the ticket stops working.", { amount: money(amount, ticket.currency), name: ticket.ownerName || ticket.ownerPhone })}</p>
+      {ticket.feeMinor > 0 && (
+        <label className="check">
+          <input type="checkbox" checked={includeFee} onChange={(ev) => setIncludeFee(ev.target.checked)} /> {t("Refund the Sunu Pay fee too ({fee})", { fee: money(ticket.feeMinor, ticket.currency) })}
+        </label>
+      )}
+      <label>
+        {t("Why")}
+        <input value={reason} maxLength={300} onChange={(ev) => setReason(ev.target.value)} />
+      </label>
+    </ConfirmWithPin>
+  );
+}
+
+function RefundAllDialog({ e, onClose, onDone }: { e: TicketEvent; onClose: () => void; onDone: (m: string) => void }) {
+  const t = useT();
+  const key = useMemo(newIdempotencyKey, []);
+  const [reason, setReason] = useState("Event cancelled");
+  return (
+    <ConfirmWithPin
+      title="Refund everyone"
+      confirmLabel="Refund everyone"
+      canConfirm={reason.trim().length >= 5}
+      onClose={onClose}
+      onConfirm={async (pin) => {
+        const out = await refundEveryone(e.id, reason.trim(), pin, key);
+        onDone(out.failed.length ? "Some tickets could not be refunded. Run it again to try the rest." : "Everyone was refunded.");
+      }}
+    >
+      <p>{t("{n} tickets get the price and the fee back, from the money Sunu Pay holds for this event. You must not be the person who cancelled it.", { n: e.refundsWaiting })}</p>
+      <label>
+        {t("Why")}
+        <input value={reason} maxLength={300} onChange={(ev) => setReason(ev.target.value)} />
+      </label>
+    </ConfirmWithPin>
+  );
+}
+
+function PayDialog({ e, onClose, onDone }: { e: TicketEvent; onClose: () => void; onDone: (m: string) => void }) {
+  const t = useT();
+  const key = useMemo(newIdempotencyKey, []);
+  return (
+    <ConfirmWithPin
+      title="Pay the organiser"
+      confirmLabel="Pay now"
+      onClose={onClose}
+      onConfirm={async (pin) => {
+        await payOrganiser(e.id, pin, key);
+        onDone("The organiser was paid.");
+      }}
+    >
+      <p>{t("{price} goes to {name}'s Sunu Pay wallet and {fee} of fees to Sunu Pay. After this, refunds for this event must come from the organiser.", { price: money(e.heldPriceMinor, e.currency), fee: money(e.heldFeeMinor, e.currency), name: e.organiserName || e.organiserPhone })}</p>
     </ConfirmWithPin>
   );
 }
