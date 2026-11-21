@@ -333,6 +333,7 @@ function CountriesDialog({ current, approve, onClose, onDone }: { current: strin
         {t("Countries to leave out, as two-letter codes (for example SN). Leave empty to count every country.")}
         <input type="text" value={text} readOnly={approving} maxLength={200} onChange={(e) => setText(e.target.value)} />
       </label>
+      <p className="hint">{t("The United Kingdom, The Gambia and Senegal cannot be added: payments to or from the UK must count. Payments with no UK end are left out automatically.")}</p>
       {countries === null && <p className="error">{t("Each country must be a two-letter code, such as SN.")}</p>}
       {same && <p className="muted small">{t("That is already the list.")}</p>}
       <TextArea label="Why, and who advised it" value={reason} onChange={setReason} min={10} max={300} />
