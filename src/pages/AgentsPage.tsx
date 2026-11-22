@@ -8,6 +8,7 @@ import { AskReversalDialog, PlaceHoldDialog, SCOPE_LABEL } from "../components/d
 import { money, personLabel, when } from "../lib/format";
 import { useLoad } from "../lib/useLoad";
 import { useT } from "../i18n/language";
+import { TYPE_LABEL } from "./CustomersPage";
 
 const STATUS_LABEL: Record<AgentStatus, string> = {
   pending: "Waiting for review",
@@ -288,6 +289,65 @@ function AgentView({ agentId, onBack }: { agentId: string; onBack: () => void })
               setOpen({ action: "reverseIn", recordId: row.id, summary: `Cash in ${row.txRef || ""}: ${money(row.amountMinor, row.currency)} for ${personLabel(row.customer)}.` })
             }
           />
+          <div className="two-col">
+            <div className="card panel">
+              <h2>{t("Sign-ins")}</h2>
+              <p className="hint">
+                {data.agent.lastLoginAt ? t("Last signed in {when}", { when: when(data.agent.lastLoginAt) }) : t("No sign-in recorded yet.")}
+              </p>
+              {data.signIns?.length ? (
+                <table className="mini">
+                  <thead>
+                    <tr>
+                      <th>{t("When")}</th>
+                      <th>{t("Result")}</th>
+                      <th>{t("Phone")}</th>
+                      <th>{t("Address")}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.signIns.map((s) => (
+                      <tr key={s.id}>
+                        <td>{when(s.at)}</td>
+                        <td>{s.result === "success" ? t("Signed in") : t("Wrong PIN")}</td>
+                        <td>{s.device || "-"}</td>
+                        <td>{s.ip || "-"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <p className="muted">{t("Sign-ins are recorded from now on.")}</p>
+              )}
+            </div>
+            <div className="card panel">
+              <h2>{t("Other wallet activity")}</h2>
+              {data.otherActivity?.length ? (
+                <table className="mini">
+                  <thead>
+                    <tr>
+                      <th>{t("When")}</th>
+                      <th>{t("Type")}</th>
+                      <th>{t("Amount")}</th>
+                      <th>{t("Status")}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.otherActivity.map((a) => (
+                      <tr key={a.id}>
+                        <td>{when(a.at)}</td>
+                        <td>{t(TYPE_LABEL[a.type] ?? a.type)}</td>
+                        <td>{money(a.amountMinor, a.currency)}</td>
+                        <td><Badge tone={a.status === "successful" ? "ok" : a.status === "failed" ? "danger" : "plain"}>{a.status}</Badge></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <p className="muted">{t("Nothing besides cash in and cash out.")}</p>
+              )}
+            </div>
+          </div>
           <div className="two-col">
             <div className="card panel">
               <h2>{t("Daily pay, last 14 days")}</h2>

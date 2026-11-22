@@ -419,6 +419,8 @@ export type AgentDetail = {
     showOnMap?: boolean;
     /** An address the agent typed in the app, waiting for staff. Older servers send nothing. */
     pendingAddress?: { businessAddress: string; city: string; requestedAt: string | null; proofAsked: boolean; ticketId: string | null } | null;
+    /** When the agent last signed in. Older servers send nothing. */
+    lastLoginAt?: string | null;
     nationalId: string;
     rejectionReason: string;
     reviewedBy: string | null;
@@ -430,6 +432,10 @@ export type AgentDetail = {
   cashIns: { id: string; txRef: string; status: string; customer: Mini; currency: string; amountMinor: number; at: string }[];
   commissionDays: { day: string; countedVolumeMinor: number; amountMinor: number; clawbackMinor: number; agentApproved: boolean; currency: string }[];
   payouts: { id: string; periodStart: string; periodEnd: string; status: string; currency: string; netMinor: number }[];
+  /** The agent's last sign-ins, newest first. Older servers send nothing. */
+  signIns?: { id: string; result: "success" | "failed"; ip: string; device: string; at: string }[];
+  /** Anything else the agent did with their own wallet. Older servers send nothing. */
+  otherActivity?: { id: string; type: string; status: string; txRef: string; currency: string; amountMinor: number; at: string }[];
   today: string;
 };
 
