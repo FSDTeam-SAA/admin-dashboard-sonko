@@ -417,8 +417,10 @@ export type AgentDetail = {
     businessAddress: string;
     /** Customers can find this agent in the app. Older servers send nothing. */
     showOnMap?: boolean;
+    /** The exact spot of the business. Older servers send nothing. */
+    pin?: { lat: number; lng: number } | null;
     /** An address the agent typed in the app, waiting for staff. Older servers send nothing. */
-    pendingAddress?: { businessAddress: string; city: string; requestedAt: string | null; proofAsked: boolean; ticketId: string | null } | null;
+    pendingAddress?: { businessAddress: string; city: string; pin?: { lat: number; lng: number } | null; requestedAt: string | null; proofAsked: boolean; ticketId: string | null } | null;
     /** When the agent last signed in. Older servers send nothing. */
     lastLoginAt?: string | null;
     nationalId: string;
@@ -450,8 +452,14 @@ export function agent(agentId: string) {
   return api<AgentDetail>(`/admin/agents/${id(agentId)}`);
 }
 
-export function saveAgentLocation(agentId: string, body: { businessAddress: string; city: string; showOnMap: boolean }) {
-  return api<{ businessAddress: string; city: string; showOnMap: boolean }>(`/admin/agents/${id(agentId)}/location`, { method: "PUT", body });
+/** pin: set it, null removes it, left out keeps it. */
+export function saveAgentLocation(agentId: string, body: { businessAddress: string; city: string; showOnMap: boolean; pin?: { lat: number; lng: number } | null }) {
+  return api<{ businessAddress: string; city: string; showOnMap: boolean; pin: { lat: number; lng: number } | null }>(`/admin/agents/${id(agentId)}/location`, { method: "PUT", body });
+}
+
+/** Reads the pin from a pasted Google Maps link (short share links too) or two numbers. */
+export function mapPinFromLink(link: string) {
+  return api<{ lat: number; lng: number }>("/admin/map-pin", { method: "POST", body: { link } });
 }
 
 export function askAddressProof(agentId: string) {

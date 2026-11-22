@@ -2102,6 +2102,17 @@ export const FR: Record<string, string> = {
   "Deactivated": "Désactivé",
   "Deactivated by the customer in the app {time}.": "Désactivé par le client dans l’app {time}.",
   "Nobody can find them or send them money, and they're signed out. Their money stays in the wallet. They reactivate it themselves by signing in with their PIN, so there's no need to open it for them.": "Personne ne peut le trouver ni lui envoyer d’argent, et il est déconnecté. Son argent reste dans le portefeuille. Il le réactive lui-même en se connectant avec son code PIN : inutile de le rouvrir pour lui.",
+  "Exact spot on the map": "Emplacement exact sur la carte",
+  "Click the map where the shop is, or drag the pin. Or paste a Google Maps link or the two numbers from Google Maps (press and hold the spot). Customers who tap the agent are taken straight to this pin.": "Cliquez sur la carte à l’endroit de la boutique, ou faites glisser le repère. Ou collez un lien Google Maps ou les deux nombres de Google Maps (appui long sur l’endroit). Les clients qui touchent l’agent arrivent directement à ce repère.",
+  "Google Maps link or numbers": "Lien Google Maps ou nombres",
+  "Finding…": "Recherche…",
+  "Put the pin there": "Placer le repère ici",
+  "Pin: {lat}, {lng}": "Repère : {lat}, {lng}",
+  "No pin yet. Without one, customers' maps search for the address typed above, which can land on the wrong street.": "Pas encore de repère. Sans repère, la carte des clients cherche l’adresse saisie ci-dessus, ce qui peut tomber sur la mauvaise rue.",
+  "Remove pin": "Retirer le repère",
+  "The agent also sent the exact spot. It goes live with the address.": "L’agent a aussi envoyé l’emplacement exact. Il sera en ligne avec l’adresse.",
+  "No map pin was sent. Approving removes the old pin, so add a new one below afterwards.": "Aucun repère n’a été envoyé. L’approbation retire l’ancien repère : ajoutez-en un nouveau ci-dessous ensuite.",
+  "Could not read that link. Try again.": "Impossible de lire ce lien. Réessayez.",
 };
 
 import { handbookFrench } from "../lib/handbook";

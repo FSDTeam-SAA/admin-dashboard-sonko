@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { can } from "../api/staff";
-import { agent, agents, approveAgentAddress, askAddressProof, decideApplication, rejectAgentAddress, saveAgentLocation, type AgentDetail, type AgentRow, type AgentStatus } from "../api/admin";
+import { agent, agents, approveAgentAddress, askAddressProof, decideApplication, mapPinFromLink, rejectAgentAddress, saveAgentLocation, type AgentDetail, type AgentRow, type AgentStatus } from "../api/admin";
+import { PinMap, pinLink, startFor, type Pin } from "../components/PinMap";
 import { ConfirmWithPin } from "../components/ConfirmWithPin";
 import { Badge, LoadState, PageHeader, Pager, Tabs, TextArea, okLength } from "../components/common";
 import { AskReversalDialog, PlaceHoldDialog, SCOPE_LABEL } from "../components/dialogs";
@@ -203,7 +204,7 @@ function AgentView({ agentId, onBack }: { agentId: string; onBack: () => void })
       )}
 
       {can(staff, "review_agents") && a.pendingAddress && (
-        <PendingAddress agentId={a.id} pending={a.pendingAddress} onDone={finish} />
+        <PendingAddress agentId={a.id} pending={a.pendingAddress} country={a.country} onDone={finish} />
       )}
       {can(staff, "review_agents") && a.status !== "rejected" && (
         <LocationCard
@@ -212,6 +213,7 @@ function AgentView({ agentId, onBack }: { agentId: string; onBack: () => void })
           city={a.city}
           country={a.country}
           showOnMap={Boolean(a.showOnMap)}
+          pin={a.pin ?? null}
           idChecked={a.idChecked}
           onSaved={() => finish("Location saved.")}
         />
@@ -523,12 +525,31 @@ const mapLink = (address: string, city: string, country: string) =>
   `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([address, city, country].filter(Boolean).join(", "))}`;
 
 /** Where customers can find this agent: business address only, never a home address. One person can change it. */
-function LocationCard({ agentId, address, city, country, showOnMap, idChecked, onSaved }: { agentId: string; address: string; city: string; country: string; showOnMap: boolean; idChecked: boolean; onSaved: () => void }) {
+const samePin = (a: Pin | null, b: Pin | null) => (a && b ? a.lat === b.lat && a.lng === b.lng : a === b);
+
+function LocationCard({ agentId, address, city, country, showOnMap, pin, idChecked, onSaved }: { agentId: string; address: string; city: string; country: string; showOnMap: boolean; pin: Pin | null; idChecked: boolean; onSaved: () => void }) {
   const t = useT();
-  const [form, setForm] = useState({ address, city, show: showOnMap });
+  const [form, setForm] = useState<{ address: string; city: string; show: boolean; pin: Pin | null }>({ address, city, show: showOnMap, pin });
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
-  const changed = form.address !== address || form.city !== city || form.show !== showOnMap;
+  const [link, setLink] = useState("");
+  const [finding, setFinding] = useState(false);
+  const pinChanged = !samePin(form.pin, pin);
+  const changed = form.address !== address || form.city !== city || form.show !== showOnMap || pinChanged;
+
+  const findPin = async () => {
+    setFinding(true);
+    setProblem(null);
+    try {
+      const found = await mapPinFromLink(link.trim());
+      setForm((f) => ({ ...f, pin: found }));
+      setLink("");
+    } catch (e) {
+      setProblem(e instanceof Error ? e.message : "Could not read that link. Try again.");
+    } finally {
+      setFinding(false);
+    }
+  };
   const needsBoth = form.show && (!form.address.trim() || !form.city.trim());
 
   const save = async (event: FormEvent) => {
@@ -536,7 +557,7 @@ function LocationCard({ agentId, address, city, country, showOnMap, idChecked, o
     setBusy(true);
     setProblem(null);
     try {
-      await saveAgentLocation(agentId, { businessAddress: form.address.trim(), city: form.city.trim(), showOnMap: form.show });
+      await saveAgentLocation(agentId, { businessAddress: form.address.trim(), city: form.city.trim(), showOnMap: form.show, ...(pinChanged ? { pin: form.pin } : {}) });
       onSaved();
     } catch (e) {
       setProblem(e instanceof Error ? e.message : "Could not save. Try again.");
@@ -559,6 +580,30 @@ function LocationCard({ agentId, address, city, country, showOnMap, idChecked, o
           <input value={form.city} maxLength={60} onChange={(e) => setForm({ ...form, city: e.target.value })} />
         </label>
       </div>
+      <h3>{t("Exact spot on the map")}</h3>
+      <p className="hint">
+        {t("Click the map where the shop is, or drag the pin. Or paste a Google Maps link or the two numbers from Google Maps (press and hold the spot). Customers who tap the agent are taken straight to this pin.")}
+      </p>
+      <div className="pin-row">
+        <label>
+          {t("Google Maps link or numbers")}
+          <input value={link} maxLength={2000} placeholder="https://maps.app.goo.gl/…  or  13.4549, -16.5790" onChange={(e) => setLink(e.target.value)} />
+        </label>
+        <button type="button" disabled={!link.trim() || finding} onClick={findPin}>
+          {finding ? t("Finding…") : t("Put the pin there")}
+        </button>
+      </div>
+      <PinMap pin={form.pin} start={startFor(country)} onChange={(p) => setForm((f) => ({ ...f, pin: p }))} />
+      <p className="muted small">
+        {form.pin
+          ? t("Pin: {lat}, {lng}", { lat: String(form.pin.lat), lng: String(form.pin.lng) })
+          : t("No pin yet. Without one, customers' maps search for the address typed above, which can land on the wrong street.")}{" "}
+        {form.pin && (
+          <button type="button" className="link" onClick={() => setForm((f) => ({ ...f, pin: null }))}>
+            {t("Remove pin")}
+          </button>
+        )}
+      </p>
       <label className="check">
         <input type="checkbox" checked={form.show} onChange={(e) => setForm({ ...form, show: e.target.checked })} /> {t("Show on map")}
       </label>
@@ -566,8 +611,8 @@ function LocationCard({ agentId, address, city, country, showOnMap, idChecked, o
       {needsBoth && <p className="error">{t("To show an agent on the map, add the business address and the town or city.")}</p>}
       {problem && <p className="error">{t(problem)}</p>}
       <div className="row-end">
-        {form.address.trim() && (
-          <a href={mapLink(form.address, form.city, country)} target="_blank" rel="noreferrer noopener">
+        {(form.pin || form.address.trim()) && (
+          <a href={form.pin ? pinLink(form.pin) : mapLink(form.address, form.city, country)} target="_blank" rel="noreferrer noopener">
             {t("Check on Google Maps")}
           </a>
         )}
@@ -580,7 +625,7 @@ function LocationCard({ agentId, address, city, country, showOnMap, idChecked, o
 }
 
 /** An address the agent typed in the app. One staff member can approve; ask for proof of address first if needed. */
-function PendingAddress({ agentId, pending, onDone }: { agentId: string; pending: NonNullable<AgentDetail["agent"]["pendingAddress"]>; onDone: (message: string) => void }) {
+function PendingAddress({ agentId, pending, country, onDone }: { agentId: string; pending: NonNullable<AgentDetail["agent"]["pendingAddress"]>; country: string; onDone: (message: string) => void }) {
   const t = useT();
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
@@ -610,6 +655,14 @@ function PendingAddress({ agentId, pending, onDone }: { agentId: string; pending
         <strong>{pending.businessAddress}</strong>, {pending.city}
       </p>
       <p className="muted small">{t("The agent typed this in the app. Customers keep seeing the old address until you approve.")}</p>
+      {pending.pin ? (
+        <>
+          <p className="muted small">{t("The agent also sent the exact spot. It goes live with the address.")}</p>
+          <PinMap pin={pending.pin} start={startFor(country)} readOnly height={200} />
+        </>
+      ) : (
+        <p className="muted small">{t("No map pin was sent. Approving removes the old pin, so add a new one below afterwards.")}</p>
+      )}
       <p className="hint">{t("Any proof of address the agent sends is in Tickets, under \"Agent address change\".")}</p>
       {problem && <p className="error">{t(problem)}</p>}
       {rejecting ? (
@@ -624,7 +677,7 @@ function PendingAddress({ agentId, pending, onDone }: { agentId: string; pending
         </>
       ) : (
         <div className="row-end">
-          <a href={mapLink(pending.businessAddress, pending.city, "")} target="_blank" rel="noreferrer noopener">
+          <a href={pending.pin ? pinLink(pending.pin) : mapLink(pending.businessAddress, pending.city, "")} target="_blank" rel="noreferrer noopener">
             {t("Check on Google Maps")}
           </a>
           {!pending.proofAsked && (
