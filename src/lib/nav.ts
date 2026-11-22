@@ -123,6 +123,10 @@ export const NAV: NavItem[] = [
     permission: "manage_limits",
     routes: [
       "GET /admin/limits",
+      "GET /admin/settings/face-id",
+      "GET/POST /admin/settings/face-id/changes",
+      "POST /admin/settings/face-id/changes/:id/approve",
+      "POST /admin/settings/face-id/changes/:id/cancel",
       "POST /admin/limits/changes",
       "POST /admin/limits/changes/:id/approve",
       "POST /admin/limits/changes/:id/reject",

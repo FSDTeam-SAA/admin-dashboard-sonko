@@ -388,6 +388,38 @@ export function cancelRates(changeId: string, reason: string) {
   return api<RateChange>(`/admin/settings/rates/changes/${id(changeId)}/cancel`, { method: "POST", body: { reason } });
 }
 
+// ---- Face ID payment limits (two-person changes) ----
+
+export type FaceIdSettings = { version: number; maxUsdMinor: number; dayUsdMinor: number; gbpPerUsd: number };
+export type FaceIdChangeBody = Partial<{ maxUsdMinor: number; dayUsdMinor: number; gbpPerUsd: number }>;
+export type FaceIdChange = Omit<SettingsChange, "country" | "changedFields" | "before" | "after"> & {
+  changedFields: string[];
+  before: FaceIdSettings;
+  after: FaceIdSettings;
+};
+
+export function faceIdSettings() {
+  return api<{ settings: FaceIdSettings; inPence: { maxGbpMinor: number; dayGbpMinor: number }; pendingChange: FaceIdChange | null; people: Record<string, Person> }>(
+    `/admin/settings/face-id`,
+  );
+}
+
+export function faceIdHistory(page: number) {
+  return api<{ changes: FaceIdChange[]; total: number; page: number; limit: number; people: Record<string, Person> }>(`/admin/settings/face-id/changes?page=${page}&limit=25`);
+}
+
+export function proposeFaceId(body: { version: number; change: FaceIdChangeBody; reason: string; pin: string }, key: string) {
+  return api<FaceIdChange>(`/admin/settings/face-id/changes`, { method: "POST", body, idempotencyKey: key });
+}
+
+export function approveFaceId(changeId: string, pin: string, key: string) {
+  return api<FaceIdChange>(`/admin/settings/face-id/changes/${id(changeId)}/approve`, { method: "POST", body: { pin }, idempotencyKey: key });
+}
+
+export function cancelFaceId(changeId: string, reason: string) {
+  return api<FaceIdChange>(`/admin/settings/face-id/changes/${id(changeId)}/cancel`, { method: "POST", body: { reason } });
+}
+
 // ---- Agents ----
 
 export type AgentStatus = "pending" | "approved" | "rejected" | "suspended";

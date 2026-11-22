@@ -144,8 +144,8 @@ export const HANDBOOK: HandbookEntry[] = [
   {
     path: "/limits",
     what: {
-      en: "How much customers can send. Change the standard limits, and give a customer a higher limit after extra checks: where their wealth and money come from, the documents you saw, and sanctions screening.",
-      fr: "Combien les clients peuvent envoyer. Modifiez les limites standard et accordez une limite élevée à un client après des contrôles renforcés : origine de son patrimoine et de ses fonds, documents vus et vérification des sanctions.",
+      en: "How much customers can send. Change the standard limits, and give a customer a higher limit after extra checks: where their wealth and money come from, the documents you saw, and sanctions screening. The Face ID payments tab sets the amount under which Face ID is enough to pay (at it or above, the PIN).",
+      fr: "Combien les clients peuvent envoyer. Modifiez les limites standard et accordez une limite élevée à un client après des contrôles renforcés : origine de son patrimoine et de ses fonds, documents vus et vérification des sanctions. L’onglet Paiements Face ID fixe le montant sous lequel Face ID suffit pour payer (à partir de ce montant, le code PIN).",
     },
     careful: {
       en: "A second person must approve every raise. Check the documents yourself before approving. If screening shows a possible match, stop and escalate.",

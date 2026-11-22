@@ -22,6 +22,7 @@ import { money, when } from "../lib/format";
 import { useLoad } from "../lib/useLoad";
 import { useT } from "../i18n/language";
 import { HIGHER_STATUS } from "./HigherLimitSection";
+import { FaceIdSection } from "./FaceIdSection";
 
 type Level = keyof LimitLevels;
 export const LEVELS: [Level, string][] = [
@@ -408,7 +409,7 @@ function TierSettings() {
 
 /** Sending limits: standard limits, higher limits for customers who send large amounts, and the higher limit settings. */
 export function SendingLimitsPage() {
-  const [tab, setTab] = useState<"higher" | "standard" | "settings">("higher");
+  const [tab, setTab] = useState<"higher" | "standard" | "settings" | "faceid">("higher");
   return (
     <section>
       <PageHeader title="Sending limits" intro="How much customers can send. Higher limits are given one customer at a time, after extra checks and a second person's approval." />
@@ -418,12 +419,14 @@ export function SendingLimitsPage() {
           ["higher", "Higher limits"],
           ["standard", "Standard limits"],
           ["settings", "Higher limit settings"],
+          ["faceid", "Face ID payments"],
         ] as const}
         onChange={setTab}
       />
       {tab === "higher" && <HigherLimitList />}
       {tab === "standard" && <StandardLimits />}
       {tab === "settings" && <TierSettings />}
+      {tab === "faceid" && <FaceIdSection />}
     </section>
   );
 }
