@@ -142,6 +142,8 @@ export function FinancePage() {
                 <dd>{money(c.totals.feesMinor, c.currency)}</dd>
                 <dt>{t("Agent commission")}</dt>
                 <dd>{money(c.totals.commissionMinor, c.currency)}</dd>
+                <dt>{t("Invite bonuses")}</dt>
+                <dd>{money(c.totals.bonusesMinor ?? 0, c.currency)}</dd>
               </dl>
               <details>
                 <summary>{t("Day by day")}</summary>
@@ -154,6 +156,7 @@ export function FinancePage() {
                       <th>{t("Refunds")}</th>
                       <th>{t("Fees")}</th>
                       <th>{t("Commission")}</th>
+                      <th>{t("Bonuses")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -165,6 +168,7 @@ export function FinancePage() {
                         <td>{money(d.refundsMinor, c.currency)}</td>
                         <td>{money(d.feesMinor, c.currency)}</td>
                         <td>{money(d.commissionMinor, c.currency)}</td>
+                        <td>{money(d.bonusesMinor ?? 0, c.currency)}</td>
                       </tr>
                     ))}
                   </tbody>

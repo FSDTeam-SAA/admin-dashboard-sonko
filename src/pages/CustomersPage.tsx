@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { can } from "../api/staff";
 import {
+  lockCustomerSending,
   blockCustomerDevice,
   cancelCustomerPhoneChange,
   closeCustomerAccount,
@@ -218,6 +219,7 @@ function CustomerView({
   const t = useT();
   const navigate = useNavigate();
   const [holding, setHolding] = useState(false);
+  const [locking, setLocking] = useState(false);
   const [closing, setClosing] = useState<"close" | "reopen" | null>(null);
   const [dialog, setDialog] = useState<"edit" | "phone" | "caller" | null>(
     null,
@@ -295,6 +297,11 @@ function CustomerView({
             {can(staff, "edit_customers") && c.closed && (
               <button onClick={() => setClosing("reopen")}>{t("Open account again")}</button>
             )}
+            {can(staff, "verify_callers") && c.role !== "admin" && !c.closed && !c.sendLock?.on && (
+              <button className="danger" onClick={() => setLocking(true)}>
+                {t("Lock sending (lost phone)")}
+              </button>
+            )}
             {can(staff, "place_hold") && c.hold?.scope !== "all" && (
               <button className="danger" onClick={() => setHolding(true)}>
                 {t("Put on hold")}
@@ -351,6 +358,14 @@ function CustomerView({
           })}{" "}
           {c.closed.reason}{" "}
           {t("They can't sign in, be found or receive money. Their records are kept as the law requires.")}
+        </p>
+      )}
+      {c.sendLock?.on && (
+        <p className="error">
+          {t("Sending is locked by the customer ({via}) since {time}. Only they can unlock it, in the app with their PIN.", {
+            via: t(c.sendLock.via === "web" ? "website" : c.sendLock.via === "support" ? "support" : "app"),
+            time: when(c.sendLock.at ?? null),
+          })}
         </p>
       )}
       {c.hold && (
@@ -657,6 +672,23 @@ function CustomerView({
             reload();
           }}
         />
+      )}
+      {locking && (
+        <ConfirmWithPin
+          title="Lock sending (lost phone)"
+          confirmLabel="Lock sending"
+          danger
+          needsPin={false}
+          onClose={() => setLocking(false)}
+          onConfirm={async () => {
+            await lockCustomerSending(c.id);
+            setLocking(false);
+            setDone("Sending is locked and every phone is signed out. Only the customer can unlock it, with their PIN.");
+            reload();
+          }}
+        >
+          <p>{t("Only after checking the caller is the customer (security questions work when the phone is lost). Nothing can leave the account and every phone is signed out. Money can still come in.")}</p>
+        </ConfirmWithPin>
       )}
       {holding && (
         <PlaceHoldDialog

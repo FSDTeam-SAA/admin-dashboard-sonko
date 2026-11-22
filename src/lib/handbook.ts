@@ -178,6 +178,17 @@ export const HANDBOOK: HandbookEntry[] = [
     },
   },
   {
+    path: "/invites",
+    what: {
+      en: "Invite a friend: the bonus both people get, the most friends one person is paid for, and the dates. Two people change it.",
+      fr: "Parrainage : le bonus que reçoivent les deux personnes, le nombre maximum d’amis payés par personne, et les dates. Deux personnes le modifient.",
+    },
+    careful: {
+      en: "A bonus is real money paid by Sunu Pay. Check every currency before approving: a wrong figure is paid to every friend who qualifies.",
+      fr: "Un bonus, c’est de l’argent réel payé par Sunu Pay. Vérifiez chaque devise avant d’approuver : un mauvais chiffre est payé à chaque ami qui remplit les conditions.",
+    },
+  },
+  {
     path: "/sales",
     what: {
       en: "The sales team and what each person has brought in. Sales staff see only their own figures.",

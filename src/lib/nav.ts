@@ -192,6 +192,13 @@ export const NAV: NavItem[] = [
     ready: true,
   },
   {
+    path: "/invites",
+    label: "Invite a friend",
+    permission: "view_referrals",
+    routes: ["GET /admin/referrals", "GET/PUT /admin/referrals/settings", "DELETE /admin/referrals/settings/change"],
+    ready: true,
+  },
+  {
     path: "/sales",
     label: "Sales team",
     permission: "view_sales",

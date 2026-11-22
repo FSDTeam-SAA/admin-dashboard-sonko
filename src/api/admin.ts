@@ -432,6 +432,8 @@ export type CustomerDetail = {
     profilePicture: string;
     verification: { identityVerifiedAt: string | null; addressVerifiedAt: string | null; nameOnId: string; country: string };
     hold: { scope: HoldScope; reason: string; placedAt: string | null } | null;
+    /** The customer's own lock (lost phone). Older servers send nothing. */
+    sendLock?: { on: boolean; at?: string | null; via?: "app" | "web" | "support" | null };
     /** Set when the account is closed. Older servers send nothing. */
     closed?: { at: string; via: "app" | "staff" | ""; reason: string; by: string } | null;
   };
@@ -1164,6 +1166,62 @@ export function cancelHeadroomCountriesChange() {
   return api<null>("/admin/headroom/countries/change", { method: "DELETE" });
 }
 
+// ---- Invite a friend ----
+
+export type ReferralAmount = { bonusMinor: number; minSendMinor: number };
+export type ReferralProgramme = {
+  on: boolean;
+  startsAt: string | null;
+  endsAt: string | null;
+  perPersonCap: number;
+  amounts: Record<string, ReferralAmount>;
+};
+export type ReferralSettings = {
+  live: ReferralProgramme;
+  pending: { settings: ReferralProgramme; reason: string; by: string; at: string } | null;
+  changes: { from: ReferralProgramme; to: ReferralProgramme; reason: string; approveReason?: string; at: string }[];
+  counts: { paid: number; waiting: number };
+  daysToQualify: number;
+};
+export type ReferralInvite = {
+  id: string;
+  inviter: { id: string; name: string };
+  invitee: { id: string; name: string };
+  status: "waiting" | "paying" | "paid" | "expired";
+  signedUpAt: string;
+  qualifyBy: string;
+  paidAt: string | null;
+  inviterPaid: { currency: string; amountMinor: number } | null;
+  inviteePaid: { currency: string; amountMinor: number } | null;
+  capped: boolean;
+};
+
+export function referralSettings() {
+  return api<ReferralSettings>(`/admin/referrals/settings`);
+}
+
+/** Same call to ask and (by a different person, same settings) to approve. */
+export function changeReferralSettings(settings: ReferralProgramme, reason: string, pin: string, key: string) {
+  return api<{ asked?: boolean; done?: boolean; settings: ReferralSettings }>(`/admin/referrals/settings`, {
+    method: "PUT",
+    body: { ...settings, reason, pin },
+    idempotencyKey: key,
+  });
+}
+
+export function cancelReferralChange() {
+  return api<null>(`/admin/referrals/settings/change`, { method: "DELETE" });
+}
+
+export function referralInvites() {
+  return api<ReferralInvite[]>(`/admin/referrals`);
+}
+
+/** Lost phone: lock sending for a caller who has been checked. Only the customer can unlock. */
+export function lockCustomerSending(userId: string) {
+  return api<{ on: boolean }>(`/admin/users/${encodeURIComponent(userId)}/send-lock`, { method: "POST" });
+}
+
 // ---- Sales team ----
 
 export type SalesRow = { id: string; name: string; code: string; active: boolean; signedUp: number; idChecked: number; qualified: number };
@@ -1392,7 +1450,7 @@ export function transaction(txId: string) {
 
 // ---- Finance overview ----
 
-export type FinanceMoneyDay = { day: string; inMinor: number; outMinor: number; refundsMinor: number; feesMinor: number; commissionMinor: number };
+export type FinanceMoneyDay = { day: string; inMinor: number; outMinor: number; refundsMinor: number; feesMinor: number; commissionMinor: number; bonusesMinor?: number };
 export type Finance = {
   asAt: string;
   days: number;

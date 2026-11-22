@@ -5,6 +5,7 @@ import { Shell } from "./layout/Shell";
 import { HomePage } from "./pages/HomePage";
 import { ComingSoonPage } from "./pages/ComingSoonPage";
 import { SalesPage } from "./pages/SalesPage";
+import { InvitesPage } from "./pages/InvitesPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { visibleNav } from "./lib/nav";
 import { ReportsPage } from "./pages/ReportsPage";
@@ -47,6 +48,7 @@ const PAGES: Record<string, ComponentType> = {
   "/tickets": TicketsPage,
   "/analytics": AnalyticsPage,
   "/sales": SalesPage,
+  "/invites": InvitesPage,
   "/audit": AuditPage,
   "/services": ServicesPage,
   "/bills": BillsPage,
