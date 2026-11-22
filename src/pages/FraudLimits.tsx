@@ -22,6 +22,12 @@ const ORDER: Key[] = [
   "wrongPinsPerDay",
   "invitesPerDay",
   "accountsPerDevice",
+  "jumpTimes",
+  "jumpMinGbpMinor",
+  "passMinGbpMinor",
+  "passPercent",
+  "dormantDays",
+  "dormantGbpMinor",
 ];
 const LABEL: Record<Key, string> = {
   paymentsPerHour: "Payments out in one hour",
@@ -35,9 +41,15 @@ const LABEL: Record<Key, string> = {
   wrongPinsPerDay: "Wrong PINs in one day",
   invitesPerDay: "Friends signing up with one invite code in 24 hours",
   accountsPerDevice: "Accounts on one phone in 7 days",
+  jumpTimes: "Times the customer's usual day sent out in 24 hours",
+  jumpMinGbpMinor: "…counted only from this many pounds",
+  passMinGbpMinor: "Pounds sent to a customer by other customers in 24 hours",
+  passPercent: "…and this percent of it sent out again",
+  dormantDays: "Days with no payments before an account counts as quiet",
+  dormantGbpMinor: "Pounds sent out in 24 hours by a quiet account",
 };
 /** Amounts are typed and shown in whole pounds; the server keeps pence. */
-const POUNDS: Key[] = ["dayGbpMinor", "newAccountGbpMinor", "singleGbpMinor"];
+const POUNDS: Key[] = ["dayGbpMinor", "newAccountGbpMinor", "singleGbpMinor", "jumpMinGbpMinor", "passMinGbpMinor", "dormantGbpMinor"];
 // A limit an older record doesn't have yet comes as null.
 const shown = (k: Key, v: number | null | undefined) => (v === null || v === undefined ? "—" : POUNDS.includes(k) ? `£${(v / 100).toLocaleString("en-GB")}` : String(v));
 

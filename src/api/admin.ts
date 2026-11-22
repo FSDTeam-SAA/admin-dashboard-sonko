@@ -498,6 +498,7 @@ export const TICKET_CATEGORIES = [
   ["login_or_pin", "Login or PIN"],
   ["fees_or_rates", "Fees or rates"],
   ["account", "Account"],
+  ["limit_increase", "Higher limit request"],
   ["other", "Other"],
 ] as const;
 export type TicketCategory = (typeof TICKET_CATEGORIES)[number][0];
@@ -1486,6 +1487,12 @@ export type FraudLimits = {
   wrongPinsPerDay: number;
   invitesPerDay: number;
   accountsPerDevice: number;
+  jumpTimes: number;
+  jumpMinGbpMinor: number;
+  passMinGbpMinor: number;
+  passPercent: number;
+  dormantDays: number;
+  dormantGbpMinor: number;
 };
 export type FraudSummary = {
   open: number;
@@ -1763,4 +1770,141 @@ export function refundEveryone(eventId: string, reason: string, pin: string, key
 
 export function payOrganiser(eventId: string, pin: string, key: string) {
   return api<{ priceMinor: number; feeMinor: number; currency: string }>(`/admin/ticket-events/${id(eventId)}/pay-organiser`, { method: "POST", body: { pin }, idempotencyKey: key });
+}
+
+// ---- Sending limits and higher limits ----
+
+export type LimitPair = { dayMinor: number; monthMinor: number };
+export type LimitLevels = { unverified: LimitPair; new: LimitPair; verified: LimitPair; full: LimitPair };
+export type SendingLimitRow = {
+  _id: string;
+  scope: "worldwide" | "country" | "customer";
+  status: string;
+  country?: string;
+  direction?: "from" | "to";
+  levels?: Partial<LimitLevels>;
+  newPhoneCapMinor?: number;
+  user?: string;
+  dayMinor?: number;
+  monthMinor?: number;
+  endsAt?: string;
+  reason: string;
+  proposedBy: string;
+  createdAt: string;
+};
+export type SendingLimits = {
+  worldwide: { levels: LimitLevels; newPhoneCapMinor: number; updatedAt?: string };
+  countries: SendingLimitRow[];
+  waiting: SendingLimitRow[];
+  currency: "GBP";
+};
+export function sendingLimits() {
+  return api<SendingLimits>("/admin/limits");
+}
+export function proposeSendingLimit(
+  body: { scope: "worldwide" | "country"; levels: Partial<LimitLevels>; newPhoneCapMinor?: number; country?: string; direction?: "from" | "to"; reason: string; pin: string },
+  key: string,
+) {
+  return api<{ status: "active" | "awaiting_approval"; id: string }>("/admin/limits/changes", { method: "POST", body, idempotencyKey: key });
+}
+export function approveSendingLimit(limitId: string, pin: string, key: string) {
+  return api<{ status: string }>(`/admin/limits/changes/${id(limitId)}/approve`, { method: "POST", body: { pin }, idempotencyKey: key });
+}
+export function rejectSendingLimit(limitId: string, reason: string) {
+  return api<{ status: string }>(`/admin/limits/changes/${id(limitId)}/reject`, { method: "POST", body: { reason } });
+}
+
+export type HigherLimitSettings = { maxDayMinor: number; maxMonthMinor: number; reviewMonths: number; nudgePercent: number };
+export type HigherLimitSettingsView = {
+  settings: HigherLimitSettings;
+  defaults: HigherLimitSettings;
+  bounds: Record<keyof HigherLimitSettings, [number, number]>;
+  pending: { settings: HigherLimitSettings; reason: string; by: string; byId: string; at: string } | null;
+  changes: { from: HigherLimitSettings | null; to: HigherLimitSettings | null; reason: string; by: string; approvedBy: string; approveReason: string; at: string }[];
+};
+export function higherLimitSettings() {
+  return api<HigherLimitSettingsView>("/admin/higher-limits/settings");
+}
+export function changeHigherLimitSettings(settings: HigherLimitSettings, reason: string, pin: string, key: string) {
+  return api<{ asked?: boolean; done?: boolean }>("/admin/higher-limits/settings", { method: "PUT", body: { settings, reason, pin }, idempotencyKey: key });
+}
+export function cancelHigherLimitSettingsChange() {
+  return api<null>("/admin/higher-limits/settings/change", { method: "DELETE" });
+}
+
+export const DOCUMENT_KINDS = [
+  ["payslips", "Payslips"],
+  ["bank_statements", "Bank statements"],
+  ["tax_return", "Tax return"],
+  ["company_accounts", "Company accounts"],
+  ["sale_or_property_documents", "Sale or property documents"],
+  ["pension_statement", "Pension statement"],
+  ["letter_from_accountant_or_solicitor", "Letter from an accountant or solicitor"],
+  ["inheritance_or_gift_documents", "Inheritance or gift documents"],
+  ["other", "Other"],
+] as const;
+export type DocumentKind = (typeof DOCUMENT_KINDS)[number][0];
+export type HigherLimitDoc = { kind: DocumentKind; note: string; seenOn: string };
+export type HigherLimit = {
+  id: string;
+  status: "awaiting_approval" | "active" | "rejected" | "lapsed" | "ended" | "expired" | "replaced";
+  dayMinor: number;
+  monthMinor: number;
+  reviewMonths: number;
+  reviewBy: string | null;
+  /** Set when this staff member may not see the private details below. */
+  private?: true;
+  sourceOfWealth?: string;
+  sourceOfFunds?: string;
+  documents?: HigherLimitDoc[];
+  screenedClear: boolean;
+  riskNotes?: string;
+  ticketId: string | null;
+  proposedBy: string;
+  proposedById: string | null;
+  proposedAt: string;
+  proposeReason?: string;
+  approvedBy: string;
+  approvedAt: string | null;
+  approveReason?: string;
+  closedBy: string;
+  closedAt: string | null;
+  closeReason?: string;
+};
+export type CustomerHigherLimit = {
+  active: HigherLimit | null;
+  waiting: HigherLimit | null;
+  history: HigherLimit[];
+  request: { ticketId: string; number: number; subject: string; at: string; files: number } | null;
+  settings: HigherLimitSettings;
+};
+export function customerHigherLimit(customerId: string) {
+  return api<CustomerHigherLimit>(`/admin/customers/${id(customerId)}/higher-limit`);
+}
+export type HigherLimitProposal = {
+  dayMinor: number;
+  monthMinor: number;
+  sourceOfWealth: string;
+  sourceOfFunds: string;
+  documents: HigherLimitDoc[];
+  screenedClear: boolean;
+  riskNotes: string;
+  ticketId?: string;
+  reason: string;
+};
+export function proposeHigherLimit(customerId: string, body: HigherLimitProposal, pin: string, key: string) {
+  return api<{ id: string; status: string }>(`/admin/customers/${id(customerId)}/higher-limit`, { method: "POST", body: { ...body, pin }, idempotencyKey: key });
+}
+export function approveHigherLimit(limitId: string, reason: string, pin: string, key: string) {
+  return api<{ status: string; reviewBy: string }>(`/admin/higher-limits/${id(limitId)}/approve`, { method: "POST", body: { reason, pin }, idempotencyKey: key });
+}
+export function rejectHigherLimit(limitId: string, reason: string) {
+  return api<{ status: string }>(`/admin/higher-limits/${id(limitId)}/reject`, { method: "POST", body: { reason } });
+}
+export function endHigherLimit(limitId: string, reason: string, pin: string, key: string) {
+  return api<{ status: string }>(`/admin/higher-limits/${id(limitId)}/end`, { method: "POST", body: { reason, pin }, idempotencyKey: key });
+}
+export type HigherLimitRow = HigherLimit & { customerId: string; customer: string; reviewSoon: boolean };
+export function higherLimits(status: "waiting" | "active" | "review") {
+  return api<{ rows: HigherLimitRow[] }>(`/admin/higher-limits?status=${status}`);
 }

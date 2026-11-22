@@ -31,6 +31,9 @@ export const RULE_LABEL: Record<string, string> = {
   wrong_pins: "Many wrong PINs",
   many_invites: "Many invites in one day",
   shared_device: "One phone, several accounts",
+  unusual_amount: "Far more than their usual day",
+  pass_through: "Money passed straight on",
+  dormant_big: "Quiet account suddenly sending a lot",
 };
 
 const WHAT_NEXT: Record<CaseType, string> = {

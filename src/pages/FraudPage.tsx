@@ -28,6 +28,9 @@ export const RULE_HELP: Record<string, string> = {
   wrong_pins: "Many wrong PINs, or a lockout. Someone may be guessing the PIN.",
   many_invites: "Many friends signed up with one invite code in a day. Check for fake accounts made for the bonus.",
   shared_device: "One phone used by several accounts in a week.",
+  unusual_amount: "Far more sent out in 24 hours than this customer's usual day. Ask what changed before deciding.",
+  pass_through: "Money sent to this customer by other customers, then sent out again within 24 hours. Someone may be using the account to move other people's money.",
+  dormant_big: "An account with no payments for months suddenly sending a lot. Check the account has not been taken over.",
 };
 
 type Action = { kind: "dismiss" | "escalate" | "fraud" | "resolved"; c: ComplianceCaseRow };

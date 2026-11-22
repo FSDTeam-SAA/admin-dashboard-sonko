@@ -37,6 +37,7 @@ import { CustomerStatusStrip } from "../components/CustomerStatusStrip";
 import { money, personLabel, when } from "../lib/format";
 import { useLoad } from "../lib/useLoad";
 import { CustomerMessages } from "./CustomerMessages";
+import { HigherLimitSection } from "./HigherLimitSection";
 import { useT } from "../i18n/language";
 
 export const TYPE_LABEL: Record<string, string> = {
@@ -490,6 +491,8 @@ function CustomerView({
       </div>
 
       <CustomerMessages customerId={customerId} />
+
+      <HigherLimitSection customerId={customerId} />
 
       <div className="card panel">
         <h2>{t("Transaction history")}</h2>

@@ -55,6 +55,8 @@ const TRANSLATED = [
   "src/pages/CustomerGrowth.tsx",
   "src/pages/PlacesSection.tsx",
   "src/pages/WorldMap.tsx",
+  "src/pages/HigherLimitSection.tsx",
+  "src/pages/SendingLimitsPage.tsx",
 ];
 
 describe("panel language", () => {

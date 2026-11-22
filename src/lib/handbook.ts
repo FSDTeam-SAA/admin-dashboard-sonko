@@ -142,6 +142,17 @@ export const HANDBOOK: HandbookEntry[] = [
     },
   },
   {
+    path: "/limits",
+    what: {
+      en: "How much customers can send. Change the standard limits, and give a customer a higher limit after extra checks: where their wealth and money come from, the documents you saw, and sanctions screening.",
+      fr: "Combien les clients peuvent envoyer. Modifiez les limites standard et accordez une limite élevée à un client après des contrôles renforcés : origine de son patrimoine et de ses fonds, documents vus et vérification des sanctions.",
+    },
+    careful: {
+      en: "A second person must approve every raise. Check the documents yourself before approving. If screening shows a possible match, stop and escalate.",
+      fr: "Une deuxième personne doit approuver chaque hausse. Vérifiez vous-même les documents avant d’approuver. Si la vérification montre une correspondance possible, arrêtez et transmettez à un responsable.",
+    },
+  },
+  {
     path: "/settings",
     what: {
       en: "Exchange rates, fees and cash-out settings for each country.",

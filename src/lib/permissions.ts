@@ -50,6 +50,7 @@ export const PERMISSION_GROUPS: { title: string; items: [string, string][] }[] =
       ["view_cases", "See debt and alert cases"],
       ["close_cases", "Close debt and alert cases with a note"],
       ["manage_fraud_rules", "Change the fraud monitoring limits (a second person must approve)"],
+      ["manage_limits", "Change sending limits and give customers higher limits after extra checks (raising always needs a second person; sees source of wealth and documents)"],
       ["view_safeguarding", "See the daily safeguarding check (senior staff only)"],
       ["record_safeguarding", "Type or confirm the safeguarding bank balance"],
       ["view_headroom", "See how close Sunu Pay is to the small e-money limits (senior staff only)"],
