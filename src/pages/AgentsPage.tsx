@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { can } from "../api/staff";
-import { agent, agents, decideApplication, saveAgentLocation, type AgentDetail, type AgentRow, type AgentStatus } from "../api/admin";
+import { agent, agents, approveAgentAddress, askAddressProof, decideApplication, rejectAgentAddress, saveAgentLocation, type AgentDetail, type AgentRow, type AgentStatus } from "../api/admin";
 import { ConfirmWithPin } from "../components/ConfirmWithPin";
 import { Badge, LoadState, PageHeader, Pager, Tabs, TextArea, okLength } from "../components/common";
 import { AskReversalDialog, PlaceHoldDialog, SCOPE_LABEL } from "../components/dialogs";
@@ -201,6 +201,9 @@ function AgentView({ agentId, onBack }: { agentId: string; onBack: () => void })
         </p>
       )}
 
+      {can(staff, "review_agents") && a.pendingAddress && (
+        <PendingAddress agentId={a.id} pending={a.pendingAddress} onDone={finish} />
+      )}
       {can(staff, "review_agents") && a.status !== "rejected" && (
         <LocationCard
           agentId={a.id}
@@ -513,5 +516,70 @@ function LocationCard({ agentId, address, city, country, showOnMap, idChecked, o
         </button>
       </div>
     </form>
+  );
+}
+
+/** An address the agent typed in the app. One staff member can approve; ask for proof of address first if needed. */
+function PendingAddress({ agentId, pending, onDone }: { agentId: string; pending: NonNullable<AgentDetail["agent"]["pendingAddress"]>; onDone: (message: string) => void }) {
+  const t = useT();
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+  const [rejecting, setRejecting] = useState(false);
+  const [reason, setReason] = useState("");
+
+  const run = async (action: () => Promise<unknown>, message: string) => {
+    setBusy(true);
+    setProblem(null);
+    try {
+      await action();
+      onDone(message);
+    } catch (e) {
+      setProblem(e instanceof Error ? e.message : "Could not save. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="card panel">
+      <div className="panel-head">
+        <h2>{t("New business address waiting for approval")}</h2>
+        {pending.proofAsked && <Badge tone="warn">{t("Proof of address asked for")}</Badge>}
+      </div>
+      <p>
+        <strong>{pending.businessAddress}</strong>, {pending.city}
+      </p>
+      <p className="muted small">{t("The agent typed this in the app. Customers keep seeing the old address until you approve.")}</p>
+      <p className="hint">{t("Any proof of address the agent sends is in Tickets, under \"Agent address change\".")}</p>
+      {problem && <p className="error">{t(problem)}</p>}
+      {rejecting ? (
+        <>
+          <TextArea label="Why" value={reason} onChange={setReason} min={10} max={300} />
+          <div className="row-end">
+            <button onClick={() => setRejecting(false)}>{t("Back")}</button>
+            <button className="danger" disabled={busy || !okLength(reason, 10, 300)} onClick={() => run(() => rejectAgentAddress(agentId, reason.trim()), "Address turned down.")}>
+              {t("Turn down")}
+            </button>
+          </div>
+        </>
+      ) : (
+        <div className="row-end">
+          <a href={mapLink(pending.businessAddress, pending.city, "")} target="_blank" rel="noreferrer noopener">
+            {t("Check on Google Maps")}
+          </a>
+          {!pending.proofAsked && (
+            <button disabled={busy} onClick={() => run(() => askAddressProof(agentId), "Proof of address asked for.")}>
+              {t("Ask for proof of address")}
+            </button>
+          )}
+          <button disabled={busy} onClick={() => setRejecting(true)}>
+            {t("Turn down")}
+          </button>
+          <button className="primary" disabled={busy} onClick={() => run(() => approveAgentAddress(agentId), "Address approved. It now shows to customers.")}>
+            {t("Approve address")}
+          </button>
+        </div>
+      )}
+    </div>
   );
 }

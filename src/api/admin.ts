@@ -417,6 +417,8 @@ export type AgentDetail = {
     businessAddress: string;
     /** Customers can find this agent in the app. Older servers send nothing. */
     showOnMap?: boolean;
+    /** An address the agent typed in the app, waiting for staff. Older servers send nothing. */
+    pendingAddress?: { businessAddress: string; city: string; requestedAt: string | null; proofAsked: boolean; ticketId: string | null } | null;
     nationalId: string;
     rejectionReason: string;
     reviewedBy: string | null;
@@ -444,6 +446,18 @@ export function agent(agentId: string) {
 
 export function saveAgentLocation(agentId: string, body: { businessAddress: string; city: string; showOnMap: boolean }) {
   return api<{ businessAddress: string; city: string; showOnMap: boolean }>(`/admin/agents/${id(agentId)}/location`, { method: "PUT", body });
+}
+
+export function askAddressProof(agentId: string) {
+  return api(`/admin/agents/${id(agentId)}/address/ask-proof`, { method: "POST" });
+}
+
+export function approveAgentAddress(agentId: string) {
+  return api(`/admin/agents/${id(agentId)}/address/approve`, { method: "POST" });
+}
+
+export function rejectAgentAddress(agentId: string, reason: string) {
+  return api(`/admin/agents/${id(agentId)}/address/reject`, { method: "POST", body: { reason } });
 }
 
 export function decideApplication(userId: string, body: { status: "approved" } | { status: "rejected"; rejectionReason: string }) {
@@ -546,6 +560,7 @@ export const TICKET_CATEGORIES = [
   ["fees_or_rates", "Fees or rates"],
   ["account", "Account"],
   ["limit_increase", "Higher limit request"],
+  ["agent_address", "Agent address change"],
   ["other", "Other"],
 ] as const;
 export type TicketCategory = (typeof TICKET_CATEGORIES)[number][0];
