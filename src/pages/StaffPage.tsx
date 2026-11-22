@@ -14,16 +14,18 @@ import {
   type StaffRow,
 } from "../api/admin";
 import { ConfirmWithPin } from "../components/ConfirmWithPin";
-import { Badge, LoadState, PageHeader } from "../components/common";
+import { Badge, LoadState, PageHeader, Tabs } from "../components/common";
+import { AccessGrid, AccessHistory, AddEmployee, InvitesCard, WhoCanDoWhat } from "./StaffAccess";
 import { newIdempotencyKey } from "../lib/idempotency";
 import { personLabel, when } from "../lib/format";
-import { ALL_PERMISSIONS, PERMISSION_GROUPS, PERMISSION_LABEL } from "../lib/permissions";
+import { ALL_PERMISSIONS, PERMISSION_LABEL } from "../lib/permissions";
 import { useLoad } from "../lib/useLoad";
 import { useT } from "../i18n/language";
 
 type Open =
   | { action: "permissions" | "approvePermissions" | "remove" | "approveRole" | "reset" | "cancelRole" | "cancelPermissions"; row: StaffRow }
   | { action: "add" }
+  | { action: "employee" }
   | { action: "addConfirm"; hit: CustomerHit }
   | null;
 
@@ -34,6 +36,8 @@ export function StaffPage() {
   const { staff } = useAuth();
   const [open, setOpen] = useState<Open>(null);
   const [done, setDone] = useState<string | null>(null);
+  const [tab, setTab] = useState<"staff" | "grid">("staff");
+  const [invitesVersion, setInvitesVersion] = useState(0);
   const { data, error, loading, reload } = useLoad(() => staffList(), []);
   const me = staff?._id;
   const people = data?.people ?? {};
@@ -45,25 +49,37 @@ export function StaffPage() {
     setOpen(null);
     setDone(message);
     reload();
+    setInvitesVersion((v) => v + 1);
   };
 
   return (
     <section>
       <PageHeader
         title="Staff"
-        intro="Making someone staff, removing them and changing what they may do all need two different staff members. Nobody can change their own."
+        intro="Adding staff, removing them and changing what they may do all need two different staff members. Nobody can change their own. Every change is recorded: who asked, who approved, and when."
         actions={
-          can(staff, "view_customers") ? (
-            <button className="primary" onClick={() => setOpen({ action: "add" })}>
-              {t("Make someone staff")}
+          <>
+            <button className="primary" onClick={() => setOpen({ action: "employee" })}>
+              {t("Add employee")}
             </button>
-          ) : undefined
+            {can(staff, "view_customers") && <button onClick={() => setOpen({ action: "add" })}>{t("Make an existing account staff")}</button>}
+          </>
         }
       />
       {done && <p className="notice">{t(done)}</p>}
       <LoadState loading={loading && !data} error={error} empty={false} />
+      <Tabs
+        value={tab}
+        options={[
+          ["staff", "Staff"],
+          ["grid", "Who can do what"],
+        ] as const}
+        onChange={setTab}
+      />
+      {tab === "grid" && <WhoCanDoWhat members={members} />}
+      {tab === "staff" && <InvitesCard me={me} refreshKey={invitesVersion} onDone={(m) => { setDone(m); reload(); }} />}
 
-      {waiting.length > 0 && (
+      {tab === "staff" && waiting.length > 0 && (
         <div className="card panel">
           <h2>{t("Waiting to become staff")}</h2>
           {waiting.map((row) => (
@@ -87,7 +103,7 @@ export function StaffPage() {
         </div>
       )}
 
-      {members.length > 0 && (
+      {tab === "staff" && members.length > 0 && (
         <div className="table-wrap card">
           <table>
             <thead>
@@ -108,10 +124,20 @@ export function StaffPage() {
                   <tr key={row.id}>
                     <td>
                       {personLabel(row)}
+                      {(row.profile?.jobTitle || row.profile?.employeeId) && (
+                        <div className="muted small">
+                          {[row.profile?.jobTitle, row.profile?.employeeId && t("ID {id}", { id: row.profile.employeeId }), row.profile?.country].filter(Boolean).join(" · ")}
+                        </div>
+                      )}
                       {self && <div><Badge tone="plain">{t("You")}</Badge></div>}
                     </td>
                     <td className="wrap small">
-                      {row.fullAdmin ? <Badge tone="warn">{t("Full admin: everything")}</Badge> : row.permissions.map((p) => t(PERMISSION_LABEL[p] || p)).join(", ")}
+                      {row.fullAdmin ? <Badge tone="warn">{t("Full admin: everything")}</Badge> : t("{n} permissions", { n: row.permissions.length })}
+                      <details>
+                        <summary>{t("Details and history")}</summary>
+                        {!row.fullAdmin && <p>{row.permissions.map((p) => t(PERMISSION_LABEL[p] || p)).join(", ")}</p>}
+                        <AccessHistory row={row} people={people} />
+                      </details>
                     </td>
                     <td>{row.twoStepSetUp ? <Badge tone="ok">{t("Set up")}</Badge> : <Badge tone="danger">{t("Not set up")}</Badge>}</td>
                     <td className="wrap small">
@@ -215,6 +241,7 @@ export function StaffPage() {
           <p className="hint">{t("Until they log in again, anyone with their PIN could set up the app in their place.")}</p>
         </ConfirmWithPin>
       )}
+      {open?.action === "employee" && <AddEmployee onClose={() => setOpen(null)} onDone={finish} />}
       {open?.action === "add" && <FindPerson onClose={() => setOpen(null)} onPick={(hit) => setOpen({ action: "addConfirm", hit })} />}
       {open?.action === "addConfirm" && (
         <RoleDialog
@@ -253,13 +280,6 @@ function PermissionsDialog({ row, approving, people = {}, onDone, onClose }: { r
   const [full, setFull] = useState(start.full);
   const [picked, setPicked] = useState<Set<string>>(new Set(start.full ? [] : start.permissions));
   const key = useMemo(newIdempotencyKey, []);
-  const toggle = (p: string) =>
-    setPicked((current) => {
-      const next = new Set(current);
-      if (next.has(p)) next.delete(p);
-      else next.add(p);
-      return next;
-    });
   const list = ALL_PERMISSIONS.filter((p) => picked.has(p));
 
   return (
@@ -282,21 +302,7 @@ function PermissionsDialog({ row, approving, people = {}, onDone, onClose }: { r
         <input type="checkbox" checked={full} disabled={approving} onChange={(e) => setFull(e.target.checked)} />
         {t("Full admin: can do everything")}
       </label>
-      {!full && (
-        <div className="perm-groups">
-          {PERMISSION_GROUPS.map((group) => (
-            <fieldset key={group.title} className="choices">
-              <legend>{t(group.title)}</legend>
-              {group.items.map(([p, label]) => (
-                <label key={p} className="check small">
-                  <input type="checkbox" checked={picked.has(p)} disabled={approving} onChange={() => toggle(p)} />
-                  {t(label)}
-                </label>
-              ))}
-            </fieldset>
-          ))}
-        </div>
-      )}
+      {!full && <AccessGrid held={picked} onChange={setPicked} readOnly={approving} />}
       {!full && !list.length && <p className="hint warn-text">{t("Choose at least one.")}</p>}
     </ConfirmWithPin>
   );

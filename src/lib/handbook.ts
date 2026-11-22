@@ -166,8 +166,8 @@ export const HANDBOOK: HandbookEntry[] = [
   {
     path: "/staff",
     what: {
-      en: "Who works here and what each person is allowed to do. Reset someone’s two-step login if they lose their phone.",
-      fr: "Qui travaille ici et ce que chacun a le droit de faire. Réinitialisez la double authentification de quelqu’un s’il perd son téléphone.",
+      en: "Who works here and what each person may see or change. Add an employee (they get a link to choose their own PIN), see who can do what in one table, and each person’s access history. Reset someone’s two-step login if they lose their phone.",
+      fr: "Qui travaille ici et ce que chacun peut voir ou modifier. Ajoutez un employé (il reçoit un lien pour choisir son code PIN), voyez qui peut faire quoi dans un tableau, et l’historique des accès de chacun. Réinitialisez la double authentification de quelqu’un s’il perd son téléphone.",
     },
     careful: {
       en: "Give people only the access they need. Permission changes need a second person.",
@@ -271,8 +271,8 @@ export const HANDBOOK: HandbookEntry[] = [
   {
     path: "/services",
     what: {
-      en: "Which services are switched on in which countries.",
-      fr: "Les services activés dans chaque pays.",
+      en: "Which services are switched on in which countries, and where money can be sent from and to. The launch plan switches everything off except what you choose, for example sending from the UK to Gambia only.",
+      fr: "Les services activés dans chaque pays, et d’où et vers où l’argent peut être envoyé. Le plan de lancement désactive tout sauf ce que vous choisissez, par exemple uniquement les envois du Royaume-Uni vers la Gambie.",
     },
     careful: {
       en: "Switching a service on needs a second person to approve.",

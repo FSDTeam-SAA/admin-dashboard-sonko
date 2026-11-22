@@ -282,3 +282,9 @@ div.fraud-count { cursor: default; }
 .fraud-count strong { font-size: 24px; line-height: 1.1; }
 .fraud-count.warn { border-color: #f08c00; }
 .fraud-count.warn strong { color: #e8590c; }
+
+/* A link that looks like a button (setup page) */
+a.button { display: inline-block; text-align: center; padding: 10px 16px; border-radius: 8px; border: 1px solid var(--line); text-decoration: none; font-weight: 600; }
+a.button.primary { background: var(--primary); color: var(--primary-text); border-color: transparent; }
+/* Staff access grid */
+.access-grid td:not(:first-child), .access-grid th:not(:first-child) { text-align: center; }

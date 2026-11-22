@@ -278,7 +278,46 @@ export type StaffRow = {
   twoStepSetUp: boolean;
   pendingRoleChange: { role: string; requestedBy: string; requestedAt: string } | null;
   pendingPermissionsChange: { full: boolean; permissions: string[]; requestedBy: string; requestedAt: string } | null;
+  /** Older servers send nothing here. */
+  profile?: { employeeId: string; jobTitle: string; country: string };
+  /** Newest first: who asked, who approved, when, what was given. */
+  history?: { full: boolean; permissions: string[]; requestedBy: string; approvedBy: string; how: "made_staff" | "changed" | "invite"; at: string }[];
 };
+
+export type StaffInvite = {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  country: string;
+  employeeId: string;
+  jobTitle: string;
+  permissions: string[];
+  status: "awaiting_approval" | "sent" | "link_expired" | "accepted" | "cancelled" | "expired";
+  invitedBy: string;
+  invitedById: string;
+  invitedAt: string;
+  approvedBy: string;
+  approvedAt: string | null;
+  expiresAt: string | null;
+  acceptedAt: string | null;
+};
+export type InviteForm = { name: string; phone: string; email: string; country: string; employeeId: string; jobTitle: string; permissions: string[] };
+export function staffInvites() {
+  return api<{ invites: StaffInvite[] }>("/admin/staff/invites");
+}
+export function createStaffInvite(body: InviteForm, pin: string, key: string) {
+  return api<{ id: string }>("/admin/staff/invites", { method: "POST", body: { ...body, pin }, idempotencyKey: key });
+}
+export function approveStaffInvite(inviteId: string, pin: string, key: string) {
+  return api(`/admin/staff/invites/${id(inviteId)}/approve`, { method: "POST", body: { pin }, idempotencyKey: key });
+}
+export function resendStaffInvite(inviteId: string, pin: string, key: string) {
+  return api(`/admin/staff/invites/${id(inviteId)}/resend`, { method: "POST", body: { pin }, idempotencyKey: key });
+}
+export function cancelStaffInvite(inviteId: string) {
+  return api(`/admin/staff/invites/${id(inviteId)}/cancel`, { method: "POST", body: {} });
+}
 
 export function staffList() {
   return api<{ staff: StaffRow[]; people: Record<string, Person> }>(`/admin/staff`);
@@ -798,7 +837,8 @@ export function auditTrail(kind: AuditKind | "all", staffId: string | null, page
 
 export type SwitchState = "on" | "paused" | "off";
 export const SERVICE_NAMES = [
-  ["send_money", "Send money"],
+  ["send_money", "Send money: to this country"],
+  ["send_money_from", "Send money: from this country"],
   ["request_money", "Payment requests"],
   ["cash_in", "Cash in (agents)"],
   ["cash_out", "Cash out (agents)"],
@@ -850,6 +890,11 @@ export function saveLicence(code: string, body: { status: LicenceStatus; holder:
 
 export function serviceSwitches() {
   return api<ServiceSwitchRow[]>(`/admin/services`);
+}
+
+/** Switch OFF everything except these services and, for sending, these corridors. Never switches anything on. */
+export function applyLaunchPlan(body: { from: string[]; to: string[]; keep: ServiceName[]; reason: string; pin: string }, key: string) {
+  return api<{ switchedOff: number; stillOff: { country: string; service: ServiceName; state: SwitchState }[] }>("/admin/services/launch-plan", { method: "POST", body, idempotencyKey: key });
 }
 
 /** Paused or off at once. On needs a different staff member to approve (the same call). */

@@ -21,6 +21,7 @@ import { Badge, LoadState, PageHeader, Tabs, TextArea, okLength } from "../compo
 import { when } from "../lib/format";
 import { useLoad } from "../lib/useLoad";
 import { useT } from "../i18n/language";
+import { LaunchPlanBox } from "./LaunchPlan";
 
 const STATE_LABEL: Record<SwitchState, string> = { on: "On", paused: "Paused", off: "Off" };
 const STATE_TONE: Record<SwitchState, "ok" | "warn" | "danger"> = { on: "ok", paused: "warn", off: "danger" };
@@ -79,6 +80,17 @@ function ServicesTab() {
     <>
       {done && <p className="notice">{t(done)}</p>}
       <LoadState loading={switches.loading && !switches.data} error={switches.error} empty={false} />
+      {switches.data && countries.data && (
+        <LaunchPlanBox
+          rows={rows}
+          countries={countries.data}
+          mayChange={mayChange}
+          onDone={(m) => {
+            setDone(m);
+            switches.reload();
+          }}
+        />
+      )}
       {waiting.length > 0 && (
         <div className="card panel">
           <h2>{t("Waiting for a second person")}</h2>

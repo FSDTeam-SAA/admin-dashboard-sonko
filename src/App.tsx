@@ -1,6 +1,7 @@
 import { BrowserRouter, Route, Routes } from "react-router";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
 import { LoginPage } from "./auth/LoginPage";
+import { SetupPage } from "./auth/SetupPage";
 import { Shell } from "./layout/Shell";
 import { HomePage } from "./pages/HomePage";
 import { ComingSoonPage } from "./pages/ComingSoonPage";
@@ -72,6 +73,8 @@ const PAGES: Record<string, ComponentType> = {
 
 function Panel() {
   const { staff } = useAuth();
+  // A new employee's one-time link works without logging in.
+  if (window.location.pathname === "/setup") return <SetupPage />;
   if (!staff) return <LoginPage />;
   // Only pages this staff member may use get a route at all.
   const pages = visibleNav(staff.permissions).filter((item) => item.path !== "/");
