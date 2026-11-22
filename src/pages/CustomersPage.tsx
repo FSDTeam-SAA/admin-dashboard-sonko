@@ -163,7 +163,7 @@ export function CustomersPage() {
                     )}
                     {row.closed && (
                       <div>
-                        <Badge tone="plain">Closed</Badge>
+                        <Badge tone="plain">{row.deactivated ? "Deactivated" : "Closed"}</Badge>
                       </div>
                     )}
                   </td>
@@ -350,7 +350,13 @@ function CustomerView({
           )}
         </p>
       )}
-      {c.closed && (
+      {c.closed?.kind === "deactivated" && (
+        <p className="error">
+          {t("Deactivated by the customer in the app {time}.", { time: when(c.closed.at) })} {c.closed.reason}{" "}
+          {t("Nobody can find them or send them money, and they're signed out. Their money stays in the wallet. They reactivate it themselves by signing in with their PIN, so there's no need to open it for them.")}
+        </p>
+      )}
+      {c.closed && c.closed.kind !== "deactivated" && (
         <p className="error">
           {t("Closed {time}, {how}.", {
             time: when(c.closed.at),

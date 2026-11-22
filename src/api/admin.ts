@@ -418,6 +418,8 @@ export type CustomerRow = {
   idChecked: boolean;
   onHold: boolean;
   closed?: boolean;
+  /** The customer deactivated it themselves; signing in reactivates it. */
+  deactivated?: boolean;
   joinedAt: string;
   lastLoginAt: string | null;
 };
@@ -435,7 +437,7 @@ export type CustomerDetail = {
     /** The customer's own lock (lost phone). Older servers send nothing. */
     sendLock?: { on: boolean; at?: string | null; via?: "app" | "web" | "support" | null };
     /** Set when the account is closed. Older servers send nothing. */
-    closed?: { at: string; via: "app" | "staff" | ""; reason: string; by: string } | null;
+    closed?: { at: string; via: "app" | "staff" | ""; kind?: "closed" | "deactivated"; reason: string; by: string } | null;
   };
   wallets: { currency: string; balanceMinor: number; amount: number }[];
   spend: { currency: string; count: number; amountMinor: number }[];

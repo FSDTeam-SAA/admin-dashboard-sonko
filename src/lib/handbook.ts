@@ -47,8 +47,8 @@ export const HANDBOOK: HandbookEntry[] = [
       fr: "Chercher un client, voir son dossier, vérifier l’identité de l’appelant et lui envoyer un message.",
     },
     careful: {
-      en: "Check the caller before you change anything on an account or give out details.",
-      fr: "Vérifiez l’appelant avant de modifier un compte ou de donner des informations.",
+      en: "Check the caller before you change anything on an account or give out details. A customer who deactivated their account reactivates it themselves by signing in with their PIN: tell them that rather than opening it for them.",
+      fr: "Vérifiez l’appelant avant de modifier un compte ou de donner des informations. Un client qui a désactivé son compte le réactive lui-même en se connectant avec son code PIN : dites-le-lui plutôt que de le rouvrir vous-même.",
     },
   },
   {

@@ -1824,6 +1824,9 @@ export const FR: Record<string, string> = {
   "Friends signing up with one invite code in 24 hours": "Amis inscrits avec un même code en 24 heures",
   "Accounts on one phone in 7 days": "Comptes sur un même téléphone en 7 jours",
   "Fraud alerts have their own page too, with counts and escalation:": "Les alertes fraude ont aussi leur propre page, avec les totaux et l’escalade :",
+  "Deactivated": "Désactivé",
+  "Deactivated by the customer in the app {time}.": "Désactivé par le client dans l’app {time}.",
+  "Nobody can find them or send them money, and they're signed out. Their money stays in the wallet. They reactivate it themselves by signing in with their PIN, so there's no need to open it for them.": "Personne ne peut le trouver ni lui envoyer d’argent, et il est déconnecté. Son argent reste dans le portefeuille. Il le réactive lui-même en se connectant avec son code PIN : inutile de le rouvrir pour lui.",
 };
 
 import { handbookFrench } from "../lib/handbook";
