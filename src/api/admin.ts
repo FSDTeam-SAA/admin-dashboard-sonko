@@ -585,6 +585,11 @@ export type ComplianceCaseRow = {
   note: string;
   /** fraud_alert: which rule matched. */
   rule?: string | null;
+  /** fraud_alert: how it ended, and whether it was escalated. */
+  outcome?: "no_fraud" | "fraud" | "resolved" | null;
+  escalatedAt?: string | null;
+  escalatedBy?: Mini;
+  escalateNote?: string;
   createdAt: string;
   closedBy: Mini;
   closedAt: string | null;
@@ -597,8 +602,8 @@ export function complianceCases(type: CaseType | "all", status: "open" | "closed
   return api<{ cases: ComplianceCaseRow[]; pagination: Pagination }>(`/admin/compliance-cases?${query.toString()}`);
 }
 
-export function closeComplianceCase(caseId: string, note: string) {
-  return api(`/admin/compliance-cases/${id(caseId)}/close`, { method: "POST", body: { note } });
+export function closeComplianceCase(caseId: string, note: string, outcome?: "no_fraud" | "fraud" | "resolved") {
+  return api(`/admin/compliance-cases/${id(caseId)}/close`, { method: "POST", body: { note, ...(outcome ? { outcome } : {}) } });
 }
 
 export type TicketKeep = {
@@ -1467,7 +1472,42 @@ export function finance(days: 7 | 30 | 90, fresh = false) {
 
 // ---- Fraud monitoring limits (two people) ----
 
-export type FraudLimits = { paymentsPerHour: number; dayGbpMinor: number; newAccountDays: number; newAccountGbpMinor: number; recipientsPerDay: number; failuresPerHour: number };
+export type FraudLimits = {
+  paymentsPerHour: number;
+  dayGbpMinor: number;
+  newAccountDays: number;
+  newAccountGbpMinor: number;
+  recipientsPerDay: number;
+  failuresPerHour: number;
+  duplicatesPerHour: number;
+  singleGbpMinor: number;
+  wrongPinsPerDay: number;
+  invitesPerDay: number;
+  accountsPerDevice: number;
+};
+export type FraudSummary = {
+  open: number;
+  openByRule: Record<string, number>;
+  escalated: number;
+  pinLockouts24h: number;
+  onHold: number;
+  opened7d: number;
+  closed7d: Record<string, number>;
+  lastRunAt: string | null;
+};
+export function fraudSummary() {
+  return api<FraudSummary>("/admin/fraud/summary");
+}
+/** The alert stays open, goes to the top, and staff who can hold accounts are told. */
+export function escalateFraudAlert(caseId: string, note: string) {
+  return api(`/admin/compliance-cases/${id(caseId)}/escalate`, { method: "POST", body: { note } });
+}
+export function fraudAlerts(status: "open" | "closed", page: number, rule = "", escalated = false) {
+  const query = new URLSearchParams({ type: "fraud_alert", status, page: String(page), limit: "25" });
+  if (rule) query.set("rule", rule);
+  if (escalated) query.set("escalated", "true");
+  return api<{ cases: ComplianceCaseRow[]; pagination: Pagination }>(`/admin/compliance-cases?${query.toString()}`);
+}
 export type FraudSettings = {
   limits: FraudLimits;
   defaults: FraudLimits;

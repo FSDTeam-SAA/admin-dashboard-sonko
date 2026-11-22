@@ -11,6 +11,8 @@ type Props = {
   /** Most actions need the PIN; cancelling a request does not. */
   needsPin?: boolean;
   danger?: boolean;
+  /** A box that only shows something: no PIN and no confirm button, Cancel reads Close. */
+  hideConfirm?: boolean;
   /** Sends the action. Throw to show the server's message. */
   onConfirm: (pin: string) => Promise<void>;
   onClose: () => void;
@@ -21,7 +23,8 @@ type Props = {
  * asks the staff member to type their own PIN again, so an unlocked
  * computer can't be used by someone else. The PIN is sent once and cleared.
  */
-export function ConfirmWithPin({ title, children, confirmLabel, canConfirm = true, needsPin = true, danger, onConfirm, onClose }: Props) {
+export function ConfirmWithPin({ title, children, confirmLabel, canConfirm = true, needsPin: askPin = true, danger, hideConfirm = false, onConfirm, onClose }: Props) {
+  const needsPin = askPin && !hideConfirm;
   const t = useT();
   const [pin, setPin] = useState("");
   const [busy, setBusy] = useState(false);
@@ -82,11 +85,13 @@ export function ConfirmWithPin({ title, children, confirmLabel, canConfirm = tru
         )}
         <div className="row-end">
           <button type="button" onClick={onClose} disabled={busy}>
-            {t("Cancel")}
+            {t(hideConfirm ? "Close" : "Cancel")}
           </button>
-          <button className={danger ? "danger" : "primary"} type="submit" disabled={!ready}>
-            {busy ? t("Working…") : t(confirmLabel)}
-          </button>
+          {!hideConfirm && (
+            <button className={danger ? "danger" : "primary"} type="submit" disabled={!ready}>
+              {busy ? t("Working…") : t(confirmLabel)}
+            </button>
+          )}
         </div>
       </form>
     </div>

@@ -6,6 +6,7 @@ import { HomePage } from "./pages/HomePage";
 import { ComingSoonPage } from "./pages/ComingSoonPage";
 import { SalesPage } from "./pages/SalesPage";
 import { InvitesPage } from "./pages/InvitesPage";
+import { FraudPage } from "./pages/FraudPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { visibleNav } from "./lib/nav";
 import { ReportsPage } from "./pages/ReportsPage";
@@ -49,6 +50,7 @@ const PAGES: Record<string, ComponentType> = {
   "/analytics": AnalyticsPage,
   "/sales": SalesPage,
   "/invites": InvitesPage,
+  "/fraud": FraudPage,
   "/audit": AuditPage,
   "/services": ServicesPage,
   "/bills": BillsPage,

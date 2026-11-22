@@ -34,10 +34,19 @@ describe("customer messages", () => {
 });
 
 describe("fraud limits typed in pounds", () => {
-  const bounds = { paymentsPerHour: [2, 50], dayGbpMinor: [10_000, 5_000_000], newAccountDays: [1, 90], newAccountGbpMinor: [5_000, 1_000_000], recipientsPerDay: [2, 50], failuresPerHour: [2, 50] } as const;
-  const typed = { paymentsPerHour: "5", dayGbpMinor: "1,500", newAccountDays: "7", newAccountGbpMinor: "£300", recipientsPerDay: "5", failuresPerHour: "5" };
+  const bounds = {
+    paymentsPerHour: [2, 50], dayGbpMinor: [10_000, 5_000_000], newAccountDays: [1, 90], newAccountGbpMinor: [5_000, 1_000_000], recipientsPerDay: [2, 50], failuresPerHour: [2, 50],
+    duplicatesPerHour: [2, 20], singleGbpMinor: [10_000, 5_000_000], wrongPinsPerDay: [3, 30], invitesPerDay: [2, 50], accountsPerDevice: [2, 20],
+  } as const;
+  const typed = {
+    paymentsPerHour: "5", dayGbpMinor: "1,500", newAccountDays: "7", newAccountGbpMinor: "£300", recipientsPerDay: "5", failuresPerHour: "5",
+    duplicatesPerHour: "3", singleGbpMinor: "£1,000", wrongPinsPerDay: "6", invitesPerDay: "5", accountsPerDevice: "3",
+  };
   it("turns pounds into pence and checks the ranges", () => {
-    expect(readFraudLimits(typed, bounds as never).value).toEqual({ paymentsPerHour: 5, dayGbpMinor: 150_000, newAccountDays: 7, newAccountGbpMinor: 30_000, recipientsPerDay: 5, failuresPerHour: 5 });
+    expect(readFraudLimits(typed, bounds as never).value).toEqual({
+      paymentsPerHour: 5, dayGbpMinor: 150_000, newAccountDays: 7, newAccountGbpMinor: 30_000, recipientsPerDay: 5, failuresPerHour: 5,
+      duplicatesPerHour: 3, singleGbpMinor: 100_000, wrongPinsPerDay: 6, invitesPerDay: 5, accountsPerDevice: 3,
+    });
     expect(readFraudLimits({ ...typed, paymentsPerHour: "500" }, bounds as never).error).toBeTruthy();
     expect(readFraudLimits({ ...typed, newAccountGbpMinor: "2000" }, bounds as never).error).toMatch(/new-account/);
     expect(readFraudLimits({ ...typed, failuresPerHour: "2.5" }, bounds as never).error).toBeTruthy();

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router";
 import { closeComplianceCase, complianceCases, type CaseType, type ComplianceCaseRow } from "../api/admin";
 import { can } from "../api/staff";
 import { useAuth } from "../auth/AuthContext";
@@ -25,6 +26,11 @@ export const RULE_LABEL: Record<string, string> = {
   new_account_big: "New account sending a lot",
   many_recipients: "Many different people paid in one day",
   many_failures: "Many failed payments in one hour",
+  duplicate_attempts: "Duplicate attempts",
+  big_single: "Unusual payment amount",
+  wrong_pins: "Many wrong PINs",
+  many_invites: "Many invites in one day",
+  shared_device: "One phone, several accounts",
 };
 
 const WHAT_NEXT: Record<CaseType, string> = {
@@ -130,6 +136,7 @@ export function CasesPage() {
         );
       })}
       <Pager pagination={data?.pagination} onPage={setPage} />
+      <p className="muted small">{t("Fraud alerts have their own page too, with counts and escalation:")} <Link to="/fraud">{t("Fraud detection")}</Link></p>
       <FraudLimitsBox />
       {closing && (
         <ConfirmWithPin

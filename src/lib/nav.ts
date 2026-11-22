@@ -29,6 +29,13 @@ export const NAV: NavItem[] = [
     ready: true,
   },
   {
+    path: "/fraud",
+    label: "Fraud detection",
+    permission: "view_cases",
+    routes: ["GET /admin/fraud/summary", "GET /admin/compliance-cases", "POST /admin/compliance-cases/:id/escalate", "POST /admin/compliance-cases/:id/close", "GET/PUT /admin/fraud/settings"],
+    ready: true,
+  },
+  {
     path: "/cases",
     label: "Debt, fraud and alert cases",
     permission: "view_cases",

@@ -274,3 +274,11 @@ tr.changed td { background: rgba(255, 196, 0, 0.12); }
 .editor-form .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 @media (max-width: 560px) { .editor-form .row { grid-template-columns: 1fr; } }
 .editor-form input[readonly] { opacity: 0.6; cursor: not-allowed; }
+/* Fraud detection counters */
+.fraud-counts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 6px 0 8px; }
+.fraud-count { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line, #d0d5dd); background: var(--card, transparent); text-align: left; cursor: pointer; font: inherit; color: inherit; }
+div.fraud-count { cursor: default; }
+.fraud-count span { font-size: 12.5px; color: var(--muted); }
+.fraud-count strong { font-size: 24px; line-height: 1.1; }
+.fraud-count.warn { border-color: #f08c00; }
+.fraud-count.warn strong { color: #e8590c; }

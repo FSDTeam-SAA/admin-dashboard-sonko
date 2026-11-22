@@ -10,7 +10,19 @@ import { useLoad } from "../lib/useLoad";
 import { useT } from "../i18n/language";
 
 type Key = keyof FraudLimits;
-const ORDER: Key[] = ["paymentsPerHour", "dayGbpMinor", "newAccountDays", "newAccountGbpMinor", "recipientsPerDay", "failuresPerHour"];
+const ORDER: Key[] = [
+  "paymentsPerHour",
+  "dayGbpMinor",
+  "newAccountDays",
+  "newAccountGbpMinor",
+  "recipientsPerDay",
+  "failuresPerHour",
+  "duplicatesPerHour",
+  "singleGbpMinor",
+  "wrongPinsPerDay",
+  "invitesPerDay",
+  "accountsPerDevice",
+];
 const LABEL: Record<Key, string> = {
   paymentsPerHour: "Payments out in one hour",
   dayGbpMinor: "Pounds sent out in 24 hours",
@@ -18,10 +30,16 @@ const LABEL: Record<Key, string> = {
   newAccountGbpMinor: "Pounds sent out in 24 hours by a new account",
   recipientsPerDay: "Different people paid in 24 hours",
   failuresPerHour: "Failed payments in one hour",
+  duplicatesPerHour: "Same amount to the same person in one hour",
+  singleGbpMinor: "Pounds in one single payment",
+  wrongPinsPerDay: "Wrong PINs in one day",
+  invitesPerDay: "Friends signing up with one invite code in 24 hours",
+  accountsPerDevice: "Accounts on one phone in 7 days",
 };
 /** Amounts are typed and shown in whole pounds; the server keeps pence. */
-const POUNDS: Key[] = ["dayGbpMinor", "newAccountGbpMinor"];
-const shown = (k: Key, v: number) => (POUNDS.includes(k) ? `£${(v / 100).toLocaleString("en-GB")}` : String(v));
+const POUNDS: Key[] = ["dayGbpMinor", "newAccountGbpMinor", "singleGbpMinor"];
+// A limit an older record doesn't have yet comes as null.
+const shown = (k: Key, v: number | null | undefined) => (v === null || v === undefined ? "—" : POUNDS.includes(k) ? `£${(v / 100).toLocaleString("en-GB")}` : String(v));
 
 /** Typed values to limits (pounds to pence), or the problem. */
 export function readFraudLimits(typed: Record<Key, string>, bounds: Record<Key, [number, number]>): { value?: FraudLimits; error?: string } {

@@ -178,6 +178,17 @@ export const HANDBOOK: HandbookEntry[] = [
     },
   },
   {
+    path: "/fraud",
+    what: {
+      en: "Fraud detection: what the automatic checks found, every 10 minutes. Look at each alert, then dismiss it, escalate it, or confirm fraud and hold the account.",
+      fr: "Détection de fraude : ce que les contrôles automatiques ont trouvé, toutes les 10 minutes. Examinez chaque alerte, puis écartez-la, escaladez-la, ou confirmez la fraude et bloquez le compte.",
+    },
+    careful: {
+      en: "Nothing is blocked by itself. Call the customer before confirming fraud when you can, and write what you found: the note stays on record.",
+      fr: "Rien n’est bloqué automatiquement. Appelez le client avant de confirmer une fraude quand c’est possible, et notez ce que vous avez trouvé : la note reste enregistrée.",
+    },
+  },
+  {
     path: "/invites",
     what: {
       en: "Invite a friend: the bonus both people get, the most friends one person is paid for, and the dates. Two people change it.",
