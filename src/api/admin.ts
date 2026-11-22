@@ -1540,7 +1540,7 @@ export type OfferCard = {
   art: "sunset" | "ocean" | "forest" | "night";
   imageUrl: string;
   eventDate: string | null;
-  action: "none" | "tickets";
+  action: "none" | "tickets" | "send" | "request" | "airtime" | "bills" | "add_money" | "invite" | "repeat";
   eventId: string | null;
   startsAt: string;
   endsAt: string;
@@ -1584,8 +1584,17 @@ export function withdrawOfferCard(cardId: string, reason: string) {
 // ---- Event tickets (sold only in the app) ----
 
 export type TicketEventState = "waiting" | "on_sale" | "sold_out" | "sales_closed" | "over" | "cancelled";
+export type TicketTier = { id?: string; nameEn: string; nameFr: string; priceMinor: number; capacity: number; sold?: number };
+
 export type TicketEvent = {
   id: string;
+  /** Ticket types (Standard, VIP…). Older events have one. */
+  tiers?: TicketTier[];
+  /** The main event, shown first in the app. */
+  featured?: boolean;
+  editedBy?: string | null;
+  /** A change to an event on sale, waiting for a second person. */
+  pendingEdit?: { changes: Partial<TicketEventDraft> & { tiers: TicketTier[] }; reason: string; by: string; byName: string; at: string } | null;
   titleEn: string;
   titleFr: string;
   aboutEn: string;
@@ -1643,6 +1652,7 @@ export type EventTicketRow = {
   refundReason: string;
 };
 export type TicketEventDraft = {
+  tiers?: TicketTier[];
   titleEn: string;
   titleFr: string;
   aboutEn: string;
@@ -1666,6 +1676,23 @@ export function ticketEvents() {
 
 export function makeTicketEvent(draft: TicketEventDraft, pin: string, key: string) {
   return api<{ id: string }>("/admin/ticket-events", { method: "POST", body: { ...draft, pin }, idempotencyKey: key });
+}
+
+/** A draft changes at once; an event on sale waits for a second person (reason needed). */
+export function editTicketEvent(eventId: string, draft: TicketEventDraft & { reason?: string }, pin: string, key: string) {
+  return api<{ changed?: boolean; asked?: boolean }>(`/admin/ticket-events/${id(eventId)}`, { method: "PUT", body: { ...draft, pin }, idempotencyKey: key });
+}
+
+export function approveTicketEventEdit(eventId: string, pin: string, key: string) {
+  return api(`/admin/ticket-events/${id(eventId)}/edit/approve`, { method: "POST", body: { pin }, idempotencyKey: key });
+}
+
+export function withdrawTicketEventEdit(eventId: string) {
+  return api(`/admin/ticket-events/${id(eventId)}/edit`, { method: "DELETE" });
+}
+
+export function setMainTicketEvent(eventId: string, main: boolean, pin: string) {
+  return api(`/admin/ticket-events/${id(eventId)}/main`, { method: "POST", body: { main, pin } });
 }
 
 export function approveTicketEvent(eventId: string, pin: string, key: string) {

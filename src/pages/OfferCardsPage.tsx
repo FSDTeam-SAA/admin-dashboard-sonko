@@ -17,6 +17,7 @@ import { newIdempotencyKey } from "../lib/idempotency";
 import { useLoad } from "../lib/useLoad";
 import { useT } from "../i18n/language";
 import { STATE_LABEL, textProblem } from "./AnnouncementsPage";
+import { CARD_ACTIONS, buttonLabel, fileFromData, wordsFromPaste } from "../lib/pasteCard";
 
 /** The poster colours when there is no picture. The app uses the same four. */
 export const ART: Record<OfferCard["art"], string> = {
@@ -31,6 +32,29 @@ const inDays = (days: number) => {
   d.setSeconds(0, 0);
   return d.toISOString().slice(0, 16);
 };
+
+/** The card as it looks at the end of Home in the app. */
+export function OfferCardPreview({ d, lang }: { d: OfferCardDraft; lang: "en" | "fr" }) {
+  const fr = lang === "fr";
+  const title = (fr ? d.titleFr : d.titleEn) || (fr ? "Titre" : "Title");
+  const body = (fr ? d.bodyFr : d.bodyEn) || (fr ? "Votre message" : "Your message");
+  const date = d.eventDate ? new Date(d.eventDate).toLocaleString(fr ? "fr-FR" : "en-GB", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "";
+  const button = buttonLabel(d.action, lang);
+  return (
+    <div className="phone-preview offer-preview">
+      <div className="op-card" style={{ background: d.imageUrl ? `linear-gradient(180deg, rgba(0,0,0,.05), rgba(0,0,0,.6)), center / cover url(${d.imageUrl})` : ART[d.art] }}>
+        {d.sponsored && <span className="op-sponsor">{fr ? "Sponsorisé" : "Sponsored"}{d.sponsorName ? ` · ${d.sponsorName}` : ""}</span>}
+        <div className="op-text">
+          <b>{title}</b>
+          <span>{body}</span>
+          {date && <small>{date}</small>}
+        </div>
+        {button && <span className="op-button">{button}</span>}
+      </div>
+      <p className="muted small" style={{ margin: "10px 2px 0", color: "#a3a9b6" }}>{fr ? "Fin de l’écran d’accueil" : "End of the Home screen"}</p>
+    </div>
+  );
+}
 
 /** Same checks as the server (utils/offerCard.rules.js). The server checks again. */
 export function offerProblems(d: OfferCardDraft) {
@@ -91,7 +115,7 @@ export function OfferCardsPage() {
               {c.sponsored && <Badge tone="plain">{t("Sponsored by {name}", { name: c.sponsorName })}</Badge>}{" "}
               <span className="muted small">
                 {c.country === "ALL" ? t("All countries") : c.country} · {t("{from} to {to}", { from: when(c.startsAt), to: when(c.endsAt) })}
-                {c.action === "tickets" ? ` · ${t("Button opens the event's tickets")}` : ""}
+                {c.action !== "none" ? ` · ${t("Button: {label}", { label: t(CARD_ACTIONS.find((a) => a[0] === c.action)?.[1] ?? c.action) })}` : ""}
               </span>
             </p>
             <h3>{c.titleEn}</h3>
@@ -142,7 +166,38 @@ function MakeDialog({ onClose, onDone }: { onClose: () => void; onDone: (m: stri
   });
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [lang, setLang] = useState<"en" | "fr">("en");
+  const [paste, setPaste] = useState("");
+  const [pasteInto, setPasteInto] = useState<"en" | "fr">("en");
+  const [pasteNote, setPasteNote] = useState<string | null>(null);
   const key = useMemo(newIdempotencyKey, []);
+  const upload = async (file: File) => {
+    setUploading(true);
+    setUploadError(null);
+    try {
+      const url = (await uploadOfferPicture(file)).url;
+      setDraft((d) => ({ ...d, imageUrl: url }));
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : "Upload failed.");
+    } finally {
+      setUploading(false);
+    }
+  };
+  const usePaste = async () => {
+    const got = wordsFromPaste(paste);
+    setDraft((d) => (pasteInto === "en" ? { ...d, titleEn: got.title, bodyEn: got.body } : { ...d, titleFr: got.title, bodyFr: got.body }));
+    setLang(pasteInto);
+    const notes: string[] = [t("Took the words out of the code.")];
+    if (got.removed) notes.push(t("Left out {n} links, buttons or scripts: a card is words and a picture only.", { n: got.removed }));
+    if (got.pictureElsewhere) notes.push(t("The picture is on another website, which isn't allowed. Save it and upload it with the Picture button."));
+    setPasteNote(notes.join(" "));
+    setPaste("");
+    if (got.pictureData) {
+      const file = fileFromData(got.pictureData);
+      if (file) await upload(file);
+      else setUploadError("The picture in the code is not a JPG, PNG or WebP under 5 MB.");
+    }
+  };
   const set = <K extends keyof OfferCardDraft>(field: K, value: OfferCardDraft[K]) => setDraft({ ...draft, [field]: value });
   const problems = offerProblems(draft);
   const ok = Object.values(problems).every((p) => p === null) && /^(ALL|[A-Z]{2})$/.test(draft.country) && draft.endsAt > draft.startsAt && !uploading;
@@ -178,6 +233,25 @@ function MakeDialog({ onClose, onDone }: { onClose: () => void; onDone: (m: stri
         onDone("Made. A different staff member must approve it before customers see it.");
       }}
     >
+      <div className="editor-split">
+      <div className="editor-form">
+      <details className="paste-box" open={!draft.titleEn && !draft.titleFr}>
+        <summary>{t("Paste a card from a designer or Claude")}</summary>
+        <p className="hint">{t("Paste the code or text. Only the words and one picture are kept: links, buttons, styles and scripts are thrown away. Check the preview, then fix the words below.")}</p>
+        <textarea rows={4} value={paste} placeholder="<h2>…</h2><p>…</p>" onChange={(e) => setPaste(e.target.value)} />
+        <div className="row-start">
+          <label className="check">
+            <input type="radio" checked={pasteInto === "en"} onChange={() => setPasteInto("en")} /> {t("English")}
+          </label>
+          <label className="check">
+            <input type="radio" checked={pasteInto === "fr"} onChange={() => setPasteInto("fr")} /> {t("French")}
+          </label>
+          <button type="button" disabled={!paste.trim()} onClick={usePaste}>
+            {t("Use these words")}
+          </button>
+        </div>
+        {pasteNote && <p className="notice small">{pasteNote}</p>}
+      </details>
       <fieldset className="choices">
         <legend>{t("Whose card is it?")}</legend>
         <label className="check">
@@ -204,16 +278,7 @@ function MakeDialog({ onClose, onDone }: { onClose: () => void; onDone: (m: stri
           accept="image/jpeg,image/png,image/webp"
           onChange={async (e) => {
             const file = e.target.files?.[0];
-            if (!file) return;
-            setUploading(true);
-            setUploadError(null);
-            try {
-              set("imageUrl", (await uploadOfferPicture(file)).url);
-            } catch (err) {
-              setUploadError(err instanceof Error ? err.message : "Upload failed.");
-            } finally {
-              setUploading(false);
-            }
+            if (file) await upload(file);
           }}
         />
         {uploading && <span className="hint">{t("Uploading…")}</span>}
@@ -228,7 +293,6 @@ function MakeDialog({ onClose, onDone }: { onClose: () => void; onDone: (m: stri
           <option value="night">{t("Night")}</option>
         </select>
       </label>
-      <div aria-hidden="true" style={{ height: 70, borderRadius: 12, background: draft.imageUrl ? `center / cover url(${draft.imageUrl})` : ART[draft.art] }} />
       <label>
         {t("Event date on the card (optional)")}
         <input type="datetime-local" value={draft.eventDate ?? ""} onChange={(e) => set("eventDate", e.target.value || null)} />
@@ -236,9 +300,13 @@ function MakeDialog({ onClose, onDone }: { onClose: () => void; onDone: (m: stri
       <label>
         {t("The button")}
         <select value={draft.action} onChange={(e) => setDraft({ ...draft, action: e.target.value as OfferCard["action"], eventId: null })}>
-          <option value="none">{t("No button")}</option>
-          <option value="tickets">{t("See tickets (opens the event in the app)")}</option>
+          {CARD_ACTIONS.map(([value, label]) => (
+            <option key={value} value={value}>
+              {t(label)}
+            </option>
+          ))}
         </select>
+        <span className="hint">{t("A tap only ever opens a screen inside the app, never a website.")}</span>
       </label>
       {draft.action === "tickets" && (
         <label>
@@ -265,6 +333,16 @@ function MakeDialog({ onClose, onDone }: { onClose: () => void; onDone: (m: stri
         {t("Ends (60 days at most)")}
         <input type="datetime-local" value={draft.endsAt} onChange={(e) => set("endsAt", e.target.value)} />
       </label>
+      </div>
+      <div className="editor-preview">
+        <div className="row-start small">
+          <span className="muted">{t("How it looks in the app")}</span>
+          <button type="button" className={lang === "en" ? "chip on" : "chip"} onClick={() => setLang("en")}>EN</button>
+          <button type="button" className={lang === "fr" ? "chip on" : "chip"} onClick={() => setLang("fr")}>FR</button>
+        </div>
+        <OfferCardPreview d={draft} lang={lang} />
+      </div>
+      </div>
     </ConfirmWithPin>
   );
 }
@@ -284,16 +362,10 @@ function ApproveDialog({ c, onClose, onDone }: { c: OfferCard; onClose: () => vo
     >
       <p>{t("Customers in {country} will see this at the end of Home from {from} to {to}. Read both languages and check the advertiser: you are the second check.", { country: c.country === "ALL" ? t("all countries") : c.country, from: when(c.startsAt), to: when(c.endsAt) })}</p>
       {c.sponsored && <p><Badge tone="plain">{t("Sponsored by {name}", { name: c.sponsorName })}</Badge></p>}
-      <p>
-        <strong>{c.titleEn}</strong>
-        <br />
-        {c.bodyEn}
-      </p>
-      <p>
-        <strong>{c.titleFr}</strong>
-        <br />
-        {c.bodyFr}
-      </p>
+      <div className="preview-pair">
+        <OfferCardPreview d={c} lang="en" />
+        <OfferCardPreview d={c} lang="fr" />
+      </div>
     </ConfirmWithPin>
   );
 }

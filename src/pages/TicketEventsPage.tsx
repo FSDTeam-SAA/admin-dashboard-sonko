@@ -1,9 +1,11 @@
 import { useMemo, useState } from "react";
 import {
   approveTicketEvent,
+  approveTicketEventEdit,
+  setMainTicketEvent,
+  withdrawTicketEventEdit,
   cancelTicketEvent,
   eventTickets,
-  makeTicketEvent,
   payOrganiser,
   refundEventTicket,
   refundEveryone,
@@ -11,14 +13,14 @@ import {
   ticketEvents,
   type EventTicketRow,
   type TicketEvent,
-  type TicketEventDraft,
   type TicketEventState,
 } from "../api/admin";
 import { useAuth } from "../auth/AuthContext";
+import { EventFormDialog, phoneList } from "./EventEditor";
 import { can } from "../api/staff";
 import { Badge, LoadState, PageHeader } from "../components/common";
 import { ConfirmWithPin } from "../components/ConfirmWithPin";
-import { decimalsOf, money, when } from "../lib/format";
+import { money, when } from "../lib/format";
 import { newIdempotencyKey } from "../lib/idempotency";
 import { useLoad } from "../lib/useLoad";
 import { useT } from "../i18n/language";
@@ -52,30 +54,8 @@ export function canPayOut(e: TicketEvent): boolean {
   return e.payoutState === "due" && e.heldPriceMinor + e.heldFeeMinor > 0;
 }
 
-/** "350" or "350.50" typed by staff, in minor units; null if it isn't a price. */
-export function toMinorUnits(text: string, currency: string): number | null {
-  const clean = text.trim().replace(/,/g, "");
-  if (!/^\d+(\.\d+)?$/.test(clean)) return null;
-  const decimals = decimalsOf(currency);
-  const [whole, part = ""] = clean.split(".");
-  if (part.length > decimals) return null;
-  const n = Number(whole) * 10 ** decimals + Number((part + "0".repeat(decimals)).slice(0, decimals) || 0);
-  return Number.isSafeInteger(n) ? n : null;
-}
+export { phoneList, toMinorUnits } from "./EventEditor";
 
-/** Phone numbers typed one per line or separated by commas. */
-export function phoneList(text: string): string[] {
-  return text
-    .split(/[\n,;]+/)
-    .map((p) => p.trim())
-    .filter(Boolean);
-}
-
-const inDays = (days: number) => {
-  const d = new Date(Date.now() + days * 86_400_000);
-  d.setMinutes(0, 0, 0);
-  return d.toISOString().slice(0, 16);
-};
 
 /**
  * Event tickets sold only in the Sunu Pay app. Staff set up the event and the
@@ -88,6 +68,10 @@ export function TicketEventsPage() {
   const { staff } = useAuth();
   const [reload, setReload] = useState(0);
   const [making, setMaking] = useState(false);
+  const [editing, setEditing] = useState<TicketEvent | null>(null);
+  const [reviewing, setReviewing] = useState<TicketEvent | null>(null);
+  const [mainFor, setMainFor] = useState<TicketEvent | null>(null);
+  const [withdrawing, setWithdrawing] = useState<TicketEvent | null>(null);
   const [approving, setApproving] = useState<TicketEvent | null>(null);
   const [cancelling, setCancelling] = useState<TicketEvent | null>(null);
   const [gate, setGate] = useState<TicketEvent | null>(null);
@@ -100,6 +84,10 @@ export function TicketEventsPage() {
   const rows = data ?? [];
   const finish = (message: string) => {
     setMaking(false);
+    setEditing(null);
+    setReviewing(null);
+    setMainFor(null);
+    setWithdrawing(null);
     setApproving(null);
     setCancelling(null);
     setGate(null);
@@ -143,17 +131,34 @@ export function TicketEventsPage() {
                   <tr key={e.id}>
                     <td>
                       <strong>{e.titleEn}</strong>
+                      {e.featured && (
+                        <>
+                          {" "}
+                          <Badge tone="ok">Main event</Badge>
+                        </>
+                      )}
                       <br />
                       <span className="muted small">
                         {e.venue} · {when(e.startsAt)}
                       </span>
+                      {e.pendingEdit && (
+                        <div className="notice small">
+                          {t("Change waiting from {name}, {when}: {reason}", { name: e.pendingEdit.byName || "—", when: when(e.pendingEdit.at), reason: e.pendingEdit.reason })}
+                        </div>
+                      )}
                     </td>
                     <td>
                       <Badge tone={EVENT_STATE[e.state].tone}>{t(EVENT_STATE[e.state].label)}</Badge>
                     </td>
                     <td className="num">
-                      {money(e.priceMinor, e.currency)}
-                      {e.feeMinor > 0 && <span className="muted small"> + {money(e.feeMinor, e.currency)}</span>}
+                      {(e.tiers?.length ? e.tiers : [{ nameEn: "", priceMinor: e.priceMinor, capacity: e.capacity, sold: e.sold, nameFr: "" }]).map((tier, i) => (
+                        <div key={i} className="small">
+                          {tier.nameEn ? `${tier.nameEn}: ` : ""}
+                          {money(tier.priceMinor, e.currency)}
+                          {e.tiers?.length ? <span className="muted"> · {tier.sold ?? 0}/{tier.capacity}</span> : null}
+                        </div>
+                      ))}
+                      {e.feeMinor > 0 && <span className="muted small"> + {money(e.feeMinor, e.currency)} {t("fee")}</span>}
                     </td>
                     <td className="num">
                       {e.sold} / {e.capacity}
@@ -181,6 +186,12 @@ export function TicketEventsPage() {
                     </td>
                     <td className="actions">
                       <button onClick={() => setList(e)}>{t("Tickets")}</button>
+                      {e.state !== "cancelled" && e.state !== "over" && !e.paidOutAt && !e.pendingEdit && <button onClick={() => setEditing(e)}>{t("Change")}</button>}
+                      {e.pendingEdit && e.pendingEdit.by !== staff?._id && <button className="primary" onClick={() => setReviewing(e)}>{t("Review the change")}</button>}
+                      {e.pendingEdit && <button onClick={() => setWithdrawing(e)}>{t("Withdraw the change")}</button>}
+                      {(e.state === "on_sale" || e.state === "sold_out" || e.state === "sales_closed") && (
+                        <button onClick={() => setMainFor(e)}>{e.featured ? t("Not the main event") : t("Make main event")}</button>
+                      )}
                       {money_ && e.state === "cancelled" && e.refundsWaiting > 0 && !e.paidOutAt && (
                         <button className="primary" onClick={() => setRefundAll(e)}>
                           {t("Refund everyone")}
@@ -191,7 +202,7 @@ export function TicketEventsPage() {
                           {t("Pay the organiser")}
                         </button>
                       )}
-                      {e.state === "waiting" && e.createdBy !== staff?._id && <button onClick={() => setApproving(e)}>{t("Review and approve")}</button>}
+                      {e.state === "waiting" && e.createdBy !== staff?._id && e.editedBy !== staff?._id && <button onClick={() => setApproving(e)}>{t("Review and approve")}</button>}
                       {e.state !== "cancelled" && e.state !== "over" && <button onClick={() => setGate(e)}>{t("Gate staff")}</button>}
                       {e.state !== "cancelled" && e.state !== "over" && !e.paidOutAt && (
                         <button className="danger" onClick={() => setCancelling(e)}>
@@ -206,111 +217,100 @@ export function TicketEventsPage() {
           </div>
         </div>
       )}
-      {making && <MakeDialog onClose={() => setMaking(false)} onDone={finish} />}
+      {making && <EventFormDialog event={null} onClose={() => setMaking(false)} onDone={finish} />}
+      {editing && <EventFormDialog event={editing} onClose={() => setEditing(null)} onDone={finish} />}
+      {reviewing && <ApproveEditDialog e={reviewing} onClose={() => setReviewing(null)} onDone={finish} />}
+      {mainFor && <MainDialog e={mainFor} onClose={() => setMainFor(null)} onDone={finish} />}
       {approving && <ApproveDialog e={approving} onClose={() => setApproving(null)} onDone={finish} />}
       {cancelling && <CancelDialog e={cancelling} onClose={() => setCancelling(null)} onDone={finish} />}
       {gate && <GateDialog e={gate} onClose={() => setGate(null)} onDone={finish} />}
       {list && <TicketsDialog e={list} canRefund={money_} onClose={() => setList(null)} onChanged={() => setReload((n) => n + 1)} />}
       {refundAll && <RefundAllDialog e={refundAll} onClose={() => setRefundAll(null)} onDone={finish} />}
       {paying && <PayDialog e={paying} onClose={() => setPaying(null)} onDone={finish} />}
+      {withdrawing && (
+        <ConfirmWithPin
+          title="Withdraw the waiting change"
+          confirmLabel="Withdraw"
+          needsPin={false}
+          onClose={() => setWithdrawing(null)}
+          onConfirm={async () => {
+            await withdrawTicketEventEdit(withdrawing.id);
+            finish("Change withdrawn. The event stays as it is.");
+          }}
+        >
+          <p>{t("The event stays as it is.")}</p>
+        </ConfirmWithPin>
+      )}
     </section>
   );
 }
 
-function MakeDialog({ onClose, onDone }: { onClose: () => void; onDone: (m: string) => void }) {
+/** Before and after, side by side, then a different person approves. */
+function ApproveEditDialog({ e, onClose, onDone }: { e: TicketEvent; onClose: () => void; onDone: (m: string) => void }) {
   const t = useT();
   const key = useMemo(newIdempotencyKey, []);
-  const [f, setF] = useState({
-    titleEn: "",
-    titleFr: "",
-    aboutEn: "",
-    aboutFr: "",
-    venue: "",
-    country: "GM",
-    currency: "GMD",
-    price: "",
-    fee: "0",
-    capacity: "",
-    maxPerPerson: "4",
-    startsAt: inDays(14),
-    salesEndAt: "",
-    organiserPhone: "",
-    gatePhones: "",
-  });
-  const set = (k: keyof typeof f) => (v: string) => setF({ ...f, [k]: v });
-  const priceMinor = toMinorUnits(f.price, f.currency);
-  const feeMinor = toMinorUnits(f.fee || "0", f.currency);
-  const capacity = Number(f.capacity);
-  const ok =
-    f.titleEn.trim().length >= 3 &&
-    f.titleFr.trim().length >= 3 &&
-    f.venue.trim().length >= 3 &&
-    /^[A-Z]{2}$/.test(f.country) &&
-    /^[A-Z]{3}$/.test(f.currency) &&
-    !!priceMinor &&
-    feeMinor !== null &&
-    feeMinor <= priceMinor &&
-    Number.isInteger(capacity) &&
-    capacity > 0 &&
-    f.organiserPhone.trim().startsWith("+");
-  const input = (k: keyof typeof f, label: string, extra: Record<string, unknown> = {}) => (
-    <label>
-      {t(label)}
-      <input value={f[k]} onChange={(e) => set(k)(e.target.value)} {...extra} />
-    </label>
-  );
+  const c = e.pendingEdit!.changes;
+  const tiersNow = e.tiers?.length ? e.tiers : [{ nameEn: "Ticket", nameFr: "Billet", priceMinor: e.priceMinor, capacity: e.capacity, sold: e.sold }];
+  const rows: [string, string, string][] = [
+    ["Title (English)", e.titleEn, c.titleEn ?? ""],
+    ["Title (French)", e.titleFr, c.titleFr ?? ""],
+    ["Venue", e.venue, c.venue ?? ""],
+    ["Event starts", when(e.startsAt), when(c.startsAt ?? null)],
+    ["Sales end", when(e.salesEndAt), when(c.salesEndAt ?? null)],
+    ["Sunu Pay fee per ticket", money(e.feeMinor, e.currency), money(c.feeMinor ?? 0, e.currency)],
+    ["Tickets per person", String(e.maxPerPerson), String(c.maxPerPerson ?? "")],
+    ["Ticket types", tiersNow.map((x) => `${x.nameEn} ${money(x.priceMinor, e.currency)} ×${x.capacity}`).join(", "), (c.tiers || []).map((x) => `${x.nameEn} ${money(x.priceMinor, e.currency)} ×${x.capacity}`).join(", ")],
+  ];
   return (
     <ConfirmWithPin
-      title="Set up an event"
-      confirmLabel="Send for approval"
-      canConfirm={ok}
+      title="Approve the change"
+      confirmLabel="Approve the change"
       onClose={onClose}
       onConfirm={async (pin) => {
-        const draft: TicketEventDraft = {
-          titleEn: f.titleEn,
-          titleFr: f.titleFr,
-          aboutEn: f.aboutEn,
-          aboutFr: f.aboutFr,
-          venue: f.venue,
-          country: f.country,
-          currency: f.currency,
-          priceMinor: priceMinor!,
-          feeMinor: feeMinor!,
-          capacity,
-          maxPerPerson: Number(f.maxPerPerson),
-          startsAt: new Date(f.startsAt).toISOString(),
-          salesEndAt: f.salesEndAt ? new Date(f.salesEndAt).toISOString() : new Date(f.startsAt).toISOString(),
-          organiserPhone: f.organiserPhone.trim(),
-          gatePhones: phoneList(f.gatePhones),
-        };
-        await makeTicketEvent(draft, pin, key);
-        onDone("Event made. A different staff member must approve it before tickets go on sale.");
+        await approveTicketEventEdit(e.id, pin, key);
+        onDone("Change approved. The app shows it now.");
       }}
     >
-      {input("titleEn", "Title (English)", { maxLength: 60 })}
-      {input("titleFr", "Title (French)", { maxLength: 60 })}
-      {input("aboutEn", "About (English, optional)", { maxLength: 300 })}
-      {input("aboutFr", "About (French, optional)", { maxLength: 300 })}
-      {input("venue", "Venue", { maxLength: 80 })}
-      {input("country", "Country (two letters)", { maxLength: 2 })}
-      {input("currency", "Currency", { maxLength: 3 })}
-      {input("price", "Ticket price (goes to the organiser)", { inputMode: "decimal" })}
-      {input("fee", "Sunu Pay fee per ticket (added for the buyer)", { inputMode: "decimal" })}
-      {input("capacity", "How many tickets", { inputMode: "numeric" })}
-      {input("maxPerPerson", "Tickets per person (1 to 10)", { inputMode: "numeric" })}
-      <label>
-        {t("Event starts")}
-        <input type="datetime-local" value={f.startsAt} onChange={(e) => set("startsAt")(e.target.value)} />
-      </label>
-      <label>
-        {t("Sales end (optional; otherwise when the event starts)")}
-        <input type="datetime-local" value={f.salesEndAt} onChange={(e) => set("salesEndAt")(e.target.value)} />
-      </label>
-      {input("organiserPhone", "Organiser's Sunu Pay number (the money goes to this account)", { placeholder: "+220…" })}
-      <label>
-        {t("Gate staff numbers (one per line; they check tickets with the app)")}
-        <textarea rows={3} value={f.gatePhones} onChange={(e) => set("gatePhones")(e.target.value)} />
-      </label>
+      <p>{t("Asked by {name}. Reason: {reason}", { name: e.pendingEdit!.byName || "—", reason: e.pendingEdit!.reason })}</p>
+      <div className="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th />
+              <th>{t("Now")}</th>
+              <th>{t("After")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(([label, before, after]) => (
+              <tr key={label} className={before !== after ? "changed" : ""}>
+                <td>{t(label)}</td>
+                <td className="small">{before}</td>
+                <td className="small">{before !== after ? <strong>{after}</strong> : after}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="muted small">{t("Tickets already sold keep their price. Ticket holders are told if the time or place changes.")}</p>
+    </ConfirmWithPin>
+  );
+}
+
+function MainDialog({ e, onClose, onDone }: { e: TicketEvent; onClose: () => void; onDone: (m: string) => void }) {
+  const t = useT();
+  const off = !!e.featured;
+  return (
+    <ConfirmWithPin
+      title={off ? "Not the main event" : "Make main event"}
+      confirmLabel={off ? "Stop showing it first" : "Make it the main event"}
+      onClose={onClose}
+      onConfirm={async (pin) => {
+        await setMainTicketEvent(e.id, !off, pin);
+        onDone(off ? "No longer the main event." : "This is now the main event in the app.");
+      }}
+    >
+      <p>{off ? t("The app stops showing this event first.") : t("The app shows {title} first, at the top of My tickets. Only one event can be the main one; any other stops being main.", { title: e.titleEn })}</p>
     </ConfirmWithPin>
   );
 }
@@ -337,7 +337,13 @@ function ApproveDialog({ e, onClose, onDone }: { e: TicketEvent; onClose: () => 
         <br />
         {e.venue} · {when(e.startsAt)}
         <br />
-        {t("{n} tickets at {price}, plus {fee} Sunu Pay fee", { n: e.capacity, price: money(e.priceMinor, e.currency), fee: money(e.feeMinor, e.currency) })}
+        {(e.tiers?.length ? e.tiers : [{ nameEn: t("Ticket"), priceMinor: e.priceMinor, capacity: e.capacity }]).map((x, i) => (
+          <span key={i}>
+            {t("{name}: {n} tickets at {price}", { name: x.nameEn, n: x.capacity, price: money(x.priceMinor, e.currency) })}
+            <br />
+          </span>
+        ))}
+        {t("Plus {fee} Sunu Pay fee per ticket", { fee: money(e.feeMinor, e.currency) })}
       </p>
     </ConfirmWithPin>
   );
