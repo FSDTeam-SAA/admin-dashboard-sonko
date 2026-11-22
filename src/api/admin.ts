@@ -870,6 +870,7 @@ export const SERVICE_NAMES = [
   ["data", "Data bundles"],
   ["bills", "Bills (app and agent Pay Bills)"],
   ["bank_transfer", "Bank transfer"],
+  ["convert", "Convert between own wallets"],
 ] as const;
 export type ServiceName = (typeof SERVICE_NAMES)[number][0];
 export type LicenceStatus = "none" | "own" | "partner";

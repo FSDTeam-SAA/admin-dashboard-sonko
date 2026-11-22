@@ -577,6 +577,8 @@ export const FR: Record<string, string> = {
   "Cash in": "Dépôt",
   "Cash out": "Retrait",
   "Added to wallet": "Ajouté au portefeuille",
+  "Currency conversion": "Conversion de devise",
+  "Convert between own wallets": "Conversion entre ses propres portefeuilles",
   "Refund": "Remboursement",
   "Street": "Rue",
   "Town or city": "Ville",

@@ -49,6 +49,7 @@ export const TYPE_LABEL: Record<string, string> = {
   "cash-in": "Cash in",
   "cash-out": "Cash out",
   "wallet-top-up": "Added to wallet",
+  convert: "Currency conversion",
   refund: "Refund",
 };
 
