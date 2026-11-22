@@ -1991,3 +1991,15 @@ export type HigherLimitRow = HigherLimit & { customerId: string; customer: strin
 export function higherLimits(status: "waiting" | "active" | "review") {
   return api<{ rows: HigherLimitRow[] }>(`/admin/higher-limits?status=${status}`);
 }
+
+// Agent analytics (read only).
+export type AgentAnalyticsBucket = "day" | "week" | "month";
+export type AgentSeriesPoint = { label: string; currency: string; cashInMinor: number; cashOutMinor: number; volumeMinor: number; count: number; activeAgents: number };
+export type AgentRankRow = { agentId: string; name: string; businessName: string; currency: string; cashInMinor: number; cashOutMinor: number; volumeMinor: number; count: number };
+export type AgentAnalytics = { bucket: AgentAnalyticsBucket; days: number; agent: string | null; agentCount: number; series: AgentSeriesPoint[]; ranking: AgentRankRow[] };
+
+export function agentAnalytics(bucket: AgentAnalyticsBucket, days: number, agentId?: string) {
+  const query = new URLSearchParams({ bucket, days: String(days) });
+  if (agentId) query.set("agent", id(agentId));
+  return api<AgentAnalytics>(`/admin/agents/analytics?${query.toString()}`);
+}

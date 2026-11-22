@@ -35,6 +35,7 @@ import { TransactionsPage } from "./pages/TransactionsPage";
 import { ComplaintsPage } from "./pages/ComplaintsPage";
 import { SafeguardingPage } from "./pages/SafeguardingPage";
 import { HandbookPage } from "./pages/HandbookPage";
+import { AgentAnalyticsPage } from "./pages/AgentAnalyticsPage";
 import { SendingLimitsPage } from "./pages/SendingLimitsPage";
 import type { ComponentType } from "react";
 
@@ -47,6 +48,7 @@ const PAGES: Record<string, ComponentType> = {
   "/settings": RatesAndFeesPage,
   "/staff": StaffPage,
   "/agents": AgentsPage,
+  "/agent-analytics": AgentAnalyticsPage,
   "/customers": CustomersPage,
   "/tickets": TicketsPage,
   "/analytics": AnalyticsPage,

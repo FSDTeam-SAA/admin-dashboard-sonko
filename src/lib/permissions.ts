@@ -43,6 +43,7 @@ export const PERMISSION_GROUPS: { title: string; items: [string, string][] }[] =
     items: [
       ["view_agents", "See agents, their activity and balances"],
       ["review_agents", "Approve or turn down agent applications"],
+      ["view_agent_analytics", "See agent growth and cash moved over time"],
     ],
   },
   {

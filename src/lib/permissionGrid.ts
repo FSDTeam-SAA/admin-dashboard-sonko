@@ -13,7 +13,7 @@ export const MODULES: Module[] = [
   { key: "ticketFiles", label: "Ticket files (ID documents, statements)", read: [], write: ["ticket_files", "keep_ticket_files"] },
   { key: "ticketsSenior", label: "Critical tickets and overdue limits (senior)", read: [], write: ["set_critical", "manage_ticket_limits"] },
   { key: "complaints", label: "Complaints: final answers and FCA return", read: ["view_complaint_return"], write: ["close_complaints"] },
-  { key: "agents", label: "Agents", read: ["view_agents"], write: ["review_agents"] },
+  { key: "agents", label: "Agents", read: ["view_agents", "view_agent_analytics"], write: ["review_agents"] },
   { key: "fraud", label: "Fraud and alert cases", read: ["view_cases", "view_reports"], write: ["close_cases"] },
   { key: "fraudRules", label: "Fraud monitoring limits (senior)", read: [], write: ["manage_fraud_rules"] },
   { key: "holds", label: "Account holds", read: ["view_holds"], write: ["place_hold", "lift_hold"] },

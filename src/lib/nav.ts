@@ -166,6 +166,13 @@ export const NAV: NavItem[] = [
     ready: true,
   },
   {
+    path: "/agent-analytics",
+    label: "Agent analytics",
+    permission: "view_agent_analytics",
+    routes: ["GET /admin/agents/analytics"],
+    ready: true,
+  },
+  {
     path: "/customers",
     label: "Customers",
     permission: "view_customers",

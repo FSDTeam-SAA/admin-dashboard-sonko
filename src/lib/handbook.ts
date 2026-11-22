@@ -182,6 +182,13 @@ export const HANDBOOK: HandbookEntry[] = [
     },
   },
   {
+    path: "/agent-analytics",
+    what: {
+      en: "How much cash agents move over time, all together or one agent at a time, by day, week or month, and which agents move the most. Read only.",
+      fr: "Les espèces que les agents font circuler dans le temps, tous ensemble ou un agent à la fois, par jour, semaine ou mois, et les agents les plus actifs. Lecture seule.",
+    },
+  },
+  {
     path: "/analytics",
     what: {
       en: "How the business is growing: revenue, sign-ups, how many new customers go on to pay, who keeps paying, who has gone quiet, a map of where customers and payments are, the busiest corridors and which payment types fail most.",
