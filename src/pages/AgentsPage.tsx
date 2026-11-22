@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { can } from "../api/staff";
-import { agent, agents, decideApplication, type AgentDetail, type AgentRow, type AgentStatus } from "../api/admin";
+import { agent, agents, decideApplication, saveAgentLocation, type AgentDetail, type AgentRow, type AgentStatus } from "../api/admin";
 import { ConfirmWithPin } from "../components/ConfirmWithPin";
 import { Badge, LoadState, PageHeader, Pager, Tabs, TextArea, okLength } from "../components/common";
 import { AskReversalDialog, PlaceHoldDialog, SCOPE_LABEL } from "../components/dialogs";
@@ -199,6 +199,18 @@ function AgentView({ agentId, onBack }: { agentId: string; onBack: () => void })
         <p className="error">
           {t("On hold: {scope}. {reason} (since {when}). Lift it on the Account holds page.", { scope: t(SCOPE_LABEL[a.hold.scope]), reason: a.hold.reason, when: when(a.hold.placedAt) })}
         </p>
+      )}
+
+      {can(staff, "review_agents") && a.status !== "rejected" && (
+        <LocationCard
+          agentId={a.id}
+          address={a.businessAddress}
+          city={a.city}
+          country={a.country}
+          showOnMap={Boolean(a.showOnMap)}
+          idChecked={a.idChecked}
+          onSaved={() => finish("Location saved.")}
+        />
       )}
 
       <div className="two-col">
@@ -441,5 +453,65 @@ function Reject({ agentId, onDone, onClose }: { agentId: string; onDone: () => v
       <p className="notice">{t("The applicant sees this reason when they log in. Write it for them, politely.")}</p>
       <TextArea label="Reason for the applicant" value={reason} onChange={setReason} min={5} max={300} />
     </ConfirmWithPin>
+  );
+}
+
+const mapLink = (address: string, city: string, country: string) =>
+  `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([address, city, country].filter(Boolean).join(", "))}`;
+
+/** Where customers can find this agent: business address only, never a home address. One person can change it. */
+function LocationCard({ agentId, address, city, country, showOnMap, idChecked, onSaved }: { agentId: string; address: string; city: string; country: string; showOnMap: boolean; idChecked: boolean; onSaved: () => void }) {
+  const t = useT();
+  const [form, setForm] = useState({ address, city, show: showOnMap });
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+  const changed = form.address !== address || form.city !== city || form.show !== showOnMap;
+  const needsBoth = form.show && (!form.address.trim() || !form.city.trim());
+
+  const save = async (event: FormEvent) => {
+    event.preventDefault();
+    setBusy(true);
+    setProblem(null);
+    try {
+      await saveAgentLocation(agentId, { businessAddress: form.address.trim(), city: form.city.trim(), showOnMap: form.show });
+      onSaved();
+    } catch (e) {
+      setProblem(e instanceof Error ? e.message : "Could not save. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <form className="card panel" onSubmit={save}>
+      <h2>{t("Where customers find this agent")}</h2>
+      <p className="hint">{t("The business address only, never a home address. Customers see it in the app with a link that opens Google Maps.")}</p>
+      <div className="form-grid">
+        <label>
+          {t("Business address")}
+          <input value={form.address} maxLength={200} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+        </label>
+        <label>
+          {t("Town or city")}
+          <input value={form.city} maxLength={60} onChange={(e) => setForm({ ...form, city: e.target.value })} />
+        </label>
+      </div>
+      <label className="check">
+        <input type="checkbox" checked={form.show} onChange={(e) => setForm({ ...form, show: e.target.checked })} /> {t("Show on map")}
+      </label>
+      {form.show && !idChecked && <p className="notice">{t("Their ID check has not passed yet, so they will not appear to customers until it does.")}</p>}
+      {needsBoth && <p className="error">{t("To show an agent on the map, add the business address and the town or city.")}</p>}
+      {problem && <p className="error">{t(problem)}</p>}
+      <div className="row-end">
+        {form.address.trim() && (
+          <a href={mapLink(form.address, form.city, country)} target="_blank" rel="noreferrer noopener">
+            {t("Check on Google Maps")}
+          </a>
+        )}
+        <button className="primary" type="submit" disabled={!changed || busy || needsBoth}>
+          {t("Save location")}
+        </button>
+      </div>
+    </form>
   );
 }

@@ -415,6 +415,8 @@ export type AgentDetail = {
     email: string;
     fullName: string;
     businessAddress: string;
+    /** Customers can find this agent in the app. Older servers send nothing. */
+    showOnMap?: boolean;
     nationalId: string;
     rejectionReason: string;
     reviewedBy: string | null;
@@ -440,6 +442,10 @@ export function agent(agentId: string) {
   return api<AgentDetail>(`/admin/agents/${id(agentId)}`);
 }
 
+export function saveAgentLocation(agentId: string, body: { businessAddress: string; city: string; showOnMap: boolean }) {
+  return api<{ businessAddress: string; city: string; showOnMap: boolean }>(`/admin/agents/${id(agentId)}/location`, { method: "PUT", body });
+}
+
 export function decideApplication(userId: string, body: { status: "approved" } | { status: "rejected"; rejectionReason: string }) {
   return api(`/admin/agent-applications/${id(userId)}`, { method: "PATCH", body });
 }
@@ -455,6 +461,8 @@ export type CustomerRow = {
   role: string;
   country: string;
   idChecked: boolean;
+  /** ID and address both checked, one of them, or neither. Older servers send nothing. */
+  verification?: "full" | "partial" | "none";
   onHold: boolean;
   closed?: boolean;
   /** The customer deactivated it themselves; signing in reactivates it. */

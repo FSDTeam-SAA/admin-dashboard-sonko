@@ -21,8 +21,8 @@ export function Shell() {
     <div className="shell">
       <aside className="sidebar">
         <div className="brand">
-          <img src="/sp-mark.png" alt="" width={40} height={20} />
-          <span>Sunu Pay Admin</span>
+          <img className="brand-logo" src="/logo-full.png" alt="Sunu Pay" width={170} height={27} />
+          <small>{t("Admin")}</small>
         </div>
         <nav>
           {items.map((item) => (

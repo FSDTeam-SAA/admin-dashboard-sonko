@@ -53,7 +53,7 @@ export function LoginPage() {
   return (
     <main className="login">
       <div className="card login-card">
-        <img className="login-mark" src="/sp-mark.png" alt="" width={64} height={32} />
+        <img className="login-logo" src="/logo-full.png" alt="Sunu Pay" width={220} height={34} />
         <h1>Sunu Pay Admin</h1>
         <LanguagePicker />
         {step.name === "pin" && endedBecause && ENDED[endedBecause] && !error && <p className="notice">{t(ENDED[endedBecause])}</p>}

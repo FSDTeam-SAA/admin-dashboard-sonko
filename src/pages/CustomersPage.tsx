@@ -63,6 +63,13 @@ const FIELD_LABEL: Record<string, string> = {
   "address.country": "Country",
 };
 
+function VerificationBadge({ row }: { row: CustomerRow }) {
+  const level = row.verification ?? (row.idChecked ? "partial" : "none");
+  if (level === "full") return <Badge tone="ok">Fully verified</Badge>;
+  if (level === "partial") return <Badge tone="warn">Partially verified</Badge>;
+  return <Badge tone="danger">Not verified</Badge>;
+}
+
 export function CustomersPage() {
   const t = useT();
   const [filter, setFilter] = useState<CustomerFilter | "all">("all");
@@ -139,7 +146,7 @@ export function CustomersPage() {
               <tr>
                 <th>{t("Name")}</th>
                 <th>{t("Phone")}</th>
-                <th>{t("ID check")}</th>
+                <th>{t("Verification")}</th>
                 <th>{t("Last login")}</th>
                 <th>{t("Joined")}</th>
                 <th aria-label={t("Open file")} />
@@ -170,11 +177,7 @@ export function CustomersPage() {
                   </td>
                   <td>{row.phone || "—"}</td>
                   <td>
-                    {row.idChecked ? (
-                      <Badge tone="ok">Checked</Badge>
-                    ) : (
-                      <Badge tone="warn">Not checked</Badge>
-                    )}
+                    <VerificationBadge row={row} />
                   </td>
                   <td>{when(row.lastLoginAt)}</td>
                   <td>{when(row.joinedAt)}</td>

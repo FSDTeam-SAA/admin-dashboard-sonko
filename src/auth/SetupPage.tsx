@@ -62,7 +62,7 @@ export function SetupPage() {
   return (
     <main className="login">
       <div className="card login-card">
-        <img className="login-mark" src="/sp-mark.png" alt="" width={64} height={32} />
+        <img className="login-logo" src="/logo-full.png" alt="Sunu Pay" width={220} height={34} />
         <h1>{t("Set up your staff login")}</h1>
         <LanguagePicker />
         {error && <p className="error">{t(error)}</p>}

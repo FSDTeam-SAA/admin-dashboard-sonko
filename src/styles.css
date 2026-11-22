@@ -88,12 +88,15 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .login { min-height: 100%; display: grid; place-items: center; padding: 24px; }
 .login-card { width: 100%; max-width: 380px; padding: 28px; display: flex; flex-direction: column; gap: 14px; }
 .login-mark { width: 64px; height: auto; }
+.login-logo { width: 220px; max-width: 100%; height: auto; align-self: center; }
+.brand-logo { display: block; width: 100%; max-width: 170px; height: auto; }
+[data-theme="dark"] .login-logo, [data-theme="dark"] .brand-logo { background: #fff; padding: 8px 12px; border-radius: 10px; box-sizing: border-box; }
 
 /* Shell */
 .shell { display: grid; grid-template-columns: 240px 1fr; min-height: 100%; }
 .sidebar { background: var(--surface); border-right: 1px solid var(--line); padding: 20px 12px; }
-.brand { display: flex; align-items: center; gap: 10px; font-weight: 700; padding: 0 8px 20px; }
-.brand img { width: 40px; height: auto; }
+.brand { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; font-weight: 700; padding: 0 8px 20px; }
+.brand small { font-weight: 600; color: var(--muted); font-size: 12px; letter-spacing: .04em; }
 .sidebar nav { display: flex; flex-direction: column; gap: 2px; }
 .sidebar a { color: var(--text); text-decoration: none; padding: 10px 12px; border-radius: 10px; }
 .sidebar a:hover { background: var(--bg); }
