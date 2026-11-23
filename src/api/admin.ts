@@ -532,7 +532,8 @@ export type CustomerRow = {
 };
 
 export type CustomerDetail = {
-  customer: CustomerRow & {
+  // On the file, verification and closed are objects (the list sends labels).
+  customer: Omit<CustomerRow, "verification" | "closed"> & {
     email: string;
     username: string;
     address: { street?: string; city?: string; state?: string; zipCode?: string; country?: string };

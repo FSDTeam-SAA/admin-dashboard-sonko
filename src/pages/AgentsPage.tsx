@@ -244,7 +244,7 @@ function AgentView({ agentId, onBack }: { agentId: string; onBack: () => void })
                 <dt>{t("Reviewed")}</dt>
                 <dd>
                   {when(a.reviewedAt)}
-                  {a.reviewedBy ? ` by ${a.reviewedBy}` : ""}
+                  {a.reviewedBy ? ` ${t("by {name}", { name: a.reviewedBy })}` : ""}
                 </dd>
               </>
             )}

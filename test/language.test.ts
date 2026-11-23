@@ -58,6 +58,7 @@ const TRANSLATED = [
   "src/pages/HigherLimitSection.tsx",
   "src/pages/SendingLimitsPage.tsx",
   "src/pages/StaffAccess.tsx",
+  "src/demo/main.tsx",
   "src/pages/LaunchPlan.tsx",
   "src/auth/SetupPage.tsx",
 ];

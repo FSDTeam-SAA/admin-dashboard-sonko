@@ -37,7 +37,7 @@ import { SafeguardingPage } from "./pages/SafeguardingPage";
 import { HandbookPage } from "./pages/HandbookPage";
 import { AgentAnalyticsPage } from "./pages/AgentAnalyticsPage";
 import { SendingLimitsPage } from "./pages/SendingLimitsPage";
-import type { ComponentType } from "react";
+import type { ComponentType, ReactNode } from "react";
 
 // Pages that are built. The rest show "being built" until they are.
 const PAGES: Record<string, ComponentType> = {
@@ -94,12 +94,20 @@ function Panel() {
   );
 }
 
-export function App() {
+type AppProps = {
+  /** The demo build uses hash addresses (#/customers); the real panel uses normal ones. */
+  Router?: ComponentType<{ children?: ReactNode }>;
+  /** Shown inside the login context (the demo's bar). The real panel passes nothing. */
+  extra?: ReactNode;
+};
+
+export function App({ Router = BrowserRouter, extra }: AppProps = {}) {
   return (
-    <BrowserRouter>
+    <Router>
       <AuthProvider>
         <Panel />
+        {extra}
       </AuthProvider>
-    </BrowserRouter>
+    </Router>
   );
 }

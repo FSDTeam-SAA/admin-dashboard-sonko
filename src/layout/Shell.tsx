@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { NavLink, Outlet } from "react-router";
+import { NavLink, Outlet, useLocation } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { visibleNav } from "../lib/nav";
 import { LanguagePicker } from "../components/LanguagePicker";
@@ -11,6 +11,10 @@ export function Shell() {
   const t = useT();
   const [theme, setTheme] = useState<ThemeChoice>(loadTheme);
   const items = visibleNav(staff?.permissions ?? []);
+  // On a phone the page list folds away behind a Menu button.
+  const [menuOpen, setMenuOpen] = useState(false);
+  const { pathname } = useLocation();
+  useEffect(() => setMenuOpen(false), [pathname]);
 
   useEffect(() => {
     applyTheme(theme);
@@ -19,12 +23,17 @@ export function Shell() {
 
   return (
     <div className="shell">
-      <aside className="sidebar">
+      <aside className={menuOpen ? "sidebar open" : "sidebar"}>
         <div className="brand">
-          <img className="brand-logo" src="/logo-full.png" alt="Sunu Pay" width={170} height={27} />
-          <small>{t("Admin")}</small>
+          <div className="brand-name">
+            <img className="brand-logo" src={`${import.meta.env.BASE_URL}logo-full.png`} alt="Sunu Pay" width={170} height={27} />
+            <small>{t("Admin")}</small>
+          </div>
+          <button type="button" className="menu-toggle" aria-expanded={menuOpen} aria-controls="panel-nav" onClick={() => setMenuOpen((open) => !open)}>
+            {menuOpen ? t("Close") : t("Menu")}
+          </button>
         </div>
-        <nav>
+        <nav id="panel-nav">
           {items.map((item) => (
             <NavLink key={item.path} to={item.path} end={item.path === "/"}>
               {t(item.label)}

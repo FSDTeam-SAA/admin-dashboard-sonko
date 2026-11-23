@@ -2164,6 +2164,15 @@ export const FR: Record<string, string> = {
   "Passed on": "Envoyés",
   "Last bought": "Dernier achat",
   "At least one ticket type must stay open.": "Au moins un type de billet doit rester ouvert.",
+  // Phone menu (Shell) and the clickable demo's bar (src/demo).
+  "Menu": "Menu",
+  "Demo": "Démo",
+  "Made-up data. Nothing is saved or sent.": "Données inventées. Rien n'est enregistré ni envoyé.",
+  "Signed in as": "Connecté en tant que",
+  "Signed out": "Déconnecté",
+  "Changes that need two people: ask as one, switch, approve as the other.": "Changements à deux personnes : demandez en tant que l'une, changez de personne, approuvez en tant que l'autre.",
+  "Operations lead": "Responsable des opérations",
+  "Compliance officer": "Responsable conformité",
 };
 
 import { handbookFrench } from "../lib/handbook";
