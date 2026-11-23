@@ -2070,8 +2070,27 @@ export type PartnerRoute = {
   percentBps: number;
   fxMarginBps: number;
 };
-export type PartnerSetting = { code: string; on: boolean; order: number; routes: PartnerRoute[] };
-export type PartnerSettings = { version: number; pickRule: Record<PartnerService, PickRule>; partners: PartnerSetting[] };
+export type PartnerSetting = {
+  code: string;
+  on: boolean;
+  order: number;
+  /** Use the partner's live fee where the server can read it (typed fee as fallback). */
+  livePrices: boolean;
+  /** Where the partner may work: { service: ["GM", "SN", ...] }. Never used anywhere else. */
+  allowed: Partial<Record<PartnerService, string[]>>;
+  routes: PartnerRoute[];
+};
+/** A manual choice of partner for a service, in one country or "ALL". */
+export type PartnerPin = { service: PartnerService; country: string; partner: string };
+/** The live-price safety limit. */
+export type PartnerLive = { maxAgeSeconds: number; maxDropPct: number };
+export type PartnerSettings = {
+  version: number;
+  pickRule: Record<PartnerService, PickRule>;
+  live: PartnerLive;
+  pins: PartnerPin[];
+  partners: PartnerSetting[];
+};
 export type PartnerFacts = {
   code: string;
   name: string;
@@ -2079,24 +2098,47 @@ export type PartnerFacts = {
   ready: boolean;
   notReadyReason: string;
   keysSet: boolean;
+  /** Services whose live price the server can read. */
+  liveServices: PartnerService[];
   restingUntil: string | null;
 };
+export type PartnerWarning = { kind: "pin_skipped" | "live_price_ignored"; partner: string; why: string; service: PartnerService; country: string | null; at: string };
 export type PartnerChange = Omit<SettingsChange, "country" | "changedFields" | "before" | "after"> & {
-  stop: { code: string; service: PartnerService | null; country: string | null } | null;
+  stop: { code: string; service: PartnerService | null; country: string | null; permission?: boolean } | null;
   appliedVersion: number | null;
   changedFields: string[];
   before: PartnerSettings;
   after: PartnerSettings;
 };
-export type PartnerWhy = "ok" | "resting" | "no_code" | "not_ready" | "no_keys" | "partner_off" | "no_route" | "route_off";
+export type PartnerWhy = "ok" | "resting" | "no_code" | "not_allowed" | "not_ready" | "no_keys" | "partner_off" | "no_route" | "route_off";
 export type PartnerPreview = {
   picked: string[];
-  rule: PickRule;
-  considered: { code: string; name: string; order: number; eligible: boolean; why: PartnerWhy; costMinor: number | null; route: string | null }[];
+  rule: PickRule | "pin";
+  considered: {
+    code: string;
+    name: string;
+    order: number;
+    eligible: boolean;
+    why: PartnerWhy;
+    costMinor: number | null;
+    route: string | null;
+    priceSource: "live" | "typed" | null;
+    priceNote: string;
+  }[];
+  pin: { partner: string; country: string; applied: boolean; why: string } | null;
+  warnings: { kind: PartnerWarning["kind"]; partner: string; why: string }[];
 };
 
 export function paymentPartners() {
-  return api<{ settings: PartnerSettings; partners: PartnerFacts[]; services: PartnerService[]; pendingChange: PartnerChange | null; people: Record<string, Person> }>(
+  return api<{
+    settings: PartnerSettings;
+    partners: PartnerFacts[];
+    countries: { code: string; name: string }[];
+    services: PartnerService[];
+    pendingChange: PartnerChange | null;
+    warnings: PartnerWarning[];
+    people: Record<string, Person>;
+  }>(
     `/admin/payment-partners`,
   );
 }
@@ -2122,6 +2164,7 @@ export function cancelPaymentPartners(changeId: string, reason: string) {
   return api<PartnerChange>(`/admin/payment-partners/changes/${id(changeId)}/cancel`, { method: "POST", body: { reason } });
 }
 
-export function stopPaymentPartner(body: { code: string; service?: PartnerService; country?: string; reason: string; pin: string }, key: string) {
+/** One person, at once: a partner off, one of its rows off, or (permission: true) one country taken away. */
+export function stopPaymentPartner(body: { code: string; service?: PartnerService; country?: string; permission?: boolean; reason: string; pin: string }, key: string) {
   return api<PartnerChange>(`/admin/payment-partners/stop`, { method: "POST", body, idempotencyKey: key });
 }

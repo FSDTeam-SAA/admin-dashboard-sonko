@@ -13,6 +13,7 @@ import type {
   FaceIdSettings,
   PartnerChange,
   PartnerFacts,
+  PartnerWarning,
   PartnerPreview,
   PartnerService,
   PartnerSettings,
@@ -104,39 +105,87 @@ const settingsChanges: SettingsChange[] = [
 let rates: RateSettings = { version: 9, ratesFromGmd: { GBP: 0.0105, GHS: 0.165, XOF: 8.63, NGN: 21.4 }, sekPerEur: 11.42, walletTransferFeeBps: 0 };
 let faceId: FaceIdSettings = { version: 2, maxUsdMinor: 10_000, dayUsdMinor: 30_000, gbpPerUsd: 0.79 };
 
-// Payment partners. "Example Pay" is made up, so the demo can show the cheapest pick.
+// Payment partners. "Example Pay" is made up, so the demo can show the cheapest
+// pick and a pin; the other partners match the server's registry.
+const notBuilt = (name: string) => `There is no ${name} code yet. A developer must add it, with a signed contract and keys on the server.`;
 const PARTNER_FACTS: PartnerFacts[] = [
-  { code: "flutterwave", name: "Flutterwave", services: ["wallet_top_up", "airtime", "bills", "bank_transfer"], ready: true, notReadyReason: "", keysSet: true, restingUntil: null },
-  { code: "examplepay", name: "Example Pay (made up)", services: ["bank_transfer", "airtime"], ready: true, notReadyReason: "", keysSet: true, restingUntil: null },
-  { code: "braintree", name: "Braintree", services: ["wallet_top_up"], ready: false, notReadyReason: "The app has no Braintree card screen yet.", keysSet: true, restingUntil: null },
+  { code: "flutterwave", name: "Flutterwave", services: ["wallet_top_up", "airtime", "bills", "bank_transfer"], ready: true, notReadyReason: "", keysSet: true, liveServices: ["bank_transfer"], restingUntil: null },
+  { code: "examplepay", name: "Example Pay (made up)", services: ["bank_transfer", "airtime"], ready: true, notReadyReason: "", keysSet: true, liveServices: [], restingUntil: null },
+  { code: "braintree", name: "Braintree", services: ["wallet_top_up"], ready: false, notReadyReason: "The app has no Braintree card screen yet.", keysSet: true, liveServices: [], restingUntil: null },
+  { code: "onafriq", name: "Onafriq", services: ["bank_transfer"], ready: false, notReadyReason: notBuilt("Onafriq"), keysSet: false, liveServices: [], restingUntil: null },
+  { code: "reloadly", name: "Reloadly", services: ["airtime", "bills"], ready: false, notReadyReason: notBuilt("Reloadly"), keysSet: false, liveServices: [], restingUntil: null },
+  { code: "dlocal", name: "dLocal", services: ["wallet_top_up", "bank_transfer"], ready: false, notReadyReason: notBuilt("dLocal"), keysSet: false, liveServices: [], restingUntil: null },
+  { code: "terrapay", name: "TerraPay", services: ["bank_transfer"], ready: false, notReadyReason: notBuilt("TerraPay"), keysSet: false, liveServices: [], restingUntil: null },
+  { code: "paydunya", name: "PayDunya", services: ["wallet_top_up", "bank_transfer"], ready: false, notReadyReason: notBuilt("PayDunya"), keysSet: false, liveServices: [], restingUntil: null },
 ];
+const PARTNER_COUNTRIES = [
+  ["GM", "The Gambia"], ["GH", "Ghana"], ["NG", "Nigeria"], ["SN", "Senegal"], ["CI", "Côte d'Ivoire"], ["ML", "Mali"], ["BF", "Burkina Faso"], ["NE", "Niger"],
+  ["BJ", "Benin"], ["TG", "Togo"], ["GW", "Guinea-Bissau"], ["GB", "United Kingdom"], ["EU", "Euro (EUR wallet)"], ["FR", "France"], ["SE", "Sweden"], ["KE", "Kenya"], ["ZM", "Zambia"],
+  ["MU", "Mauritius"], ["CD", "DR Congo"], ["UG", "Uganda"], ["TZ", "Tanzania"], ["RW", "Rwanda"],
+].map(([code, name]) => ({ code: code!, name: name! })).sort((a, b) => a.name.localeCompare(b.name));
 const r = (service: PartnerService, country: string, on: boolean, percentBps: number, fxMarginBps: number, fixedFeeMinor = 0) => ({ service, country, on, fixedFeeMinor, percentBps, fxMarginBps });
+const off = (code: string, order: number, services: PartnerService[], allowed: PartnerSettings["partners"][number]["allowed"] = {}) => ({
+  code, on: false, order, livePrices: false, allowed, routes: services.map((sv) => r(sv, "ALL", false, 0, 0)),
+});
 let partnerSettings: PartnerSettings = {
   version: 3,
   pickRule: { wallet_top_up: "cheapest", airtime: "cheapest", bills: "cheapest", bank_transfer: "cheapest" },
+  live: { maxAgeSeconds: 30, maxDropPct: 50 },
+  pins: [{ service: "airtime", country: "GM", partner: "flutterwave" }],
   partners: [
-    { code: "flutterwave", on: true, order: 1, routes: [r("wallet_top_up", "ALL", true, 140, 0), r("airtime", "ALL", true, 300, 0), r("bills", "ALL", true, 100, 0), r("bank_transfer", "ALL", true, 100, 150), r("bank_transfer", "GM", true, 80, 120, 2_500)] },
-    { code: "examplepay", on: true, order: 2, routes: [r("bank_transfer", "ALL", true, 50, 100), r("airtime", "GM", false, 250, 0)] },
-    { code: "braintree", on: false, order: 3, routes: [r("wallet_top_up", "ALL", false, 190, 0)] },
+    {
+      code: "flutterwave", on: true, order: 1, livePrices: true,
+      allowed: {
+        wallet_top_up: ["EU", "GB", "GH", "GM", "NG", "SE", "SN"], airtime: ["GH", "GM", "KE", "NG", "SN", "ZM"], bills: ["GH", "GM", "NG", "SN"],
+        bank_transfer: ["FR", "GB", "GH", "GM", "NG", "SE", "SN"],
+      },
+      routes: [r("wallet_top_up", "ALL", true, 140, 0), r("airtime", "ALL", true, 300, 0), r("bills", "ALL", true, 100, 0), r("bank_transfer", "ALL", true, 100, 150), r("bank_transfer", "GM", true, 80, 120, 2_500)],
+    },
+    { code: "examplepay", on: true, order: 2, livePrices: false, allowed: { bank_transfer: ["GH", "GM", "NG"], airtime: ["GM"] }, routes: [r("bank_transfer", "ALL", true, 50, 100), r("airtime", "GM", true, 250, 0)] },
+    off("braintree", 3, ["wallet_top_up"]),
+    off("onafriq", 4, ["bank_transfer"], { bank_transfer: ["CD", "GB", "GH", "MU", "NG", "RW", "TZ", "UG"] }),
+    off("reloadly", 5, ["airtime", "bills"]),
+    off("dlocal", 6, ["wallet_top_up", "bank_transfer"]),
+    off("terrapay", 7, ["bank_transfer"]),
+    off("paydunya", 8, ["wallet_top_up", "bank_transfer"]),
   ],
 };
 const partnerChanges: PartnerChange[] = [];
+const partnerWarnings: PartnerWarning[] = [
+  { kind: "live_price_ignored", partner: "flutterwave", why: "live_price_too_low", service: "bank_transfer", country: "NG", at: D.ago(2) },
+];
+// Pretend live fee: Flutterwave's bank transfer fee read "now", for The Gambia.
+const demoLiveFee = (code: string, service: PartnerService, country: string) => (code === "flutterwave" && service === "bank_transfer" && country === "GM" ? 2_000 : null);
 function pickDemo(service: PartnerService, country: string, amountMinor: number): PartnerPreview {
   const rule = partnerSettings.pickRule[service];
   const considered = partnerSettings.partners.map((p) => {
     const f = PARTNER_FACTS.find((x) => x.code === p.code)!;
     const route = p.routes.find((x) => x.service === service && x.country === country) ?? p.routes.find((x) => x.service === service && x.country === "ALL") ?? null;
-    const base = { code: p.code, name: f.name, order: p.order, costMinor: null as number | null, route: route?.country ?? null };
+    const base = { code: p.code, name: f.name, order: p.order, costMinor: null as number | null, route: route?.country ?? null, priceSource: null as "live" | "typed" | null, priceNote: "" };
     if (!f.services.includes(service)) return { ...base, eligible: false, why: "no_code" as const };
+    if (!(p.allowed[service] ?? []).includes(country)) return { ...base, eligible: false, why: "not_allowed" as const };
     if (!f.ready) return { ...base, eligible: false, why: "not_ready" as const };
+    if (!f.keysSet) return { ...base, eligible: false, why: "no_keys" as const };
     if (!p.on) return { ...base, eligible: false, why: "partner_off" as const };
     if (!route) return { ...base, eligible: false, why: "no_route" as const };
     if (!route.on) return { ...base, eligible: false, why: "route_off" as const };
-    const costMinor = route.fixedFeeMinor + Math.floor((amountMinor * (route.percentBps + route.fxMarginBps) + 9_999) / 10_000);
-    return { ...base, eligible: true, why: "ok" as const, costMinor };
+    const live = p.livePrices ? demoLiveFee(p.code, service, country) : null;
+    const fee = live ?? route.fixedFeeMinor;
+    const costMinor = fee + Math.floor((amountMinor * (route.percentBps + route.fxMarginBps) + 9_999) / 10_000);
+    return { ...base, eligible: true, why: "ok" as const, costMinor, priceSource: live === null ? ("typed" as const) : ("live" as const), priceNote: live === null && p.livePrices ? "no_live_price" : "" };
   });
-  const picked = considered.filter((c) => c.eligible).sort((a, b) => (rule === "cheapest" ? a.costMinor! - b.costMinor! : 0) || a.order - b.order).map((c) => c.code);
-  return { picked, considered, rule };
+  const eligible = considered.filter((c) => c.eligible).sort((a, b) => (rule === "cheapest" ? a.costMinor! - b.costMinor! : 0) || a.order - b.order);
+  const pinned = partnerSettings.pins.find((x) => x.service === service && x.country === country) ?? partnerSettings.pins.find((x) => x.service === service && x.country === "ALL");
+  let pin: PartnerPreview["pin"] = null;
+  const warnings: PartnerPreview["warnings"] = [];
+  if (pinned) {
+    const entry = considered.find((c) => c.code === pinned.partner);
+    const usable = Boolean(entry?.eligible && entry.why === "ok");
+    pin = { partner: pinned.partner, country: pinned.country, applied: usable, why: usable ? "" : entry?.why ?? "no_code" };
+    if (usable) eligible.unshift(...eligible.splice(eligible.findIndex((c) => c.code === pinned.partner), 1));
+    else warnings.push({ kind: "pin_skipped", partner: pinned.partner, why: pin.why });
+  }
+  return { picked: eligible.map((c) => c.code), considered, rule: pin?.applied ? "pin" : rule, pin, warnings };
 }
 
 const levels: LimitLevels = {
@@ -684,7 +733,10 @@ const R: Route[] = [
   ["POST", /^\/admin\/settings\/face-id\/changes\/([^/]+)\/(approve|cancel)$/, ok],
 
   // Payment partners
-  ["GET", /^\/admin\/payment-partners$/, () => ({ settings: partnerSettings, partners: PARTNER_FACTS, services: ["wallet_top_up", "airtime", "bills", "bank_transfer"], pendingChange: partnerChanges.find((c) => c.status === "pending") ?? null, people: D.people })],
+  ["GET", /^\/admin\/payment-partners$/, () => ({
+    settings: partnerSettings, partners: PARTNER_FACTS, countries: PARTNER_COUNTRIES, services: ["wallet_top_up", "airtime", "bills", "bank_transfer"],
+    pendingChange: partnerChanges.find((c) => c.status === "pending") ?? null, warnings: partnerWarnings, people: D.people,
+  })],
   ["GET", /^\/admin\/payment-partners\/changes$/, () => ({ changes: partnerChanges, total: partnerChanges.length, page: 1, limit: 25, people: D.people })],
   ["GET", /^\/admin\/payment-partners\/preview$/, ({ q }) => pickDemo(q.get("service") as PartnerService, String(q.get("country")), Number(q.get("amountMinor")))],
   ["POST", /^\/admin\/payment-partners\/changes$/, ({ body }) => {
@@ -721,7 +773,13 @@ const R: Route[] = [
     const p = next.partners.find((x) => x.code === body.code);
     if (!p) throw new Refused(400, "Unknown partner.");
     const service = body.service as PartnerService | undefined;
-    if (service) {
+    if (body.permission === true && service) {
+      const c = String(body.country ?? "").toUpperCase();
+      const list = p.allowed[service] ?? [];
+      if (!list.includes(c)) throw new Refused(400, "That country is already taken away.");
+      p.allowed[service] = list.filter((x) => x !== c);
+      next.pins = next.pins.filter((x) => !(x.partner === p.code && x.service === service && x.country === c));
+    } else if (service) {
       const row = p.routes.find((x) => x.service === service && x.country === String(body.country ?? "ALL"));
       if (!row || !row.on) throw new Refused(400, "That row is already off.");
       row.on = false;
@@ -733,7 +791,7 @@ const R: Route[] = [
     partnerSettings = next;
     for (const c of partnerChanges) if (c.status === "pending") c.status = "stale";
     const record: PartnerChange = {
-      id: `pp${partnerChanges.length + 1}`, status: "approved", stop: { code: String(body.code), service: service ?? null, country: service ? String(body.country ?? "ALL") : null },
+      id: `pp${partnerChanges.length + 1}`, status: "approved", stop: { code: String(body.code), service: service ?? null, country: service ? String(body.country ?? "ALL") : null, permission: body.permission === true },
       baseVersion: before.version, appliedVersion: next.version, changedFields: [], before, after: structuredClone(next), reason: String(body.reason ?? ""), requestedBy: me,
       approvedBy: me, approvedAt: D.ago(0), cancelledBy: null, cancelReason: null, expiresAt: D.ago(0), createdAt: D.ago(0),
     };

@@ -341,3 +341,10 @@ label.inline { display: inline-flex; gap: 6px; align-items: center; flex-directi
   .panel-head { flex-wrap: wrap; }
   .panel-head > .row-end { flex-wrap: wrap; justify-content: flex-start; }
 }
+
+/* Payment partners: where a partner may work */
+.chips { display: flex; flex-wrap: wrap; gap: 4px; }
+button.chip { border: 1px solid var(--line); background: transparent; color: inherit; cursor: pointer; min-height: 28px; }
+button.chip:hover { border-color: var(--danger, #c0392b); }
+.check-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 4px 12px; margin: 8px 0 12px; }
+ul.plain { list-style: none; padding: 0; margin: 4px 0; }

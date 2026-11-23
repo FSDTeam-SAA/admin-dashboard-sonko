@@ -166,12 +166,12 @@ export const HANDBOOK: HandbookEntry[] = [
   {
     path: "/payment-partners",
     what: {
-      en: "Which payment partner (Flutterwave and others) handles card top-ups, airtime, bills and bank transfers. Each payment goes to the cheapest partner that is switched on. Check a payment to see which partner would get it and what it would cost.",
-      fr: "Quel partenaire de paiement (Flutterwave et d’autres) traite les rechargements par carte, le crédit, les factures et les virements bancaires. Chaque paiement va au partenaire activé le moins cher. Vérifiez un paiement pour voir quel partenaire le recevrait et ce qu’il coûterait.",
+      en: "Which payment partner (Flutterwave and others) handles card top-ups, airtime, bills and bank transfers. Each partner has a list of countries it may work in, per service. Each payment goes to the cheapest switched-on partner allowed there, unless a partner is pinned. Live prices replace typed fees where the server can read them. Check a payment to see which partner would get it and what it would cost.",
+      fr: "Quel partenaire de paiement (Flutterwave et d’autres) traite les rechargements par carte, le crédit, les factures et les virements bancaires. Chaque partenaire a une liste de pays où il peut travailler, par service. Chaque paiement va au partenaire activé le moins cher autorisé là, sauf si un partenaire est imposé. Les prix en direct remplacent les frais saisis quand le serveur peut les lire. Vérifiez un paiement pour voir quel partenaire le recevrait et ce qu’il coûterait.",
     },
     careful: {
-      en: "Switching a partner off is one person and happens at once, so you can stop a problem fast. Switching on, fees and the order need a second person.",
-      fr: "Désactiver un partenaire se fait par une personne et prend effet aussitôt, pour arrêter vite un problème. L’activation, les frais et l’ordre demandent une deuxième personne.",
+      en: "Switching a partner off, or taking a country away from it, is one person and happens at once, so you can stop a problem fast. Switching on, adding a country, fees, pins, live prices and the order need a second person. Only allow a partner where its contract and Sunu Pay's licence cover it.",
+      fr: "Désactiver un partenaire, ou lui retirer un pays, se fait par une personne et prend effet aussitôt, pour arrêter vite un problème. L’activation, l’ajout d’un pays, les frais, les partenaires imposés, les prix en direct et l’ordre demandent une deuxième personne. N’autorisez un partenaire que là où son contrat et la licence de Sunu Pay le couvrent.",
     },
   },
   {

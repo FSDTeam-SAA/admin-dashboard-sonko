@@ -7,9 +7,18 @@ const row = (over = {}) => ({ service: "bank_transfer" as const, country: "ALL",
 const settings = (): PartnerSettings => ({
   version: 3,
   pickRule: { wallet_top_up: "cheapest", airtime: "cheapest", bills: "cheapest", bank_transfer: "cheapest" },
+  live: { maxAgeSeconds: 30, maxDropPct: 50 },
+  pins: [],
   partners: [
-    { code: "flutterwave", on: true, order: 1, routes: [{ service: "bank_transfer", country: "ALL", on: true, fixedFeeMinor: 0, percentBps: 100, fxMarginBps: 50 }] },
-    { code: "braintree", on: false, order: 2, routes: [] },
+    {
+      code: "flutterwave",
+      on: true,
+      order: 1,
+      livePrices: false,
+      allowed: { bank_transfer: ["GM", "SN"] },
+      routes: [{ service: "bank_transfer", country: "ALL", on: true, fixedFeeMinor: 0, percentBps: 100, fxMarginBps: 50 }],
+    },
+    { code: "braintree", on: false, order: 2, livePrices: false, allowed: {}, routes: [] },
   ],
 });
 
@@ -64,6 +73,66 @@ describe("payment partners", () => {
       ["How Bank transfers picks a partner", "Cheapest", "In order"],
       ["Flutterwave: Bank transfers (all countries)", "On · fee 1%, margin 0.5%", "On · fee 1.2%, margin 0.5%"],
       ["Braintree", "Off", "On"],
+    ]);
+  });
+
+  it("sends where each partner may work, pins and the live-price limit", () => {
+    const draft = {
+      pickRule: settings().pickRule,
+      live: { maxAgeSeconds: "10", maxDropPct: "40" },
+      pins: [{ service: "bank_transfer" as const, country: "sn", partner: "flutterwave" }],
+      partners: [
+        { code: "flutterwave", on: true, livePrices: true, allowed: { bank_transfer: ["SN", "gm", "GM"] }, routes: [row({ percent: "1" })] },
+        { code: "braintree", on: false, allowed: {}, routes: [] },
+      ],
+    };
+    const built = buildPartnerSettings(draft, { flutterwave: "Flutterwave" });
+    expect(built.errors).toEqual([]);
+    expect(built.settings.live).toEqual({ maxAgeSeconds: 10, maxDropPct: 40 });
+    expect(built.settings.pins).toEqual([{ service: "bank_transfer", country: "SN", partner: "flutterwave" }]);
+    expect(built.settings.partners[0]).toMatchObject({ livePrices: true, allowed: { bank_transfer: ["GM", "SN"] } });
+    expect(built.settings.partners[1]).toMatchObject({ livePrices: false, allowed: {} });
+  });
+
+  it("refuses a pin where the partner is not allowed, two pins in one place, and a bad safety limit", () => {
+    const base = {
+      pickRule: settings().pickRule,
+      partners: [{ code: "flutterwave", on: true, allowed: { bank_transfer: ["GM"] }, routes: [] }],
+    };
+    const bad = buildPartnerSettings(
+      {
+        ...base,
+        live: { maxAgeSeconds: "0", maxDropPct: "95" },
+        pins: [
+          { service: "bank_transfer", country: "CI", partner: "flutterwave" },
+          { service: "bank_transfer", country: "CI", partner: "flutterwave" },
+          { service: "airtime", country: "ALL", partner: "flutterwave" },
+        ],
+      },
+      { flutterwave: "Flutterwave" },
+    );
+    expect(bad.errors.map(([text, name]) => t(text, { name }))).toEqual([
+      "Live prices: the oldest allowed must be 1 to 3600 seconds",
+      "Live prices: the safety limit must be 1% to 90%",
+      "Flutterwave is pinned where it is not allowed",
+      "Two pins for the same service and country",
+    ]);
+  });
+
+  it("describes changes to where a partner works, pins and live prices", () => {
+    const before = settings();
+    const after = structuredClone(before);
+    after.version = 4;
+    after.live.maxDropPct = 30;
+    after.pins = [{ service: "bank_transfer", country: "GM", partner: "flutterwave" }];
+    after.partners[0]!.livePrices = true;
+    after.partners[0]!.allowed = { bank_transfer: ["CI", "GM"] };
+    const rows = changeRows(before, after, { flutterwave: "Flutterwave", braintree: "Braintree" }, t);
+    expect(rows).toEqual([
+      ["Live prices: safety limit", "50%", "30%"],
+      ["Pinned for Bank transfers (GM)", "Automatic", "Flutterwave"],
+      ["Flutterwave: live prices", "Off", "On"],
+      ["Flutterwave: allowed for Bank transfers", "GM, SN", "adds CI; takes away SN"],
     ]);
   });
 });

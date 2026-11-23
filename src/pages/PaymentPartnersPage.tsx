@@ -11,10 +11,13 @@ import {
   stopPaymentPartner,
   type PartnerChange,
   type PartnerFacts,
+  type PartnerLive,
+  type PartnerPin,
   type PartnerPreview,
   type PartnerRoute,
   type PartnerService,
   type PartnerSettings,
+  type PartnerWarning,
   type PartnerWhy,
   type Person,
   type PickRule,
@@ -41,12 +44,23 @@ const WHY_LABEL: Record<PartnerWhy, string> = {
   ok: "Can take it",
   resting: "Can take it, tried last (recent connection failures)",
   no_code: "No code for this service",
+  not_allowed: "Not allowed in this country",
   not_ready: "Not ready",
   no_keys: "Keys not set on the server",
   partner_off: "Partner switched off",
   no_route: "No row for this country",
   route_off: "Switched off for this service",
 };
+
+/** Why a live price was not used, or a pin skipped. */
+export const NOTE_LABEL: Record<string, string> = {
+  no_live_price: "No live price, typed fee used",
+  live_price_bad: "Live price not valid, typed fee used",
+  live_price_old: "Live price too old, typed fee used",
+  live_price_too_low: "Live price far below the typed fee (safety limit), typed fee used",
+};
+
+export type Country = { code: string; name: string };
 
 // The money each country pays in, for fixed fees. A country not listed here
 // can still have a row, but only with percent fees.
@@ -58,6 +72,19 @@ export const COUNTRY_MONEY: Record<string, string> = {
   SN: "XOF",
   CI: "XOF",
   ML: "XOF",
+  BF: "XOF",
+  NE: "XOF",
+  BJ: "XOF",
+  TG: "XOF",
+  GW: "XOF",
+  KE: "KES",
+  ZM: "ZMW",
+  SE: "SEK",
+  EU: "EUR",
+  BE: "EUR",
+  IE: "EUR",
+  NL: "EUR",
+  PT: "EUR",
   GN: "GNF",
   SL: "SLE",
   FR: "EUR",
@@ -105,6 +132,22 @@ export function changeRows(before: PartnerSettings, after: PartnerSettings, name
   for (const s of Object.keys(SERVICE_LABEL) as PartnerService[]) {
     if (before.pickRule[s] !== after.pickRule[s]) rows.push([t("How {service} picks a partner", { service: t(SERVICE_LABEL[s]) }), ruleText(before.pickRule[s]), ruleText(after.pickRule[s])]);
   }
+  if (before.live?.maxAgeSeconds !== after.live?.maxAgeSeconds) {
+    rows.push([t("Live prices: oldest allowed"), t("{n} seconds", { n: before.live?.maxAgeSeconds ?? "—" }), t("{n} seconds", { n: after.live?.maxAgeSeconds ?? "—" })]);
+  }
+  if (before.live?.maxDropPct !== after.live?.maxDropPct) {
+    rows.push([t("Live prices: safety limit"), `${before.live?.maxDropPct ?? "—"}%`, `${after.live?.maxDropPct ?? "—"}%`]);
+  }
+  const pinWhere = (p: PartnerPin) => `${t(SERVICE_LABEL[p.service])} (${p.country === "ALL" ? t("all countries") : p.country})`;
+  const pinKeys = new Set([...(before.pins ?? []), ...(after.pins ?? [])].map((p) => `${p.service}.${p.country}`));
+  for (const key of pinKeys) {
+    const [service, country] = key.split(".") as [PartnerService, string];
+    const p0 = (before.pins ?? []).find((p) => p.service === service && p.country === country);
+    const p1 = (after.pins ?? []).find((p) => p.service === service && p.country === country);
+    if (p0?.partner !== p1?.partner) {
+      rows.push([t("Pinned for {what}", { what: pinWhere((p1 ?? p0)!) }), p0 ? name(p0.partner) : t("Automatic"), p1 ? name(p1.partner) : t("Automatic")]);
+    }
+  }
   const routeText = (r: PartnerRoute | undefined) =>
     r ? `${t(r.on ? "On" : "Off")} · ${t("fee {fee}, margin {margin}", { fee: percent(r.percentBps), margin: percent(r.fxMarginBps) })}${r.fixedFeeMinor ? ` + ${fixedFeeText(r)}` : ""}` : t("No row");
   for (const p1 of after.partners) {
@@ -112,6 +155,18 @@ export function changeRows(before: PartnerSettings, after: PartnerSettings, name
     if (!p0) continue;
     if (p0.on !== p1.on) rows.push([name(p1.code), t(p0.on ? "On" : "Off"), t(p1.on ? "On" : "Off")]);
     if (p0.order !== p1.order) rows.push([t("{name}: place in the order", { name: name(p1.code) }), String(p0.order), String(p1.order)]);
+    if (Boolean(p0.livePrices) !== Boolean(p1.livePrices)) rows.push([t("{name}: live prices", { name: name(p1.code) }), t(p0.livePrices ? "On" : "Off"), t(p1.livePrices ? "On" : "Off")]);
+    for (const service of Object.keys(SERVICE_LABEL) as PartnerService[]) {
+      const a0 = p0.allowed?.[service] ?? [];
+      const a1 = p1.allowed?.[service] ?? [];
+      const added = a1.filter((c) => !a0.includes(c));
+      const removed = a0.filter((c) => !a1.includes(c));
+      if (added.length || removed.length) {
+        const now = a0.length ? a0.join(", ") : t("Nowhere");
+        const parts = [added.length ? t("adds {list}", { list: added.join(", ") }) : "", removed.length ? t("takes away {list}", { list: removed.join(", ") }) : ""].filter(Boolean);
+        rows.push([t("{name}: allowed for {service}", { name: name(p1.code), service: t(SERVICE_LABEL[service]) }), now, parts.join("; ")]);
+      }
+    }
     const keys = new Set([...p0.routes, ...p1.routes].map((r) => `${r.service}.${r.country}`));
     for (const key of keys) {
       const [service, country] = key.split(".") as [PartnerService, string];
@@ -152,7 +207,7 @@ function Diff({ change, names }: { change: PartnerChange; names: Record<string, 
   );
 }
 
-type Stop = { code: string; name: string; service?: PartnerService; country?: string };
+type Stop = { code: string; name: string; service?: PartnerService; country?: string; permission?: boolean };
 
 /** Payment partners: which partner handles each payment, and what each one costs SunuPay. */
 export function PaymentPartnersPage() {
@@ -167,6 +222,8 @@ export function PaymentPartnersPage() {
   const pending = data?.pendingChange ?? null;
   const people = data?.people ?? {};
   const facts = data?.partners ?? [];
+  const countries = data?.countries ?? [];
+  const warnings = data?.warnings ?? [];
   const names = Object.fromEntries(facts.map((f) => [f.code, f.name]));
   const mine = pending?.requestedBy === staff?._id;
   const manage = can(staff, "manage_gateways");
@@ -181,7 +238,7 @@ export function PaymentPartnersPage() {
     <>
       <PageHeader
         title={t("Payment partners")}
-        intro={t("Each payment goes to the switched-on partner that costs Sunu Pay the least. If it can't be reached, the next one is used. The customer pays the same either way.")}
+        intro={t("Each payment goes to the switched-on partner that costs Sunu Pay the least, among those allowed in that country. A pin can choose one instead. If it can't be reached, the next one is used. The customer pays the same either way.")}
         actions={
           manage && settings && !pending ? (
             <button className="primary" onClick={() => setOpen("propose")}>
@@ -228,24 +285,57 @@ export function PaymentPartnersPage() {
               ))}
             </dl>
             <p className="hint">{t("Cost for each payment = fixed fee + amount × (fee % + exchange-rate margin %). Equal costs go by the order.")}</p>
+            <h3>{t("Pins")}</h3>
+            {settings.pins.length === 0 ? (
+              <p className="muted">{t("No pins. Every service picks automatically.")}</p>
+            ) : (
+              <ul className="plain">
+                {settings.pins.map((pin) => (
+                  <li key={`${pin.service}.${pin.country}`}>
+                    {t("{service} in {country}: always {name}", {
+                      service: t(SERVICE_LABEL[pin.service]),
+                      country: pin.country === "ALL" ? t("all countries") : pin.country,
+                      name: names[pin.partner] ?? pin.partner,
+                    })}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <p className="hint">{t("A pinned partner that is off, not allowed or failing is skipped, and the automatic pick is used.")}</p>
+            <h3>{t("Live prices")}</h3>
+            <p className="small">
+              {t("A live price is used only if it is at most {n} seconds old and not more than {pct}% below the typed fee. Otherwise the typed fee is used.", {
+                n: settings.live.maxAgeSeconds,
+                pct: settings.live.maxDropPct,
+              })}
+            </p>
           </div>
+          {warnings.length > 0 && <Warnings warnings={warnings} names={names} />}
           {settings.partners.map((p) => {
             const f = facts.find((x) => x.code === p.code);
             return <PartnerCard key={p.code} partner={p} facts={f} manage={manage} onStop={setStop} />;
           })}
-          <PreviewSection />
+          <PreviewSection countries={countries} names={names} />
         </>
       )}
       <button onClick={() => setShowHistory((v) => !v)}>{t(showHistory ? "Hide history" : "Show history")}</button>
       {showHistory && <History names={names} />}
       {open === "propose" && settings && (
-        <Propose settings={settings} facts={facts} onClose={() => setOpen(null)} onDone={() => finish("Change proposed. A different person must approve it within 24 hours.")} />
+        <Propose settings={settings} facts={facts} countries={countries} onClose={() => setOpen(null)} onDone={() => finish("Change proposed. A different person must approve it within 24 hours.")} />
       )}
       {open === "approve" && pending && (
         <Approve change={pending} names={names} people={people} onClose={() => setOpen(null)} onDone={() => finish("Approved. New payments use these settings now.")} />
       )}
       {open === "cancel" && pending && <Cancel change={pending} onClose={() => setOpen(null)} onDone={() => finish("Change cancelled. Nothing changed.")} />}
-      {stop && <StopNow stop={stop} onClose={() => setStop(null)} onDone={() => finish("Switched off. New payments no longer go there. Payments it already has are still checked.")} />}
+      {stop && (
+        <StopNow
+          stop={stop}
+          onClose={() => setStop(null)}
+          onDone={() =>
+            finish(stop.permission ? "Taken away. New payments there no longer go to this partner." : "Switched off. New payments no longer go there. Payments it already has are still checked.")
+          }
+        />
+      )}
     </>
   );
 }
@@ -256,6 +346,48 @@ function FragmentRow({ label, value }: { label: string; value: string }) {
       <dt>{label}</dt>
       <dd>{value}</dd>
     </>
+  );
+}
+
+function Warnings({ warnings, names }: { warnings: PartnerWarning[]; names: Record<string, string> }) {
+  const t = useT();
+  return (
+    <div className="card panel">
+      <div className="panel-head">
+        <h2>{t("Recent warnings")}</h2>
+        <Badge tone="warn">{warnings.length}</Badge>
+      </div>
+      <p className="muted small">{t("The last 50 on this server, newest first. Kept until the server restarts.")}</p>
+      <div className="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>{t("When")}</th>
+              <th>{t("Partner")}</th>
+              <th>{t("Service")}</th>
+              <th>{t("What happened")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {warnings.map((w, i) => (
+              <tr key={i}>
+                <td>{when(w.at)}</td>
+                <td>{names[w.partner] ?? w.partner}</td>
+                <td>
+                  {t(SERVICE_LABEL[w.service])}
+                  {w.country ? ` (${w.country})` : ""}
+                </td>
+                <td>
+                  {w.kind === "pin_skipped"
+                    ? t("Pin skipped: {why}", { why: t(WHY_LABEL[w.why as PartnerWhy] ?? w.why) })
+                    : t(NOTE_LABEL[w.why] ?? w.why)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }
 
@@ -273,6 +405,7 @@ function PartnerCard({ partner, facts, manage, onStop }: { partner: PartnerSetti
           {facts && !facts.ready && <Badge tone="warn">{t("Not ready")}</Badge>}
           {facts && !facts.keysSet && <Badge tone="warn">{t("Keys not set on the server")}</Badge>}
           {facts?.restingUntil && <Badge tone="danger">{t("Tried last until {when}", { when: when(facts.restingUntil) })}</Badge>}
+          {partner.livePrices && <Badge tone="ok">{t("Live prices")}</Badge>}
           {manage && partner.on && (
             <button className="danger" onClick={() => onStop({ code: partner.code, name })}>
               {t("Switch off now")}
@@ -281,7 +414,48 @@ function PartnerCard({ partner, facts, manage, onStop }: { partner: PartnerSetti
         </div>
       </div>
       {facts && !facts.ready && facts.notReadyReason && <p className="hint">{t(facts.notReadyReason)} {t("It is never picked until a developer finishes it.")}</p>}
-      {facts && !facts.keysSet && <p className="hint">{t("Its keys must be added to the server settings by a developer. It is never picked until then.")}</p>}
+      {facts && facts.ready && !facts.keysSet && <p className="hint">{t("Its keys must be added to the server settings by a developer. It is never picked until then.")}</p>}
+      <h3>{t("Allowed to work in")}</h3>
+      <div className="table-wrap">
+        <table>
+          <tbody>
+            {(facts?.services ?? []).map((service) => {
+              const list = partner.allowed?.[service] ?? [];
+              return (
+                <tr key={service}>
+                  <td>{t(SERVICE_LABEL[service])}</td>
+                  <td>
+                    {list.length === 0 ? (
+                      <span className="muted">{t("Nowhere")}</span>
+                    ) : (
+                      <span className="chips">
+                        {list.map((c) =>
+                          manage ? (
+                            <button
+                              key={c}
+                              className="chip"
+                              title={t("Take {country} away now", { country: c })}
+                              aria-label={t("Take {country} away now", { country: c })}
+                              onClick={() => onStop({ code: partner.code, name, service, country: c, permission: true })}
+                            >
+                              {c} ×
+                            </button>
+                          ) : (
+                            <span key={c} className="chip">
+                              {c}
+                            </span>
+                          ),
+                        )}
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <p className="hint">{t("Never used outside this list: not picked, not a backup, not even when pinned.")}</p>
       {partner.routes.length === 0 ? (
         <p className="muted">{t("No services set up.")}</p>
       ) : (
@@ -328,8 +502,10 @@ function PartnerCard({ partner, facts, manage, onStop }: { partner: PartnerSetti
   );
 }
 
-function PreviewSection() {
+function PreviewSection({ countries, names }: { countries: Country[]; names: Record<string, string> }) {
   const t = useT();
+  // Only countries whose money the panel knows, so the amount can be read.
+  const choices = (countries.length ? countries : Object.keys(COUNTRY_MONEY).map((code) => ({ code, name: code }))).filter((c) => COUNTRY_MONEY[c.code]);
   const [service, setService] = useState<PartnerService>("bank_transfer");
   const [country, setCountry] = useState("GM");
   const [amount, setAmount] = useState("1000");
@@ -368,9 +544,9 @@ function PreviewSection() {
         <label>
           {t("Country")}
           <select value={code} onChange={(e) => setCountry(e.target.value)}>
-            {Object.keys(COUNTRY_MONEY).map((c) => (
-              <option key={c} value={c}>
-                {c}
+            {choices.map((c) => (
+              <option key={c.code} value={c.code}>
+                {c.name} ({c.code})
               </option>
             ))}
           </select>
@@ -391,6 +567,7 @@ function PreviewSection() {
               <tr>
                 <th>{t("Partner")}</th>
                 <th>{t("Cost to Sunu Pay")}</th>
+                <th>{t("Price")}</th>
                 <th>{t("Result")}</th>
               </tr>
             </thead>
@@ -408,6 +585,10 @@ function PreviewSection() {
                       <td>{c.name}</td>
                       <td>{c.costMinor === null ? "—" : money(c.costMinor, currency)}</td>
                       <td>
+                        {c.priceSource === "live" ? <Badge tone="ok">{t("Live")}</Badge> : c.priceSource === "typed" ? t("Typed") : "—"}
+                        {c.priceNote && c.priceNote !== "no_live_price" && <span className="muted small"> {t(NOTE_LABEL[c.priceNote] ?? c.priceNote)}</span>}
+                      </td>
+                      <td>
                         {place === 0 ? (
                           <Badge tone="ok">{t("Gets this payment")}</Badge>
                         ) : place > 0 ? (
@@ -423,23 +604,51 @@ function PreviewSection() {
             </tbody>
           </table>
           {result.picked.length === 0 && <p className="error">{t("No partner can take this payment now. Customers see that the service isn't available.")}</p>}
-          <p className="hint">{t(result.rule === "cheapest" ? "Picked by cost." : "Picked by the order.")}</p>
+          <p className="hint">{t(result.rule === "pin" ? "Picked by the pin." : result.rule === "cheapest" ? "Picked by cost." : "Picked by the order.")}</p>
+          {result.pin && !result.pin.applied && (
+            <p className="hint">
+              {t("{name} is pinned but was skipped: {why}", {
+                name: names[result.pin.partner] ?? result.pin.partner,
+                why: t(WHY_LABEL[result.pin.why as PartnerWhy] ?? result.pin.why),
+              })}
+            </p>
+          )}
         </div>
       )}
     </div>
   );
 }
 
-type Draft = { pickRule: PartnerSettings["pickRule"]; partners: { code: string; on: boolean; routes: (PartnerRoute & { fee: string; percent: string; margin: string })[] }[] };
+type DraftRoute = PartnerRoute & { fee: string; percent: string; margin: string };
+type DraftPartner = {
+  code: string;
+  on: boolean;
+  livePrices?: boolean;
+  allowed?: Partial<Record<PartnerService, string[]>>;
+  routes: DraftRoute[];
+};
+type Draft = {
+  pickRule: PartnerSettings["pickRule"];
+  live?: { maxAgeSeconds: string; maxDropPct: string };
+  pins?: PartnerPin[];
+  partners: DraftPartner[];
+};
+
+export const DEFAULT_LIVE: PartnerLive = { maxAgeSeconds: 30, maxDropPct: 50 };
 
 function toDraft(s: PartnerSettings): Draft {
+  const live = s.live ?? DEFAULT_LIVE;
   return {
     pickRule: { ...s.pickRule },
+    live: { maxAgeSeconds: String(live.maxAgeSeconds), maxDropPct: String(live.maxDropPct) },
+    pins: (s.pins ?? []).map((p) => ({ ...p })),
     partners: [...s.partners]
       .sort((a, b) => a.order - b.order)
       .map((p) => ({
         code: p.code,
         on: p.on,
+        livePrices: Boolean(p.livePrices),
+        allowed: Object.fromEntries(Object.entries(p.allowed ?? {}).map(([k, v]) => [k, [...(v ?? [])]])),
         routes: sortRoutes(p.routes).map((r) => {
           const currency = COUNTRY_MONEY[r.country];
           const fee = r.fixedFeeMinor && currency ? String(r.fixedFeeMinor / 10 ** decimalsOf(currency)) : "0";
@@ -452,6 +661,8 @@ function toDraft(s: PartnerSettings): Draft {
 /** The settings to send, plus the problems to fix first. The server checks again. */
 /** Each problem is an English sentence with {name} for the partner, ready for t(). */
 export type DraftError = [string, string];
+
+const wholeIn = (text: string, min: number, max: number) => (/^\d{1,4}$/.test(text.trim()) && Number(text) >= min && Number(text) <= max ? Number(text) : null);
 
 export function buildPartnerSettings(draft: Draft, names: Record<string, string> = {}): { settings: Omit<PartnerSettings, "version">; errors: DraftError[] } {
   const errors: DraftError[] = [];
@@ -479,13 +690,61 @@ export function buildPartnerSettings(draft: Draft, names: Record<string, string>
       }
       return { service: r.service, country, on: r.on, fixedFeeMinor, percentBps: percentBps ?? 0, fxMarginBps: fxMarginBps ?? 0 };
     });
-    return { code: p.code, on: p.on, order: i + 1, routes };
+    const allowed: Partial<Record<PartnerService, string[]>> = {};
+    for (const [service, list] of Object.entries(p.allowed ?? {}) as [PartnerService, string[]][]) {
+      const codes = [...new Set((list ?? []).map((c) => c.trim().toUpperCase()))].sort();
+      if (codes.some((c) => !/^[A-Z]{2}$/.test(c))) errors.push(["{name}: allowed countries must be two letters", n]);
+      if (codes.length) allowed[service] = codes;
+    }
+    return { code: p.code, on: p.on, order: i + 1, livePrices: Boolean(p.livePrices), allowed, routes };
+  });
+  const liveText = draft.live ?? { maxAgeSeconds: String(DEFAULT_LIVE.maxAgeSeconds), maxDropPct: String(DEFAULT_LIVE.maxDropPct) };
+  const maxAgeSeconds = wholeIn(liveText.maxAgeSeconds, 1, 3600);
+  const maxDropPct = wholeIn(liveText.maxDropPct, 1, 90);
+  if (maxAgeSeconds === null) errors.push(["Live prices: the oldest allowed must be 1 to 3600 seconds", ""]);
+  if (maxDropPct === null) errors.push(["Live prices: the safety limit must be 1% to 90%", ""]);
+  const pinSeen = new Set<string>();
+  const pins = (draft.pins ?? []).map((pin) => {
+    const country = pin.country.trim().toUpperCase();
+    const n = names[pin.partner] ?? pin.partner;
+    if (country !== "ALL" && !/^[A-Z]{2}$/.test(country)) errors.push(["{name}: a pin's country must be ALL or two letters", n]);
+    const list = partners.find((p) => p.code === pin.partner)?.allowed[pin.service] ?? [];
+    if (country === "ALL" ? list.length === 0 : !list.includes(country)) errors.push(["{name} is pinned where it is not allowed", n]);
+    const key = `${pin.service}.${country}`;
+    if (pinSeen.has(key)) errors.push(["Two pins for the same service and country", ""]);
+    pinSeen.add(key);
+    return { service: pin.service, country, partner: pin.partner };
   });
   const unique = [...new Map(errors.map((e) => [e.join("|"), e])).values()];
-  return { settings: { pickRule: draft.pickRule, partners }, errors: unique };
+  return {
+    settings: { pickRule: draft.pickRule, live: { maxAgeSeconds: maxAgeSeconds ?? 0, maxDropPct: maxDropPct ?? 0 }, pins, partners },
+    errors: unique,
+  };
 }
 
-function Propose({ settings, facts, onDone, onClose }: { settings: PartnerSettings; facts: PartnerFacts[]; onDone: () => void; onClose: () => void }) {
+/** Tick boxes for the countries a partner may work in, for one service. */
+function AllowedEditor({ list, countries, onChange }: { list: string[]; countries: Country[]; onChange: (next: string[]) => void }) {
+  const t = useT();
+  const all = [...countries];
+  for (const c of list) if (!all.some((x) => x.code === c)) all.push({ code: c, name: c });
+  return (
+    <div className="check-grid">
+      {all.map((c) => (
+        <label key={c.code} className="inline">
+          <input
+            type="checkbox"
+            checked={list.includes(c.code)}
+            onChange={(e) => onChange(e.target.checked ? [...list, c.code].sort() : list.filter((x) => x !== c.code))}
+          />{" "}
+          {c.name} ({c.code})
+        </label>
+      ))}
+      {all.length === 0 && <span className="muted">{t("No countries to choose from.")}</span>}
+    </div>
+  );
+}
+
+function Propose({ settings, facts, countries, onDone, onClose }: { settings: PartnerSettings; facts: PartnerFacts[]; countries: Country[]; onDone: () => void; onClose: () => void }) {
   const t = useT();
   const [draft, setDraft] = useState<Draft>(() => toDraft(settings));
   const [reason, setReason] = useState("");
@@ -494,6 +753,13 @@ function Propose({ settings, facts, onDone, onClose }: { settings: PartnerSettin
   const built = buildPartnerSettings(draft, names);
   const preview = { ...built.settings, version: settings.version + 1 } as PartnerSettings;
   const rows = built.errors.length ? [] : changeRows(settings, preview, names, t);
+  const editPins = (fn: (pins: PartnerPin[]) => void) =>
+    setDraft((d) => {
+      const next = structuredClone(d);
+      next.pins = next.pins ?? [];
+      fn(next.pins);
+      return next;
+    });
   const edit = (i: number, fn: (p: Draft["partners"][number]) => void) =>
     setDraft((d) => {
       const next = structuredClone(d);
@@ -531,6 +797,87 @@ function Propose({ settings, facts, onDone, onClose }: { settings: PartnerSettin
           </label>
         ))}
       </div>
+      <h3>{t("Live prices")}</h3>
+      <div className="form-grid">
+        <label>
+          {t("Oldest allowed (seconds)")}
+          <input
+            className="narrow"
+            inputMode="numeric"
+            value={draft.live?.maxAgeSeconds ?? ""}
+            onChange={(e) => setDraft((d) => ({ ...d, live: { maxDropPct: d.live?.maxDropPct ?? "50", maxAgeSeconds: e.target.value } }))}
+          />
+        </label>
+        <label>
+          {t("Safety limit (%)")}
+          <input
+            className="narrow"
+            inputMode="numeric"
+            value={draft.live?.maxDropPct ?? ""}
+            onChange={(e) => setDraft((d) => ({ ...d, live: { maxAgeSeconds: d.live?.maxAgeSeconds ?? "30", maxDropPct: e.target.value } }))}
+          />
+        </label>
+      </div>
+      <p className="hint">{t("A live price older than this, or more than this far below the typed fee, is ignored and the typed fee used. Live prices only apply to partners switched to them below.")}</p>
+      <h3>{t("Pins")}</h3>
+      {(draft.pins ?? []).length === 0 && <p className="muted">{t("No pins. Every service picks automatically.")}</p>}
+      {(draft.pins ?? []).map((pin, k) => {
+        const able = facts.filter((f) => f.services.includes(pin.service));
+        return (
+          <div key={k} className="form-grid">
+            <label>
+              {t("Service")}
+              <select
+                value={pin.service}
+                onChange={(e) =>
+                  editPins((pins) => {
+                    const service = e.target.value as PartnerService;
+                    pins[k] = { ...pins[k]!, service, partner: facts.find((f) => f.services.includes(service))?.code ?? pins[k]!.partner };
+                  })
+                }
+              >
+                {(Object.keys(SERVICE_LABEL) as PartnerService[]).map((sv) => (
+                  <option key={sv} value={sv}>
+                    {t(SERVICE_LABEL[sv])}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              {t("Country")}
+              <select value={pin.country} onChange={(e) => editPins((pins) => void (pins[k] = { ...pins[k]!, country: e.target.value }))}>
+                <option value="ALL">{t("All countries")}</option>
+                {countries.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.name} ({c.code})
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              {t("Partner")}
+              <select value={pin.partner} onChange={(e) => editPins((pins) => void (pins[k] = { ...pins[k]!, partner: e.target.value }))}>
+                {able.map((f) => (
+                  <option key={f.code} value={f.code}>
+                    {f.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="row-end">
+              <button type="button" onClick={() => editPins((pins) => void pins.splice(k, 1))}>
+                {t("Remove this pin")}
+              </button>
+            </div>
+          </div>
+        );
+      })}
+      <div className="row-end">
+        <button type="button" onClick={() => editPins((pins) => void pins.push({ service: "bank_transfer", country: "ALL", partner: facts.find((f) => f.services.includes("bank_transfer"))?.code ?? "flutterwave" }))}>
+          {t("Add a pin")}
+        </button>
+      </div>
+      <p className="hint">{t("A pin beats the cheapest pick. If the pinned partner is off, not allowed there or failing, it is skipped and the automatic pick is used.")}</p>
       {draft.partners.map((p, i) => {
         const f = facts.find((x) => x.code === p.code);
         const unused = (f?.services ?? []).filter((s) => !p.routes.some((r) => r.service === s && r.country === "ALL"));
@@ -553,6 +900,38 @@ function Propose({ settings, facts, onDone, onClose }: { settings: PartnerSettin
               </div>
             </div>
             {f && (!f.ready || !f.keysSet) && <p className="hint">{t("Switching this on does nothing until a developer finishes it and adds its keys.")}</p>}
+            {(f?.liveServices.length ?? 0) > 0 ? (
+              <label className="inline">
+                <input type="checkbox" checked={Boolean(p.livePrices)} onChange={(e) => edit(i, (x) => void (x.livePrices = e.target.checked))} /> {t("Use live prices")}
+                <span className="muted small">
+                  {" "}
+                  ({t("can read: {list}", { list: (f?.liveServices ?? []).map((sv) => t(SERVICE_LABEL[sv])).join(", ") })})
+                </span>
+              </label>
+            ) : (
+              <p className="muted small">{t("The server cannot read this partner's live prices yet: typed fees only.")}</p>
+            )}
+            <h4>{t("Allowed to work in")}</h4>
+            {(f?.services ?? []).map((sv) => {
+              const list = p.allowed?.[sv] ?? [];
+              return (
+                <details key={sv}>
+                  <summary>
+                    {t(SERVICE_LABEL[sv])}: {list.length ? list.join(", ") : t("Nowhere")}
+                  </summary>
+                  <AllowedEditor
+                    list={list}
+                    countries={countries}
+                    onChange={(next) =>
+                      edit(i, (x) => {
+                        x.allowed = { ...(x.allowed ?? {}), [sv]: next };
+                      })
+                    }
+                  />
+                </details>
+              );
+            })}
+            <h4>{t("Fees")}</h4>
             <div className="table-wrap">
               <table>
                 <thead>
@@ -708,20 +1087,29 @@ function StopNow({ stop, onDone, onClose }: { stop: Stop; onDone: () => void; on
     : stop.name;
   return (
     <ConfirmWithPin
-      title="Switch off now"
-      confirmLabel="Switch off"
+      title={stop.permission ? "Take this country away now" : "Switch off now"}
+      confirmLabel={stop.permission ? "Take away" : "Switch off"}
       danger
       canConfirm={okLength(reason, STOP_REASON_MIN, REASON_MAX)}
       onClose={onClose}
       onConfirm={async (pin) => {
-        await stopPaymentPartner({ code: stop.code, service: stop.service, country: stop.country, reason: reason.trim(), pin }, key);
+        await stopPaymentPartner(
+          { code: stop.code, service: stop.service, country: stop.country, ...(stop.permission ? { permission: true } : {}), reason: reason.trim(), pin },
+          key,
+        );
         onDone();
       }}
     >
       <p>
         <strong>{what}</strong>
       </p>
-      <p>{t("New payments stop going there at once, and go to the next partner if there is one. Payments it already has are still checked with it. Switching it back on needs two people.")}</p>
+      <p>
+        {t(
+          stop.permission
+            ? "This partner is no longer allowed there, at once: new payments in that country go to another allowed partner, or none. A pin for it there goes too. Payments it already has are still checked with it. Adding the country back needs two people."
+            : "New payments stop going there at once, and go to the next partner if there is one. Payments it already has are still checked with it. Switching it back on needs two people.",
+        )}
+      </p>
       <TextArea label="Why" value={reason} onChange={setReason} min={STOP_REASON_MIN} max={REASON_MAX} />
     </ConfirmWithPin>
   );
@@ -748,7 +1136,8 @@ function History({ names }: { names: Record<string, string> }) {
           <div className="panel-head">
             <h2 className="small-title">{when(change.createdAt)}</h2>
             {change.stop ? (
-              <Badge tone="danger">{t("Switched off by one person")}</Badge>
+              <Badge tone="danger">{t(change.stop.permission ? "Country taken away by one person" : "Switched off by one person")}</Badge>
+
             ) : (
               <Badge tone={change.status === "approved" ? "ok" : change.status === "pending" ? "warn" : "plain"}>{t(STATUS_LABEL[change.status])}</Badge>
             )}
