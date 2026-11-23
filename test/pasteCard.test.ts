@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buttonLabel, CARD_ACTIONS, fileFromData, wordsFromPaste } from "../src/lib/pasteCard";
-import { formProblem } from "../src/pages/EventEditor";
+import { formProblem, tierSummary } from "../src/pages/EventEditor";
 
 describe("pasting a card", () => {
   it("keeps the heading and the words, nothing that can act", () => {
@@ -44,8 +44,8 @@ describe("event form", () => {
     titleEn: "Banjul Live Night", titleFr: "Banjul Live Night", aboutEn: "", aboutFr: "", venue: "Independence Stadium", country: "GM", currency: "GMD",
     fee: "0", maxPerPerson: "4", startsAt: "2099-12-12T20:00", salesEndAt: "", organiserPhone: "+2207000000", gatePhones: "",
     tiers: [
-      { nameEn: "Standard", nameFr: "Standard", price: "350", capacity: "500", sold: 0 },
-      { nameEn: "VIP front area", nameFr: "VIP devant", price: "1000", capacity: "50", sold: 0 },
+      { nameEn: "Standard", nameFr: "Standard", price: "350", capacity: "500", sold: 0, salesStartAt: "", salesEndAt: "", maxPerPerson: "", closed: false },
+      { nameEn: "VIP front area", nameFr: "VIP devant", price: "1000", capacity: "50", sold: 0, salesStartAt: "", salesEndAt: "", maxPerPerson: "", closed: false },
     ],
   };
   it("accepts a good event", () => expect(formProblem(form, false)).toBeNull());
@@ -55,5 +55,16 @@ describe("event form", () => {
     expect(formProblem({ ...form, tiers: [{ ...form.tiers[0]!, capacity: "3", sold: 10 }] }, true)).toMatch(/10 are already sold/);
     expect(formProblem({ ...form, organiserPhone: "" }, false)).toMatch(/organiser/);
     expect(formProblem({ ...form, organiserPhone: "" }, true)).toBeNull();
+  });
+  it("checks each type's dates, limit and that one stays open", () => {
+    const early = { ...form.tiers[0]!, nameEn: "Early bird" };
+    expect(formProblem({ ...form, tiers: [{ ...early, salesStartAt: "2099-12-01T00:00", salesEndAt: "2099-11-30T00:00" }] }, false)).toMatch(/end after they start/);
+    expect(formProblem({ ...form, tiers: [{ ...early, salesEndAt: "2099-12-13T00:00" }] }, false)).toMatch(/must end by the time all ticket sales end/);
+    expect(formProblem({ ...form, tiers: [{ ...early, maxPerPerson: "6" }] }, false)).toMatch(/event's limit \(4\)/);
+    expect(formProblem({ ...form, tiers: [{ ...early, maxPerPerson: "2", salesEndAt: "2099-12-01T00:00" }, form.tiers[1]!] }, false)).toBeNull();
+    expect(formProblem({ ...form, tiers: form.tiers.map((x) => ({ ...x, closed: true })) }, false)).toMatch(/At least one/);
+  });
+  it("shows the approver every rule on a type", () => {
+    expect(tierSummary({ nameEn: "Early bird", nameFr: "Prévente", priceMinor: 25000, capacity: 100, maxPerPerson: 2, closed: true }, "GMD")).toMatch(/Early bird .*×100 \(max 2 each, CLOSED\)/);
   });
 });

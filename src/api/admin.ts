@@ -1748,7 +1748,20 @@ export function withdrawOfferCard(cardId: string, reason: string) {
 // ---- Event tickets (sold only in the app) ----
 
 export type TicketEventState = "waiting" | "on_sale" | "sold_out" | "sales_closed" | "over" | "cancelled";
-export type TicketTier = { id?: string; nameEn: string; nameFr: string; priceMinor: number; capacity: number; sold?: number };
+export type TicketTier = {
+  id?: string;
+  nameEn: string;
+  nameFr: string;
+  priceMinor: number;
+  capacity: number;
+  sold?: number;
+  /** Optional: its own sales window (Early bird ends first), limit per person, closed by staff. */
+  salesStartAt?: string | null;
+  salesEndAt?: string | null;
+  maxPerPerson?: number | null;
+  closed?: boolean;
+};
+export type TopBuyer = { userId: string; name: string; phone: string; tickets: number; priceMinor: number; passedOn: number; firstAt: string; lastAt: string };
 
 export type TicketEvent = {
   id: string;
@@ -1869,6 +1882,11 @@ export function cancelTicketEvent(eventId: string, reason: string, pin: string, 
 
 export function setGateStaff(eventId: string, gatePhones: string[], pin: string) {
   return api(`/admin/ticket-events/${id(eventId)}/gate-staff`, { method: "POST", body: { gatePhones, pin } });
+}
+
+/** Who bought the most for one event, to spot bulk buying to resell. */
+export function eventTopBuyers(eventId: string) {
+  return api<TopBuyer[]>(`/admin/ticket-events/${id(eventId)}/buyers`);
 }
 
 export function eventTickets(eventId: string, search = "") {

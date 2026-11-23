@@ -12,7 +12,7 @@ import { useT } from "../i18n/language";
 // A draft changes at once. An event on sale waits for a second person, can't
 // change country, currency or organiser, and sold tickets keep their price.
 
-export const MAX_TIERS = 6;
+export const MAX_TIERS = 12;
 
 /** "350" or "350.50" typed by staff, in minor units; null if it isn't a price. */
 export function toMinorUnits(text: string, currency: string): number | null {
@@ -46,7 +46,23 @@ export function phoneList(text: string): string[] {
     .filter(Boolean);
 }
 
-type TierRow = { id?: string; nameEn: string; nameFr: string; price: string; capacity: string; sold: number };
+type TierRow = {
+  id?: string; nameEn: string; nameFr: string; price: string; capacity: string; sold: number;
+  salesStartAt: string; salesEndAt: string; maxPerPerson: string; closed: boolean;
+};
+const emptyTier = (): TierRow => ({ nameEn: "", nameFr: "", price: "", capacity: "", sold: 0, salesStartAt: "", salesEndAt: "", maxPerPerson: "", closed: false });
+
+/** One ticket type in a line, for the approver to compare before and after. */
+export function tierSummary(x: TicketTier, currency: string): string {
+  const day = (iso?: string | null) => (iso ? new Date(iso).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "");
+  const extras = [
+    x.salesStartAt ? `from ${day(x.salesStartAt)}` : "",
+    x.salesEndAt ? `until ${day(x.salesEndAt)}` : "",
+    x.maxPerPerson ? `max ${x.maxPerPerson} each` : "",
+    x.closed ? "CLOSED" : "",
+  ].filter(Boolean);
+  return `${x.nameEn} ${money(x.priceMinor, currency)} ×${x.capacity}${extras.length ? ` (${extras.join(", ")})` : ""}`;
+}
 type Form = {
   titleEn: string; titleFr: string; aboutEn: string; aboutFr: string; venue: string; country: string; currency: string;
   fee: string; maxPerPerson: string; startsAt: string; salesEndAt: string; organiserPhone: string; gatePhones: string; tiers: TierRow[];
@@ -57,7 +73,7 @@ function formFrom(e: TicketEvent | null): Form {
     return {
       titleEn: "", titleFr: "", aboutEn: "", aboutFr: "", venue: "", country: "GM", currency: "GMD", fee: "0", maxPerPerson: "4",
       startsAt: inDays(14), salesEndAt: "", organiserPhone: "", gatePhones: "",
-      tiers: [{ nameEn: "Standard", nameFr: "Standard", price: "", capacity: "", sold: 0 }],
+      tiers: [{ ...emptyTier(), nameEn: "Standard", nameFr: "Standard" }],
     };
   }
   const tiers: TicketTier[] = e.tiers?.length ? e.tiers : [{ nameEn: "Standard", nameFr: "Standard", priceMinor: e.priceMinor, capacity: e.capacity, sold: e.sold }];
@@ -66,7 +82,11 @@ function formFrom(e: TicketEvent | null): Form {
     fee: major(e.feeMinor, e.currency), maxPerPerson: String(e.maxPerPerson), startsAt: localInput(e.startsAt),
     salesEndAt: e.salesEndAt && e.salesEndAt !== e.startsAt ? localInput(e.salesEndAt) : "",
     organiserPhone: e.organiserPhone, gatePhones: e.gateStaff.map((g) => g.phone).join("\n"),
-    tiers: tiers.map((t) => ({ id: t.id && t.id !== "main" ? t.id : undefined, nameEn: t.nameEn, nameFr: t.nameFr, price: major(t.priceMinor, e.currency), capacity: String(t.capacity), sold: t.sold || 0 })),
+    tiers: tiers.map((t) => ({
+      id: t.id && t.id !== "main" ? t.id : undefined, nameEn: t.nameEn, nameFr: t.nameFr, price: major(t.priceMinor, e.currency), capacity: String(t.capacity), sold: t.sold || 0,
+      salesStartAt: t.salesStartAt ? localInput(t.salesStartAt) : "", salesEndAt: t.salesEndAt ? localInput(t.salesEndAt) : "",
+      maxPerPerson: t.maxPerPerson ? String(t.maxPerPerson) : "", closed: Boolean(t.closed),
+    })),
   };
 }
 
@@ -84,7 +104,16 @@ export function formProblem(f: Form, live: boolean): string | null {
     const cap = Number(t.capacity);
     if (!Number.isInteger(cap) || cap < 1) return `${t.nameEn || "A ticket type"}: set how many tickets.`;
     if (cap < t.sold) return `${t.nameEn}: ${t.sold} are already sold, so there can't be fewer than that.`;
+    if (t.salesStartAt && t.salesEndAt && new Date(t.salesEndAt) <= new Date(t.salesStartAt)) return `${t.nameEn}: sales must end after they start.`;
+    const salesEnd = f.salesEndAt || f.startsAt;
+    if (t.salesEndAt && salesEnd && new Date(t.salesEndAt) > new Date(salesEnd)) return `${t.nameEn}: its sales must end by the time all ticket sales end.`;
+    if (t.maxPerPerson.trim()) {
+      const each = Number(t.maxPerPerson);
+      if (!Number.isInteger(each) || each < 1 || each > 10) return `${t.nameEn}: tickets per person must be 1 to 10, or left empty.`;
+      if (each > Number(f.maxPerPerson)) return `${t.nameEn}: tickets per person can't be more than the event's limit (${f.maxPerPerson}).`;
+    }
   }
+  if (f.tiers.every((t) => t.closed)) return "At least one ticket type must stay open.";
   const fee = toMinorUnits(f.fee || "0", f.currency);
   const cheapest = Math.min(...f.tiers.map((t) => toMinorUnits(t.price, f.currency) ?? Infinity));
   if (fee === null) return "The Sunu Pay fee must be zero or more.";
@@ -101,6 +130,10 @@ function draftFrom(f: Form): TicketEventDraft {
     nameFr: t.nameFr.trim(),
     priceMinor: toMinorUnits(t.price, f.currency) ?? 0,
     capacity: Number(t.capacity),
+    salesStartAt: t.salesStartAt ? new Date(t.salesStartAt).toISOString() : null,
+    salesEndAt: t.salesEndAt ? new Date(t.salesEndAt).toISOString() : null,
+    maxPerPerson: t.maxPerPerson.trim() ? Number(t.maxPerPerson) : null,
+    closed: t.closed,
   }));
   const startsAt = new Date(f.startsAt).toISOString();
   return {
@@ -128,6 +161,14 @@ export function EventFormDialog({ event, onClose, onDone }: { event: TicketEvent
   const problem = formProblem(f, live);
   const set = (k: keyof Form) => (v: string) => setF({ ...f, [k]: v });
   const setTier = (i: number, change: Partial<TierRow>) => setF({ ...f, tiers: f.tiers.map((row, n) => (n === i ? { ...row, ...change } : row)) });
+  // The app shows the types in this order.
+  const moveTier = (i: number, by: -1 | 1) => {
+    const j = i + by;
+    if (j < 0 || j >= f.tiers.length) return;
+    const tiers = [...f.tiers];
+    [tiers[i], tiers[j]] = [tiers[j]!, tiers[i]!];
+    setF({ ...f, tiers });
+  };
   const input = (k: Exclude<keyof Form, "tiers">, label: string, extra: Record<string, unknown> = {}) => (
     <label>
       {t(label)}
@@ -181,7 +222,7 @@ export function EventFormDialog({ event, onClose, onDone }: { event: TicketEvent
           </div>
 
           <h3>{t("Ticket types")}</h3>
-          <p className="hint">{t("Each type has its own price and number of tickets, like Standard and VIP. The price goes to the organiser.")}</p>
+          <p className="hint">{t("Add as many types as the event sells (up to 12), like Early bird, Standard, VIP or Table for four. Each has its own price and number of tickets, and can have its own sales dates and its own limit per person. The app shows them in this order. The price goes to the organiser.")}</p>
           {f.tiers.map((row, i) => (
             <fieldset key={row.id ?? `new-${i}`} className="tier-row">
               <div className="row">
@@ -204,7 +245,29 @@ export function EventFormDialog({ event, onClose, onDone }: { event: TicketEvent
                   <input value={row.capacity} inputMode="numeric" onChange={(e) => setTier(i, { capacity: e.target.value })} />
                 </label>
               </div>
+              <div className="row">
+                <label>
+                  {t("On sale from (optional)")}
+                  <input type="datetime-local" value={row.salesStartAt} onChange={(e) => setTier(i, { salesStartAt: e.target.value })} />
+                </label>
+                <label>
+                  {t("On sale until (optional)")}
+                  <input type="datetime-local" value={row.salesEndAt} onChange={(e) => setTier(i, { salesEndAt: e.target.value })} />
+                </label>
+              </div>
+              <div className="row">
+                <label>
+                  {t("Tickets per person for this type (optional)")}
+                  <input value={row.maxPerPerson} inputMode="numeric" placeholder={t("Event limit")} onChange={(e) => setTier(i, { maxPerPerson: e.target.value })} />
+                </label>
+                <label className="check">
+                  <input type="checkbox" checked={row.closed} onChange={(e) => setTier(i, { closed: e.target.checked })} />
+                  {t("Closed: stop selling this type")}
+                </label>
+              </div>
               <p className="muted small">
+                <button type="button" className="link" disabled={i === 0} onClick={() => moveTier(i, -1)} aria-label={t("Move up")}>↑</button>{" "}
+                <button type="button" className="link" disabled={i === f.tiers.length - 1} onClick={() => moveTier(i, 1)} aria-label={t("Move down")}>↓</button>{" "}
                 {row.sold > 0 ? t("{n} sold. This type can't be removed.", { n: row.sold }) : ""}
                 {row.sold === 0 && f.tiers.length > 1 && (
                   <button type="button" className="link" onClick={() => setF({ ...f, tiers: f.tiers.filter((_, n) => n !== i) })}>
@@ -215,7 +278,7 @@ export function EventFormDialog({ event, onClose, onDone }: { event: TicketEvent
             </fieldset>
           ))}
           {f.tiers.length < MAX_TIERS && (
-            <button type="button" onClick={() => setF({ ...f, tiers: [...f.tiers, { nameEn: "", nameFr: "", price: "", capacity: "", sold: 0 }] })}>
+            <button type="button" onClick={() => setF({ ...f, tiers: [...f.tiers, emptyTier()] })}>
               {t("Add a ticket type")}
             </button>
           )}
@@ -223,6 +286,7 @@ export function EventFormDialog({ event, onClose, onDone }: { event: TicketEvent
             {input("fee", "Sunu Pay fee per ticket", { inputMode: "decimal" })}
             {input("maxPerPerson", "Tickets per person (1 to 10)", { inputMode: "numeric" })}
           </div>
+          <p className="hint">{t("Tickets per person counts every ticket a person bought for this event, even ones they sent on, so nobody can buy lots to resell. Check the biggest buyers on the event once sales start.")}</p>
           {input("organiserPhone", "Organiser's Sunu Pay number (the money goes to this account)", { placeholder: "+220…", readOnly: live })}
           {!live && (
             <label>
@@ -252,9 +316,16 @@ export function EventPhonePreview({ form: f, lang }: { form: Form; lang: "en" | 
   const when = f.startsAt
     ? new Date(f.startsAt).toLocaleString(fr ? "fr-FR" : "en-GB", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })
     : "—";
-  const tiers = f.tiers
-    .map((t) => ({ name: (fr ? t.nameFr : t.nameEn) || "—", price: toMinorUnits(t.price, f.currency) }))
-    .sort((a, b) => (a.price ?? 0) - (b.price ?? 0));
+  const now = new Date();
+  const day = (v: string) => new Date(v).toLocaleString(fr ? "fr-FR" : "en-GB", { day: "numeric", month: "short" });
+  const note = (t: TierRow) => {
+    if (t.closed) return fr ? "Plus en vente" : "No longer on sale";
+    if (t.salesStartAt && new Date(t.salesStartAt) > now) return fr ? `En vente le ${day(t.salesStartAt)}` : `On sale ${day(t.salesStartAt)}`;
+    if (t.salesEndAt && new Date(t.salesEndAt) <= now) return fr ? "Ventes terminées" : "Sales ended";
+    if (t.salesEndAt) return fr ? `Jusqu’au ${day(t.salesEndAt)}` : `Until ${day(t.salesEndAt)}`;
+    return "";
+  };
+  const tiers = f.tiers.map((t) => ({ name: (fr ? t.nameFr : t.nameEn) || "—", price: toMinorUnits(t.price, f.currency), note: note(t), off: t.closed || (!!t.salesEndAt && new Date(t.salesEndAt) <= now) || (!!t.salesStartAt && new Date(t.salesStartAt) > now) }));
   return (
     <div className="phone-preview" aria-label="Preview">
       <div className="pp-title">{(fr ? f.titleFr : f.titleEn) || (fr ? "Titre de l’événement" : "Event title")}</div>
@@ -265,10 +336,10 @@ export function EventPhonePreview({ form: f, lang }: { form: Form; lang: "en" | 
       <div className="pp-head">{fr ? "Billets" : "Tickets"}</div>
       <div className="pp-card">
         {tiers.map((t, i) => (
-          <div key={i} className="pp-tier">
+          <div key={i} className="pp-tier" style={t.off ? { opacity: 0.5 } : undefined}>
             <div>
               <b>{t.name}</b>
-              <span>{t.price ? money(t.price, f.currency) : "—"}</span>
+              <span>{t.price ? money(t.price, f.currency) : "—"}{t.note ? ` · ${t.note}` : ""}</span>
             </div>
             <div className="pp-step">
               <i>−</i>

@@ -6,6 +6,7 @@ import {
   withdrawTicketEventEdit,
   cancelTicketEvent,
   eventTickets,
+  eventTopBuyers,
   payOrganiser,
   refundEventTicket,
   refundEveryone,
@@ -16,7 +17,7 @@ import {
   type TicketEventState,
 } from "../api/admin";
 import { useAuth } from "../auth/AuthContext";
-import { EventFormDialog, phoneList } from "./EventEditor";
+import { EventFormDialog, phoneList, tierSummary } from "./EventEditor";
 import { can } from "../api/staff";
 import { Badge, LoadState, PageHeader } from "../components/common";
 import { ConfirmWithPin } from "../components/ConfirmWithPin";
@@ -76,6 +77,7 @@ export function TicketEventsPage() {
   const [cancelling, setCancelling] = useState<TicketEvent | null>(null);
   const [gate, setGate] = useState<TicketEvent | null>(null);
   const [list, setList] = useState<TicketEvent | null>(null);
+  const [buyers, setBuyers] = useState<TicketEvent | null>(null);
   const [refundAll, setRefundAll] = useState<TicketEvent | null>(null);
   const [paying, setPaying] = useState<TicketEvent | null>(null);
   const money_ = can(staff, "ticket_money");
@@ -186,6 +188,7 @@ export function TicketEventsPage() {
                     </td>
                     <td className="actions">
                       <button onClick={() => setList(e)}>{t("Tickets")}</button>
+                      {e.sold > 0 && <button onClick={() => setBuyers(e)}>{t("Biggest buyers")}</button>}
                       {e.state !== "cancelled" && e.state !== "over" && !e.paidOutAt && !e.pendingEdit && <button onClick={() => setEditing(e)}>{t("Change")}</button>}
                       {e.pendingEdit && e.pendingEdit.by !== staff?._id && <button className="primary" onClick={() => setReviewing(e)}>{t("Review the change")}</button>}
                       {e.pendingEdit && <button onClick={() => setWithdrawing(e)}>{t("Withdraw the change")}</button>}
@@ -224,6 +227,7 @@ export function TicketEventsPage() {
       {approving && <ApproveDialog e={approving} onClose={() => setApproving(null)} onDone={finish} />}
       {cancelling && <CancelDialog e={cancelling} onClose={() => setCancelling(null)} onDone={finish} />}
       {gate && <GateDialog e={gate} onClose={() => setGate(null)} onDone={finish} />}
+      {buyers && <BuyersDialog e={buyers} onClose={() => setBuyers(null)} />}
       {list && <TicketsDialog e={list} canRefund={money_} onClose={() => setList(null)} onChanged={() => setReload((n) => n + 1)} />}
       {refundAll && <RefundAllDialog e={refundAll} onClose={() => setRefundAll(null)} onDone={finish} />}
       {paying && <PayDialog e={paying} onClose={() => setPaying(null)} onDone={finish} />}
@@ -259,7 +263,7 @@ function ApproveEditDialog({ e, onClose, onDone }: { e: TicketEvent; onClose: ()
     ["Sales end", when(e.salesEndAt), when(c.salesEndAt ?? null)],
     ["Sunu Pay fee per ticket", money(e.feeMinor, e.currency), money(c.feeMinor ?? 0, e.currency)],
     ["Tickets per person", String(e.maxPerPerson), String(c.maxPerPerson ?? "")],
-    ["Ticket types", tiersNow.map((x) => `${x.nameEn} ${money(x.priceMinor, e.currency)} ×${x.capacity}`).join(", "), (c.tiers || []).map((x) => `${x.nameEn} ${money(x.priceMinor, e.currency)} ×${x.capacity}`).join(", ")],
+    ["Ticket types", tiersNow.map((x) => tierSummary(x, e.currency)).join("; "), (c.tiers || []).map((x) => tierSummary(x, e.currency)).join("; ")],
   ];
   return (
     <ConfirmWithPin
@@ -393,6 +397,63 @@ function GateDialog({ e, onClose, onDone }: { e: TicketEvent; onClose: () => voi
         <textarea rows={5} value={text} onChange={(ev) => setText(ev.target.value)} />
       </label>
     </ConfirmWithPin>
+  );
+}
+
+/**
+ * Who bought the most for this event. The limit per person stops one account
+ * buying lots; this shows when several accounts may be working together, or
+ * someone passing tickets on (to resell). Read only.
+ */
+function BuyersDialog({ e, onClose }: { e: TicketEvent; onClose: () => void }) {
+  const t = useT();
+  const { data, error, loading } = useLoad(() => eventTopBuyers(e.id), [e.id]);
+  const rows = data ?? [];
+  return (
+    <div className="overlay" role="presentation">
+      <div className="card dialog" role="dialog" aria-modal="true" aria-labelledby="buyers-title" style={{ maxWidth: 760 }}>
+        <h2 id="buyers-title">{t("Biggest buyers for {title}", { title: e.titleEn })}</h2>
+        <p className="muted small">
+          {t("Tickets each person paid for, not counting refunds. Limit per person: {n}. \"Passed on\" are tickets they sent to someone else. Many accounts near the limit, or most tickets passed on, can mean reselling.", { n: e.maxPerPerson })}
+        </p>
+        <LoadState loading={loading && !data} error={error} empty={!rows.length} />
+        {rows.length > 0 && (
+          <div className="table-wrap" style={{ maxHeight: 420, overflow: "auto" }}>
+            <table>
+              <thead>
+                <tr>
+                  <th>{t("Buyer")}</th>
+                  <th className="num">{t("Tickets")}</th>
+                  <th className="num">{t("Passed on")}</th>
+                  <th className="num">{t("Paid")}</th>
+                  <th>{t("Last bought")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r) => (
+                  <tr key={r.userId} className={r.tickets >= e.maxPerPerson ? "changed" : ""}>
+                    <td>
+                      {r.name || "—"}
+                      <br />
+                      <span className="muted small">{r.phone}</span>
+                    </td>
+                    <td className="num">{r.tickets}</td>
+                    <td className="num">{r.passedOn}</td>
+                    <td className="num">{money(r.priceMinor, e.currency)}</td>
+                    <td className="small">{when(r.lastAt)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <div className="row-end">
+          <button type="button" onClick={onClose}>
+            {t("Close")}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
