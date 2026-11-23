@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { api } from "../api/client";
 import { LanguagePicker } from "../components/LanguagePicker";
 import { useT } from "../i18n/language";
+import { Logo } from "../components/Logo";
 
 /** The invite id from "?invite=" and the one-time code from after "#" (never sent to a server in the address). */
 export function readSetupLink(search: string, hash: string): { invite: string; code: string } {
@@ -62,7 +63,7 @@ export function SetupPage() {
   return (
     <main className="login">
       <div className="card login-card">
-        <img className="login-logo" src={`${import.meta.env.BASE_URL}logo-full.png`} alt="Sunu Pay" width={220} height={34} />
+        <Logo className="login-logo" width={220} />
         <h1>{t("Set up your staff login")}</h1>
         <LanguagePicker />
         {error && <p className="error">{t(error)}</p>}

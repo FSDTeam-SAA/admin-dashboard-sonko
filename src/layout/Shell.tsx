@@ -5,6 +5,7 @@ import { visibleNav } from "../lib/nav";
 import { LanguagePicker } from "../components/LanguagePicker";
 import { useT } from "../i18n/language";
 import { applyTheme, loadTheme, saveTheme, type ThemeChoice } from "../lib/theme";
+import { Logo } from "../components/Logo";
 
 export function Shell() {
   const { staff, logout } = useAuth();
@@ -26,7 +27,7 @@ export function Shell() {
       <aside className={menuOpen ? "sidebar open" : "sidebar"}>
         <div className="brand">
           <div className="brand-name">
-            <img className="brand-logo" src={`${import.meta.env.BASE_URL}logo-full.png`} alt="Sunu Pay" width={170} height={27} />
+            <Logo className="brand-logo" width={170} />
             <small>{t("Admin")}</small>
           </div>
           <button type="button" className="menu-toggle" aria-expanded={menuOpen} aria-controls="panel-nav" onClick={() => setMenuOpen((open) => !open)}>

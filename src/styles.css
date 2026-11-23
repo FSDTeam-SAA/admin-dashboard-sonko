@@ -90,7 +90,9 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .login-mark { width: 64px; height: auto; }
 .login-logo { width: 220px; max-width: 100%; height: auto; align-self: center; }
 .brand-logo { display: block; width: 100%; max-width: 170px; height: auto; }
-[data-theme="dark"] .login-logo, [data-theme="dark"] .brand-logo { background: #fff; padding: 8px 12px; border-radius: 10px; box-sizing: border-box; }
+.logo-on-dark { display: none; }
+[data-theme="dark"] .logo-on-light { display: none; }
+[data-theme="dark"] .logo-on-dark { display: block; }
 
 /* Shell */
 .shell { display: grid; grid-template-columns: 240px 1fr; min-height: 100%; }
