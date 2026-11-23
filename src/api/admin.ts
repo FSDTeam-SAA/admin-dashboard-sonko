@@ -356,11 +356,9 @@ export type RateSettings = {
   ratesFromGmd: Record<RateCurrency, number>;
   sekPerEur: number;
   walletTransferFeeBps: number;
-  /** Share of each bill an agent earns for paying it for a customer (1% = 100). */
-  agentBillCommissionBps?: number;
 };
 
-export type RateChangeBody = Partial<{ ratesFromGmd: Partial<Record<RateCurrency, number>>; sekPerEur: number; walletTransferFeeBps: number; agentBillCommissionBps: number }>;
+export type RateChangeBody = Partial<{ ratesFromGmd: Partial<Record<RateCurrency, number>>; sekPerEur: number; walletTransferFeeBps: number }>;
 
 export type RateChange = Omit<SettingsChange, "country" | "changedFields" | "before" | "after"> & {
   changedFields: string[];

@@ -51,9 +51,6 @@ function RateDiff({ change }: { change: RateChange }) {
   if (change.before.walletTransferFeeBps !== change.after.walletTransferFeeBps) {
     rows.push({ what: "Wallet transfer fee", before: feeText(change.before.walletTransferFeeBps), after: feeText(change.after.walletTransferFeeBps) });
   }
-  if ((change.before.agentBillCommissionBps ?? 0) !== (change.after.agentBillCommissionBps ?? 0)) {
-    rows.push({ what: "Agent bill commission", before: feeText(change.before.agentBillCommissionBps ?? 0), after: feeText(change.after.agentBillCommissionBps ?? 0) });
-  }
   return (
     <table className="diff">
       <thead>
@@ -151,7 +148,6 @@ export function ExchangeRatesSection() {
                 <Row label="Euro" value={`1 EUR = ${gmdPerEur(settings.ratesFromGmd.XOF).toFixed(2)} GMD (follows the CFA franc, which is fixed at 655.957 per euro)`} />
                 <Row label="Swedish krona" value={`1 EUR = ${settings.sekPerEur} SEK`} />
                 <Row label="Wallet transfer fee" value={feeText(settings.walletTransferFeeBps)} />
-                <Row label="Agent bill commission" value={`${feeText(settings.agentBillCommissionBps ?? 0)} ${t("of each bill an agent pays for a customer, paid with the weekly commission")}`} />
               </dl>
             </div>
           )}
@@ -212,10 +208,6 @@ function Propose({ settings, onDone, onClose }: { settings: RateSettings; onDone
         <label>
           {t("Wallet transfer fee (%)")}
           <input inputMode="decimal" value={form.feePercent} onChange={(e) => setForm((f) => ({ ...f, feePercent: e.target.value }))} />
-        </label>
-        <label>
-          {t("Agent bill commission (%)")}
-          <input inputMode="decimal" value={form.billCommissionPercent} onChange={(e) => setForm((f) => ({ ...f, billCommissionPercent: e.target.value }))} />
         </label>
       </div>
       <p className="hint">{t("The euro is not set here: it follows the CFA franc, which is fixed at 655.957 per euro.")}</p>
