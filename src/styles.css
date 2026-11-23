@@ -111,7 +111,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .tile:hover { border-color: var(--primary); }
 
 /* PIN dialog */
-.overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.45); display: grid; place-items: center; padding: 24px; }
+.overlay { position: fixed; inset: 0; z-index: 100; background: rgba(0, 0, 0, 0.45); display: grid; place-items: center; padding: 24px; }
 .dialog { width: 100%; max-width: 420px; padding: 24px; display: flex; flex-direction: column; gap: 14px; }
 
 .brand-name { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
@@ -332,4 +332,12 @@ button:not(:disabled):active, .tile:active, .sidebar a:active, button.fraud-coun
   button, .tile, .sidebar a, .fraud-count { transition: none; }
   button:active, .tile:active, .sidebar a:active, button.fraud-count:active { transform: none; }
   .content > *, .overlay, .overlay > .dialog, .sidebar.open nav { animation: none; }
+}
+/* Payment partners editor: small number boxes in table rows. */
+input.narrow { width: 6.5em; min-width: 0; }
+label.inline { display: inline-flex; gap: 6px; align-items: center; flex-direction: row; }
+@media (max-width: 760px) {
+  /* A card title with buttons beside it: buttons go under the title on a phone. */
+  .panel-head { flex-wrap: wrap; }
+  .panel-head > .row-end { flex-wrap: wrap; justify-content: flex-start; }
 }

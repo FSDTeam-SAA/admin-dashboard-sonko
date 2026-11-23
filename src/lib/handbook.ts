@@ -164,6 +164,17 @@ export const HANDBOOK: HandbookEntry[] = [
     },
   },
   {
+    path: "/payment-partners",
+    what: {
+      en: "Which payment partner (Flutterwave and others) handles card top-ups, airtime, bills and bank transfers. Each payment goes to the cheapest partner that is switched on. Check a payment to see which partner would get it and what it would cost.",
+      fr: "Quel partenaire de paiement (Flutterwave et d’autres) traite les rechargements par carte, le crédit, les factures et les virements bancaires. Chaque paiement va au partenaire activé le moins cher. Vérifiez un paiement pour voir quel partenaire le recevrait et ce qu’il coûterait.",
+    },
+    careful: {
+      en: "Switching a partner off is one person and happens at once, so you can stop a problem fast. Switching on, fees and the order need a second person.",
+      fr: "Désactiver un partenaire se fait par une personne et prend effet aussitôt, pour arrêter vite un problème. L’activation, les frais et l’ordre demandent une deuxième personne.",
+    },
+  },
+  {
     path: "/staff",
     what: {
       en: "Who works here and what each person may see or change. Add an employee (they get a link to choose their own PIN), see who can do what in one table, and each person’s access history. Reset someone’s two-step login if they lose their phone.",

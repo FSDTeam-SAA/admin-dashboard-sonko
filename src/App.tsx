@@ -15,6 +15,7 @@ import { HoldsPage } from "./pages/HoldsPage";
 import { ReversalsPage } from "./pages/ReversalsPage";
 import { PayoutsPage } from "./pages/PayoutsPage";
 import { RatesAndFeesPage } from "./pages/RatesAndFeesPage";
+import { PaymentPartnersPage } from "./pages/PaymentPartnersPage";
 import { StaffPage } from "./pages/StaffPage";
 import { AgentsPage } from "./pages/AgentsPage";
 import { CustomersPage } from "./pages/CustomersPage";
@@ -46,6 +47,7 @@ const PAGES: Record<string, ComponentType> = {
   "/reversals": ReversalsPage,
   "/payouts": PayoutsPage,
   "/settings": RatesAndFeesPage,
+  "/payment-partners": PaymentPartnersPage,
   "/staff": StaffPage,
   "/agents": AgentsPage,
   "/agent-analytics": AgentAnalyticsPage,

@@ -11,6 +11,11 @@ import type {
   CustomerGrowth,
   CustomerHigherLimit,
   FaceIdSettings,
+  PartnerChange,
+  PartnerFacts,
+  PartnerPreview,
+  PartnerService,
+  PartnerSettings,
   Finance,
   FraudLimits,
   FraudSettings,
@@ -98,6 +103,41 @@ const settingsChanges: SettingsChange[] = [
 
 let rates: RateSettings = { version: 9, ratesFromGmd: { GBP: 0.0105, GHS: 0.165, XOF: 8.63, NGN: 21.4 }, sekPerEur: 11.42, walletTransferFeeBps: 0 };
 let faceId: FaceIdSettings = { version: 2, maxUsdMinor: 10_000, dayUsdMinor: 30_000, gbpPerUsd: 0.79 };
+
+// Payment partners. "Example Pay" is made up, so the demo can show the cheapest pick.
+const PARTNER_FACTS: PartnerFacts[] = [
+  { code: "flutterwave", name: "Flutterwave", services: ["wallet_top_up", "airtime", "bills", "bank_transfer"], ready: true, notReadyReason: "", keysSet: true, restingUntil: null },
+  { code: "examplepay", name: "Example Pay (made up)", services: ["bank_transfer", "airtime"], ready: true, notReadyReason: "", keysSet: true, restingUntil: null },
+  { code: "braintree", name: "Braintree", services: ["wallet_top_up"], ready: false, notReadyReason: "The app has no Braintree card screen yet.", keysSet: true, restingUntil: null },
+];
+const r = (service: PartnerService, country: string, on: boolean, percentBps: number, fxMarginBps: number, fixedFeeMinor = 0) => ({ service, country, on, fixedFeeMinor, percentBps, fxMarginBps });
+let partnerSettings: PartnerSettings = {
+  version: 3,
+  pickRule: { wallet_top_up: "cheapest", airtime: "cheapest", bills: "cheapest", bank_transfer: "cheapest" },
+  partners: [
+    { code: "flutterwave", on: true, order: 1, routes: [r("wallet_top_up", "ALL", true, 140, 0), r("airtime", "ALL", true, 300, 0), r("bills", "ALL", true, 100, 0), r("bank_transfer", "ALL", true, 100, 150), r("bank_transfer", "GM", true, 80, 120, 2_500)] },
+    { code: "examplepay", on: true, order: 2, routes: [r("bank_transfer", "ALL", true, 50, 100), r("airtime", "GM", false, 250, 0)] },
+    { code: "braintree", on: false, order: 3, routes: [r("wallet_top_up", "ALL", false, 190, 0)] },
+  ],
+};
+const partnerChanges: PartnerChange[] = [];
+function pickDemo(service: PartnerService, country: string, amountMinor: number): PartnerPreview {
+  const rule = partnerSettings.pickRule[service];
+  const considered = partnerSettings.partners.map((p) => {
+    const f = PARTNER_FACTS.find((x) => x.code === p.code)!;
+    const route = p.routes.find((x) => x.service === service && x.country === country) ?? p.routes.find((x) => x.service === service && x.country === "ALL") ?? null;
+    const base = { code: p.code, name: f.name, order: p.order, costMinor: null as number | null, route: route?.country ?? null };
+    if (!f.services.includes(service)) return { ...base, eligible: false, why: "no_code" as const };
+    if (!f.ready) return { ...base, eligible: false, why: "not_ready" as const };
+    if (!p.on) return { ...base, eligible: false, why: "partner_off" as const };
+    if (!route) return { ...base, eligible: false, why: "no_route" as const };
+    if (!route.on) return { ...base, eligible: false, why: "route_off" as const };
+    const costMinor = route.fixedFeeMinor + Math.floor((amountMinor * (route.percentBps + route.fxMarginBps) + 9_999) / 10_000);
+    return { ...base, eligible: true, why: "ok" as const, costMinor };
+  });
+  const picked = considered.filter((c) => c.eligible).sort((a, b) => (rule === "cheapest" ? a.costMinor! - b.costMinor! : 0) || a.order - b.order).map((c) => c.code);
+  return { picked, considered, rule };
+}
 
 const levels: LimitLevels = {
   unverified: { dayMinor: 0, monthMinor: 0 },
@@ -642,6 +682,64 @@ const R: Route[] = [
     return { id: "fc1", status: "approved" };
   }],
   ["POST", /^\/admin\/settings\/face-id\/changes\/([^/]+)\/(approve|cancel)$/, ok],
+
+  // Payment partners
+  ["GET", /^\/admin\/payment-partners$/, () => ({ settings: partnerSettings, partners: PARTNER_FACTS, services: ["wallet_top_up", "airtime", "bills", "bank_transfer"], pendingChange: partnerChanges.find((c) => c.status === "pending") ?? null, people: D.people })],
+  ["GET", /^\/admin\/payment-partners\/changes$/, () => ({ changes: partnerChanges, total: partnerChanges.length, page: 1, limit: 25, people: D.people })],
+  ["GET", /^\/admin\/payment-partners\/preview$/, ({ q }) => pickDemo(q.get("service") as PartnerService, String(q.get("country")), Number(q.get("amountMinor")))],
+  ["POST", /^\/admin\/payment-partners\/changes$/, ({ body }) => {
+    if (partnerChanges.some((c) => c.status === "pending")) throw new Refused(409, "Another payment partners change is waiting for approval. Approve or cancel it first.");
+    const proposed = body.settings as Omit<PartnerSettings, "version">;
+    const change: PartnerChange = {
+      id: `pp${partnerChanges.length + 1}`, status: "pending", stop: null, baseVersion: partnerSettings.version, appliedVersion: null, changedFields: [],
+      before: structuredClone(partnerSettings), after: { ...structuredClone(proposed), version: partnerSettings.version + 1 }, reason: String(body.reason ?? ""), requestedBy: me,
+      approvedBy: null, approvedAt: null, cancelledBy: null, cancelReason: null, expiresAt: D.ahead(24), createdAt: D.ago(0),
+    };
+    partnerChanges.unshift(change);
+    return change;
+  }],
+  ["POST", /^\/admin\/payment-partners\/changes\/([^/]+)\/approve$/, ({ m }) => {
+    const c = partnerChanges.find((x) => x.id === m[1]);
+    if (!c || c.status !== "pending") throw new Refused(409, "This change has already been decided.");
+    secondPerson(c.requestedBy);
+    if (c.baseVersion !== partnerSettings.version) {
+      c.status = "stale";
+      throw new Refused(409, "The payment partners changed since this was proposed, so it was not applied. Propose it again.");
+    }
+    partnerSettings = structuredClone(c.after);
+    Object.assign(c, { status: "approved", approvedBy: me, approvedAt: D.ago(0), appliedVersion: partnerSettings.version });
+    return c;
+  }],
+  ["POST", /^\/admin\/payment-partners\/changes\/([^/]+)\/cancel$/, ({ m, body }) => {
+    const c = partnerChanges.find((x) => x.id === m[1]);
+    if (c) Object.assign(c, { status: "cancelled", cancelledBy: me, cancelReason: String(body.reason ?? "") });
+    return ok();
+  }],
+  ["POST", /^\/admin\/payment-partners\/stop$/, ({ body }) => {
+    const before = structuredClone(partnerSettings);
+    const next = structuredClone(partnerSettings);
+    const p = next.partners.find((x) => x.code === body.code);
+    if (!p) throw new Refused(400, "Unknown partner.");
+    const service = body.service as PartnerService | undefined;
+    if (service) {
+      const row = p.routes.find((x) => x.service === service && x.country === String(body.country ?? "ALL"));
+      if (!row || !row.on) throw new Refused(400, "That row is already off.");
+      row.on = false;
+    } else {
+      if (!p.on) throw new Refused(400, "That partner is already off.");
+      p.on = false;
+    }
+    next.version += 1;
+    partnerSettings = next;
+    for (const c of partnerChanges) if (c.status === "pending") c.status = "stale";
+    const record: PartnerChange = {
+      id: `pp${partnerChanges.length + 1}`, status: "approved", stop: { code: String(body.code), service: service ?? null, country: service ? String(body.country ?? "ALL") : null },
+      baseVersion: before.version, appliedVersion: next.version, changedFields: [], before, after: structuredClone(next), reason: String(body.reason ?? ""), requestedBy: me,
+      approvedBy: me, approvedAt: D.ago(0), cancelledBy: null, cancelReason: null, expiresAt: D.ago(0), createdAt: D.ago(0),
+    };
+    partnerChanges.unshift(record);
+    return record;
+  }],
 
   // Staff
   ["GET", /^\/admin\/staff$/, () => ({ staff: D.staffRows, people: D.people })],

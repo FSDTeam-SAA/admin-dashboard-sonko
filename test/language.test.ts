@@ -61,6 +61,7 @@ const TRANSLATED = [
   "src/demo/main.tsx",
   "src/pages/LaunchPlan.tsx",
   "src/auth/SetupPage.tsx",
+  "src/pages/PaymentPartnersPage.tsx",
 ];
 
 describe("panel language", () => {

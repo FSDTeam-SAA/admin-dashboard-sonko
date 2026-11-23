@@ -141,6 +141,20 @@ export const NAV: NavItem[] = [
     ready: true,
   },
   {
+    path: "/payment-partners",
+    label: "Payment partners",
+    permission: "view_gateways",
+    routes: [
+      "GET /admin/payment-partners",
+      "GET /admin/payment-partners/preview",
+      "GET/POST /admin/payment-partners/changes",
+      "POST /admin/payment-partners/changes/:id/approve",
+      "POST /admin/payment-partners/changes/:id/cancel",
+      "POST /admin/payment-partners/stop",
+    ],
+    ready: true,
+  },
+  {
     path: "/settings",
     label: "Rates and fees",
     permission: "manage_rates",

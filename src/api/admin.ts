@@ -2054,3 +2054,74 @@ export function agentAnalytics(bucket: AgentAnalyticsBucket, days: number, agent
   if (agentId) query.set("agent", id(agentId));
   return api<AgentAnalytics>(`/admin/agents/analytics?${query.toString()}`);
 }
+
+// --- Payment partners (23 Nov 2026) ---------------------------------------
+
+export type PartnerService = "wallet_top_up" | "airtime" | "bills" | "bank_transfer";
+export type PickRule = "cheapest" | "order";
+export type PartnerRoute = {
+  service: PartnerService;
+  /** "ALL" or a two-letter country code. */
+  country: string;
+  on: boolean;
+  /** Per payment, in the country's own money. Always 0 on ALL. */
+  fixedFeeMinor: number;
+  /** 100 = 1%. */
+  percentBps: number;
+  fxMarginBps: number;
+};
+export type PartnerSetting = { code: string; on: boolean; order: number; routes: PartnerRoute[] };
+export type PartnerSettings = { version: number; pickRule: Record<PartnerService, PickRule>; partners: PartnerSetting[] };
+export type PartnerFacts = {
+  code: string;
+  name: string;
+  services: PartnerService[];
+  ready: boolean;
+  notReadyReason: string;
+  keysSet: boolean;
+  restingUntil: string | null;
+};
+export type PartnerChange = Omit<SettingsChange, "country" | "changedFields" | "before" | "after"> & {
+  stop: { code: string; service: PartnerService | null; country: string | null } | null;
+  appliedVersion: number | null;
+  changedFields: string[];
+  before: PartnerSettings;
+  after: PartnerSettings;
+};
+export type PartnerWhy = "ok" | "resting" | "no_code" | "not_ready" | "no_keys" | "partner_off" | "no_route" | "route_off";
+export type PartnerPreview = {
+  picked: string[];
+  rule: PickRule;
+  considered: { code: string; name: string; order: number; eligible: boolean; why: PartnerWhy; costMinor: number | null; route: string | null }[];
+};
+
+export function paymentPartners() {
+  return api<{ settings: PartnerSettings; partners: PartnerFacts[]; services: PartnerService[]; pendingChange: PartnerChange | null; people: Record<string, Person> }>(
+    `/admin/payment-partners`,
+  );
+}
+
+export function paymentPartnerHistory(page: number) {
+  return api<{ changes: PartnerChange[]; total: number; page: number; limit: number; people: Record<string, Person> }>(`/admin/payment-partners/changes?page=${page}&limit=25`);
+}
+
+export function paymentPartnerPreview(service: PartnerService, country: string, amountMinor: number) {
+  const q = new URLSearchParams({ service, country, amountMinor: String(amountMinor) });
+  return api<PartnerPreview>(`/admin/payment-partners/preview?${q.toString()}`);
+}
+
+export function proposePaymentPartners(body: { version: number; settings: Omit<PartnerSettings, "version">; reason: string; pin: string }, key: string) {
+  return api<PartnerChange>(`/admin/payment-partners/changes`, { method: "POST", body, idempotencyKey: key });
+}
+
+export function approvePaymentPartners(changeId: string, pin: string, key: string) {
+  return api<PartnerChange>(`/admin/payment-partners/changes/${id(changeId)}/approve`, { method: "POST", body: { pin }, idempotencyKey: key });
+}
+
+export function cancelPaymentPartners(changeId: string, reason: string) {
+  return api<PartnerChange>(`/admin/payment-partners/changes/${id(changeId)}/cancel`, { method: "POST", body: { reason } });
+}
+
+export function stopPaymentPartner(body: { code: string; service?: PartnerService; country?: string; reason: string; pin: string }, key: string) {
+  return api<PartnerChange>(`/admin/payment-partners/stop`, { method: "POST", body, idempotencyKey: key });
+}
