@@ -805,11 +805,11 @@ function CloseAccountDialog({
       {closing ? (
         <p>
           {t(
-            "Only when the customer asked for it. The wallet must be empty and nothing in progress. They will be signed out, and won't be able to sign in, be found or receive money. Their records are kept for 5 years, as the law requires.",
+            "Only when the customer asked for it. The wallet must be empty and nothing in progress. They will be signed out, and won't be able to sign in, be found or receive money. Their saved contacts, bank details and saved bills are deleted and can't be brought back. Their payment records are kept for 5 years, as the law requires.",
           )}
         </p>
       ) : (
-        <p>{t("Check the caller first: you must have checked them in the last 30 minutes. They will be able to sign in and use money again.")}</p>
+        <p>{t("Check the caller first: you must have checked them in the last 30 minutes. They will be able to sign in and use money again. Their saved contacts, bank details and saved bills were deleted when it closed and don't come back.")}</p>
       )}
       <TextArea label="Why" value={reason} onChange={setReason} min={3} max={300} />
     </ConfirmWithPin>
