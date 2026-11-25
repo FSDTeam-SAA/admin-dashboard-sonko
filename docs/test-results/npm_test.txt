@@ -1,0 +1,18 @@
+Commit: 250b400 on testing-nov-2026
+Command: npm test
+
+
+> sunu-pay-admin-panel@0.1.0 test
+> vitest run
+
+
+ RUN  v4.1.12 admin
+
+
+ Test Files  31 passed (31)
+      Tests  164 passed (164)
+   Start at  12:38:42
+   Duration  6.19s (transform 5.80s, setup 0ms, import 11.12s, tests 839ms, environment 38.84s)
+
+
+exit code: 0

@@ -1,0 +1,46 @@
+Commit: 250b400
+Command: npm run build
+
+> sunu-pay-admin-panel@0.1.0 build
+> tsc --noEmit && vite build
+
+vite v7.3.8 building client environment for production...
+transforming...
+✓ 174 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                       0.87 kB │ gzip:   0.46 kB
+dist/assets/index-C-PGtm7y.css       32.20 kB │ gzip:  10.66 kB
+dist/assets/WorldMap-C_a84fpw.js    148.08 kB │ gzip:  53.14 kB
+dist/assets/index-CW6d7-CO.js     1,038.02 kB │ gzip: 305.27 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 2.33s
+exit code: 0
+
+Commit: 250b400
+Command: npm run build:demo
+
+> sunu-pay-admin-panel@0.1.0 build:demo
+> tsc --noEmit && vite build --config vite.demo.config.ts
+
+vite v7.3.8 building client environment for production...
+transforming...
+✓ 177 modules transformed.
+rendering chunks...
+computing gzip size...
+dist-demo/demo.html                        0.59 kB │ gzip:   0.34 kB
+dist-demo/assets/demo-X90wUOF0.css        33.44 kB │ gzip:  10.93 kB
+dist-demo/assets/WorldMap-DcPomdDI.js    148.08 kB │ gzip:  53.14 kB
+dist-demo/assets/demo-BX82lZDk.js      1,131.50 kB │ gzip: 335.01 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 2.43s
+exit code: 0
+
